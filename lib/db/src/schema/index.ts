@@ -109,6 +109,8 @@ export const quotesTable = pgTable("quotes", {
   projectId: uuid("project_id")
     .notNull()
     .references(() => projectsTable.id, { onDelete: "cascade" }),
+  subject: text("subject"),
+  contactName: text("contact_name"),
   quoteNumber: text("quote_number").notNull(),
   issueDate: date("issue_date").notNull(),
   validUntil: date("valid_until"),

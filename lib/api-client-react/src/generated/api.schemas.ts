@@ -326,6 +326,12 @@ export interface Quote {
   id: string;
   projectId: string;
   projectName?: string;
+  customerId?: string | null;
+  customerName?: string | null;
+  /** 件名 (案件名と異なる場合に使用) */
+  subject?: string | null;
+  /** ご担当者名 */
+  contactName?: string | null;
   quoteNumber: string;
   issueDate: string;
   validUntil?: string | null;
@@ -339,6 +345,8 @@ export interface Quote {
 
 export interface CreateQuoteBody {
   projectId: string;
+  subject?: string | null;
+  contactName?: string | null;
   quoteNumber: string;
   issueDate: string;
   validUntil?: string | null;

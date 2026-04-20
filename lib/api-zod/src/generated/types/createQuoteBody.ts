@@ -9,6 +9,8 @@ import type { LineItem } from "./lineItem";
 
 export interface CreateQuoteBody {
   projectId: string;
+  subject?: string | null;
+  contactName?: string | null;
   quoteNumber: string;
   issueDate: Date;
   validUntil?: Date | null;

@@ -167,8 +167,10 @@ export default function QuoteDetailPage() {
     return <Skeleton className="h-96 w-full max-w-4xl" />;
   }
 
-  const customerName = project?.customerName ?? "";
-  const subjectName = quote.projectName ?? project?.name ?? "";
+  const customerName =
+    quote.customerName ?? project?.customerName ?? "";
+  const subjectName = quote.subject || quote.projectName || project?.name || "";
+  const contactName = quote.contactName ?? "";
   const items = quote.items;
   const displayCount = Math.max(items.length, MIN_ROWS);
 
@@ -250,8 +252,10 @@ export default function QuoteDetailPage() {
                 ご担当
               </div>
               <div className="border border-foreground border-l-0 px-2 py-1 flex items-center justify-end gap-1">
-                <span></span>
-                <span className="text-muted-foreground">様</span>
+                <span>{contactName}</span>
+                {contactName && (
+                  <span className="text-muted-foreground">様</span>
+                )}
               </div>
             </div>
           </div>

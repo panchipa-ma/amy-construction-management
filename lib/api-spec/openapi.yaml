@@ -1212,6 +1212,10 @@ components:
         id: { type: string }
         projectId: { type: string }
         projectName: { type: string }
+        customerId: { type: string, nullable: true }
+        customerName: { type: string, nullable: true }
+        subject: { type: string, nullable: true, description: "件名 (案件名と異なる場合に使用)" }
+        contactName: { type: string, nullable: true, description: "ご担当者名" }
         quoteNumber: { type: string }
         issueDate: { type: string, format: date }
         validUntil: { type: string, format: date, nullable: true }
@@ -1229,6 +1233,8 @@ components:
       required: [projectId, quoteNumber, issueDate, items]
       properties:
         projectId: { type: string }
+        subject: { type: string, nullable: true }
+        contactName: { type: string, nullable: true }
         quoteNumber: { type: string }
         issueDate: { type: string, format: date }
         validUntil: { type: string, format: date, nullable: true }

@@ -11,6 +11,12 @@ export interface Quote {
   id: string;
   projectId: string;
   projectName?: string;
+  customerId?: string | null;
+  customerName?: string | null;
+  /** 件名 (案件名と異なる場合に使用) */
+  subject?: string | null;
+  /** ご担当者名 */
+  contactName?: string | null;
   quoteNumber: string;
   issueDate: Date;
   validUntil?: Date | null;

@@ -4,6 +4,7 @@ import {
   db,
   quotesTable,
   projectsTable,
+  customersTable,
   invoicesTable,
   costEntriesTable,
 } from "@workspace/db";
@@ -32,15 +33,27 @@ const router: IRouter = Router();
 
 async function serialize(q: typeof quotesTable.$inferSelect) {
   const [project] = await db
-    .select({ name: projectsTable.name })
+    .select({ name: projectsTable.name, customerId: projectsTable.customerId })
     .from(projectsTable)
     .where(eq(projectsTable.id, q.projectId));
+  let customerName: string | null = null;
+  if (project?.customerId) {
+    const [c] = await db
+      .select({ name: customersTable.name })
+      .from(customersTable)
+      .where(eq(customersTable.id, project.customerId));
+    customerName = c?.name ?? null;
+  }
   const items = (q.items ?? []) as LineItemJson[];
   const { subtotal, tax, total } = computeTotals(items);
   return {
     id: q.id,
     projectId: q.projectId,
     projectName: project?.name ?? "",
+    customerId: project?.customerId ?? null,
+    customerName,
+    subject: q.subject,
+    contactName: q.contactName,
     quoteNumber: q.quoteNumber,
     issueDate: isoDate(q.issueDate)!,
     validUntil: isoDate(q.validUntil),
@@ -80,6 +93,8 @@ router.post("/quotes", async (req, res): Promise<void> => {
     .insert(quotesTable)
     .values({
       projectId: parsed.data.projectId,
+      subject: parsed.data.subject ?? null,
+      contactName: parsed.data.contactName ?? null,
       quoteNumber: parsed.data.quoteNumber,
       issueDate: parsed.data.issueDate as unknown as string,
       validUntil: (parsed.data.validUntil as unknown as string | null) ?? null,
@@ -122,6 +137,8 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
     .update(quotesTable)
     .set({
       projectId: parsed.data.projectId,
+      subject: parsed.data.subject ?? null,
+      contactName: parsed.data.contactName ?? null,
       quoteNumber: parsed.data.quoteNumber,
       issueDate: parsed.data.issueDate as unknown as string,
       validUntil: (parsed.data.validUntil as unknown as string | null) ?? null,
