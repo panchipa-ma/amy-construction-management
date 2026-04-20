@@ -200,19 +200,19 @@ export default function QuoteNewPage() {
       <form
         id="quote-form"
         onSubmit={submit}
-        className="bg-white border border-border p-6 space-y-3 text-[13px] text-foreground rounded"
+        className="bg-white border border-border px-10 py-8 space-y-5 text-[13px] text-foreground rounded shadow-sm"
       >
-        <h1 className="text-center text-2xl font-bold tracking-[0.5em] pb-2">
+        <h1 className="text-center text-3xl font-bold tracking-[0.6em] pb-1 mb-2">
           御 見 積 書
         </h1>
 
         {/* Top: customer (left) + meta (right) */}
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <div className="flex items-end gap-2 border-b border-foreground pb-1">
-              <div className="flex-1">
+        <div className="grid grid-cols-[1.4fr_1fr] gap-8 items-start">
+          <div className="space-y-3">
+            <div className="flex items-end gap-3 border-b-2 border-foreground pb-1.5">
+              <div className="flex-1 min-w-0">
                 <Select value={customerId} onValueChange={setCustomerId}>
-                  <SelectTrigger className="border-0 shadow-none p-0 h-8 text-lg font-semibold focus:ring-0">
+                  <SelectTrigger className="border-0 shadow-none p-0 h-9 text-xl font-semibold focus:ring-0 [&>svg]:opacity-30 hover:[&>svg]:opacity-100">
                     <SelectValue placeholder="お客様を選択" />
                   </SelectTrigger>
                   <SelectContent>
@@ -224,58 +224,65 @@ export default function QuoteNewPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <span className="text-base pb-1">御中</span>
+              <span className="text-lg font-medium pb-0.5">御中</span>
             </div>
-            <div className="grid grid-cols-[80px_1fr] text-xs">
-              <div className="border border-foreground px-2 py-1 bg-muted/40">
-                ご担当
-              </div>
-              <div className="border border-foreground border-l-0 px-2 py-1 flex items-center">
-                <input
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
-                  placeholder=""
-                  className="flex-1 bg-transparent outline-none text-sm"
-                />
-                <span className="text-muted-foreground ml-1">様</span>
-              </div>
+            <div className="flex items-center gap-3 pl-1 text-sm">
+              <span className="text-muted-foreground w-14 shrink-0">ご担当</span>
+              <input
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                placeholder="—"
+                className="flex-1 bg-transparent outline-none border-b border-border focus:border-foreground py-0.5 placeholder:text-muted-foreground/30"
+              />
+              <span className="text-sm">様</span>
             </div>
           </div>
-          <div className="text-xs space-y-1">
-            <div className="grid grid-cols-[80px_1fr]">
-              <div className="border border-foreground px-2 py-1 bg-muted/40">
+          <div className="text-xs space-y-0">
+            <div className="grid grid-cols-[80px_1fr] border border-foreground">
+              <div className="px-2 py-1.5 bg-muted/40 border-r border-foreground">
                 見積No.
               </div>
               <input
                 value={quoteNumber}
                 onChange={(e) => setQuoteNumber(e.target.value)}
-                className="border border-foreground border-l-0 px-2 py-1 text-right tabular-nums bg-transparent outline-none focus:bg-accent/10"
+                className="px-2 py-1.5 text-right tabular-nums bg-transparent outline-none focus:bg-accent/10"
               />
             </div>
-            <div className="grid grid-cols-[80px_1fr]">
-              <div className="border border-foreground px-2 py-1 bg-muted/40">
+            <div className="grid grid-cols-[80px_1fr] border border-foreground border-t-0">
+              <div className="px-2 py-1.5 bg-muted/40 border-r border-foreground">
                 見積日
               </div>
               <input
                 type="date"
                 value={issueDate}
                 onChange={(e) => setIssueDate(e.target.value)}
-                className="border border-foreground border-l-0 px-2 py-1 text-right tabular-nums bg-transparent outline-none focus:bg-accent/10"
+                className="px-2 py-1.5 text-right tabular-nums bg-transparent outline-none focus:bg-accent/10"
+              />
+            </div>
+            <div className="grid grid-cols-[80px_1fr] border border-foreground border-t-0">
+              <div className="px-2 py-1.5 bg-muted/40 border-r border-foreground">
+                有効期限
+              </div>
+              <input
+                type="date"
+                value={validUntil}
+                onChange={(e) => setValidUntil(e.target.value)}
+                className="px-2 py-1.5 text-right tabular-nums bg-transparent outline-none focus:bg-accent/10"
               />
             </div>
           </div>
         </div>
 
         {/* 案件 + 件名 + 自社情報 */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-[1.4fr_1fr] gap-8 items-start">
           <div className="space-y-2">
-            <div className="grid grid-cols-[60px_1fr] text-xs">
-              <div className="border border-foreground px-2 py-1 bg-muted/40">
+            <div className="grid grid-cols-[64px_1fr] text-sm border border-foreground">
+              <div className="px-2 py-1.5 bg-muted/40 border-r border-foreground flex items-center">
                 案件
               </div>
-              <div className="border border-foreground border-l-0">
+              <div>
                 <Select value={projectId} onValueChange={setProjectId}>
-                  <SelectTrigger className="border-0 shadow-none h-8 text-sm focus:ring-0 px-2">
+                  <SelectTrigger className="border-0 shadow-none h-9 focus:ring-0 px-2 rounded-none">
                     <SelectValue placeholder="案件を選択" />
                   </SelectTrigger>
                   <SelectContent>
@@ -288,9 +295,9 @@ export default function QuoteNewPage() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-[60px_1fr] text-xs">
-              <div className="border border-foreground px-2 py-1 bg-muted/40 font-semibold">
-                件名:
+            <div className="grid grid-cols-[64px_1fr] text-sm border border-foreground">
+              <div className="px-2 py-1.5 bg-muted/40 border-r border-foreground font-semibold flex items-center">
+                件名
               </div>
               <input
                 value={subject}
@@ -298,53 +305,44 @@ export default function QuoteNewPage() {
                   subjectTouched.current = true;
                   setSubject(e.target.value);
                 }}
-                placeholder="例: ○○マンション 102号室 内装工事"
-                className="border border-foreground border-l-0 px-2 py-1 bg-transparent outline-none focus:bg-accent/10 text-sm"
+                placeholder="—"
+                className="px-2 py-1.5 bg-transparent outline-none focus:bg-accent/10 placeholder:text-muted-foreground/30"
               />
             </div>
-            <p className="text-xs leading-relaxed">
+            <p className="text-sm leading-relaxed pt-1 pl-1">
               下記のとおり、御見積もり申し上げます。
             </p>
           </div>
-          <div className="text-xs leading-relaxed">
-            <div className="font-semibold">{COMPANY_INFO.name}</div>
-            <div>{COMPANY_INFO.postalCode}</div>
-            <div>{COMPANY_INFO.address}</div>
-            <div className="mt-1">TEL: {COMPANY_INFO.tel}</div>
+          <div className="text-xs leading-relaxed border-l-2 border-foreground/80 pl-4">
+            <div className="font-semibold text-sm mb-0.5">{COMPANY_INFO.name}</div>
+            <div className="text-muted-foreground">{COMPANY_INFO.postalCode}</div>
+            <div className="text-muted-foreground">{COMPANY_INFO.address}</div>
+            <div className="mt-1.5">TEL: {COMPANY_INFO.tel}</div>
             <div>FAX: {COMPANY_INFO.fax}</div>
             <div>E-Mail: {COMPANY_INFO.email}</div>
-            <div>担当: {COMPANY_INFO.contact}</div>
+            <div className="mt-0.5">担当: {COMPANY_INFO.contact}</div>
           </div>
         </div>
 
         {/* Terms row */}
-        <div className="grid grid-cols-3 text-xs">
-          <div className="border border-foreground px-2 py-1">
-            <span className="text-muted-foreground">納期:</span>{" "}
+        <div className="grid grid-cols-2 text-xs">
+          <div className="border border-foreground px-3 py-1.5">
+            <span className="text-muted-foreground mr-2">納期</span>
             {QUOTE_TERMS.delivery}
           </div>
-          <div className="border border-foreground border-l-0 px-2 py-1">
-            <span className="text-muted-foreground">支払条件:</span>{" "}
+          <div className="border border-foreground border-l-0 px-3 py-1.5">
+            <span className="text-muted-foreground mr-2">支払条件</span>
             {QUOTE_TERMS.payment}
-          </div>
-          <div className="border border-foreground border-l-0 px-2 py-1 flex items-center gap-2">
-            <span className="text-muted-foreground">有効期限:</span>
-            <input
-              type="date"
-              value={validUntil}
-              onChange={(e) => setValidUntil(e.target.value)}
-              className="flex-1 bg-transparent outline-none focus:bg-accent/10 text-xs"
-            />
           </div>
         </div>
 
         {/* 合計金額 */}
-        <div className="flex items-stretch border border-foreground">
-          <div className="w-32 px-3 py-2 bg-muted/40 font-semibold border-r border-foreground flex items-center">
-            合計金額
+        <div className="flex items-stretch border-2 border-foreground">
+          <div className="w-36 px-4 py-3 bg-muted/40 font-semibold border-r-2 border-foreground flex items-center text-sm tracking-widest">
+            合 計 金 額
           </div>
-          <div className="flex-1 px-4 py-2 flex items-center justify-end gap-3">
-            <span className="text-2xl font-bold tabular-nums text-primary">
+          <div className="flex-1 px-5 py-3 flex items-center justify-end gap-3">
+            <span className="text-3xl font-bold tabular-nums">
               {formatCurrency(totals.total)}
             </span>
             <span className="text-xs text-muted-foreground">(税込)</span>
@@ -376,12 +374,18 @@ export default function QuoteNewPage() {
           </div>
           {rows.map((row, i) => {
             const amount = (row.quantity || 0) * (row.unitPrice || 0);
+            const isFirstEmpty =
+              i === 0 &&
+              !row.description &&
+              !row.unit &&
+              !row.quantity &&
+              !row.unitPrice;
             return (
               <div
                 key={i}
-                className="grid grid-cols-[36px_1fr_56px_70px_100px_120px_28px] border-t border-foreground text-xs hover:bg-accent/5 min-h-[36px]"
+                className="grid grid-cols-[36px_1fr_56px_70px_100px_120px_28px] border-t border-foreground text-[13px] hover:bg-accent/5 min-h-[34px]"
               >
-                <div className="px-2 py-2 text-center text-muted-foreground tabular-nums border-r border-foreground self-stretch flex items-center justify-center">
+                <div className="px-2 text-center text-muted-foreground tabular-nums border-r border-foreground self-stretch flex items-center justify-center">
                   {i + 1}
                 </div>
                 <textarea
@@ -394,16 +398,15 @@ export default function QuoteNewPage() {
                     }
                   }}
                   rows={1}
-                  placeholder="例: クロス張替 LDK 天井・壁"
-                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground min-w-0 resize-none text-xs leading-snug"
+                  placeholder={isFirstEmpty ? "ここに工事内容を入力" : ""}
+                  className="px-3 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground min-w-0 resize-none leading-snug placeholder:text-muted-foreground/40"
                   style={{ fieldSizing: "content" } as React.CSSProperties}
                 />
                 <input
                   type="text"
                   value={row.unit ?? ""}
                   onChange={(e) => updateRow(i, "unit", e.target.value)}
-                  placeholder="式"
-                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-center min-w-0 placeholder:text-muted-foreground/40"
+                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-center min-w-0"
                 />
                 <input
                   type="number"
@@ -427,13 +430,13 @@ export default function QuoteNewPage() {
                   }}
                   className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-right tabular-nums min-w-0"
                 />
-                <div className="px-2 py-2 text-right tabular-nums border-r border-foreground self-center">
+                <div className="px-3 py-2 text-right tabular-nums border-r border-foreground self-center">
                   {amount > 0 ? formatCurrency(amount) : ""}
                 </div>
                 <button
                   type="button"
                   onClick={() => clearRow(i)}
-                  className="text-muted-foreground hover:text-destructive flex items-center justify-center"
+                  className="text-muted-foreground/40 hover:text-destructive flex items-center justify-center"
                   aria-label="行をクリア"
                   title="行をクリア"
                 >
@@ -475,23 +478,24 @@ export default function QuoteNewPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between print:hidden">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={addRow}
-            className="gap-2"
+            className="gap-2 text-muted-foreground"
           >
             + 行を追加
           </Button>
           <span className="text-xs text-muted-foreground">
-            ({rows.length} 行)
+            {rows.length} 行
+            {customerName && <span className="ml-3">{customerName} 御中</span>}
           </span>
         </div>
 
         {/* 備考 */}
-        <div className="grid grid-cols-[60px_1fr] border border-foreground">
+        <div className="grid grid-cols-[64px_1fr] border border-foreground">
           <div className="px-2 py-2 bg-muted/40 border-r border-foreground text-xs flex items-start">
             備考
           </div>
@@ -504,14 +508,6 @@ export default function QuoteNewPage() {
           />
         </div>
       </form>
-
-      {/* Helper info under document */}
-      <div className="text-xs text-muted-foreground px-2">
-        お客様 (御中) や案件名は上のプルダウンから選択 / 件名・ご担当・各明細はその場で直接入力できます。
-        {customerName && (
-          <span className="ml-2">→ 現在: {customerName} 御中</span>
-        )}
-      </div>
 
       <div className="flex justify-end gap-2 pb-8">
         <Link href="/quotes">
