@@ -65,11 +65,13 @@ function KpiCard({
         <CardDescription className="text-xs">{title}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className={`text-2xl font-bold tabular-nums ${valueClass}`}>
+        <div
+          className={`text-lg lg:text-xl xl:text-2xl font-bold tabular-nums break-all leading-tight ${valueClass}`}
+        >
           {value}
         </div>
         {hint && (
-          <div className="text-xs text-muted-foreground mt-1">{hint}</div>
+          <div className="text-xs text-muted-foreground mt-1 truncate">{hint}</div>
         )}
       </CardContent>
     </Card>
@@ -102,7 +104,7 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <KpiCard
               title="進行中案件"
               value={`${summary.activeProjects} 件`}
