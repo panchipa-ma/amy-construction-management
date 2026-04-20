@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -24,7 +24,42 @@ import { apiErrorMessage } from "@/lib/api-error";
 import { COMPANY_INFO, QUOTE_TERMS } from "@/lib/company-info";
 import { formatCurrency } from "@/lib/format";
 
+import { UNIT_OPTIONS } from "@/lib/units";
+
 const ROWS = 16;
+
+function AutoGrowTextarea({
+  value,
+  onChange,
+  onKeyDown,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={onKeyDown}
+      rows={1}
+      placeholder={placeholder}
+      className={className}
+    />
+  );
+}
 
 function searchParamProjectId(): string {
   if (typeof window === "undefined") return "";
@@ -383,31 +418,42 @@ export default function QuoteNewPage() {
             return (
               <div
                 key={i}
-                className="grid grid-cols-[36px_1fr_56px_70px_100px_120px_28px] border-t border-foreground text-[13px] hover:bg-accent/5 min-h-[34px]"
+                className="grid grid-cols-[36px_1fr_64px_70px_100px_120px_28px] border-t border-foreground text-[13px] hover:bg-accent/5 items-stretch"
               >
-                <div className="px-2 text-center text-muted-foreground tabular-nums border-r border-foreground self-stretch flex items-center justify-center">
+                <div className="px-2 py-2 text-center text-muted-foreground tabular-nums border-r border-foreground">
                   {i + 1}
                 </div>
-                <textarea
+                <AutoGrowTextarea
                   value={row.description}
-                  onChange={(e) => updateRow(i, "description", e.target.value)}
+                  onChange={(v) => updateRow(i, "description", v)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    if (
+                      e.key === "Enter" &&
+                      !e.shiftKey &&
+                      !e.nativeEvent.isComposing
+                    ) {
                       e.preventDefault();
                       updateRow(i, "description", row.description + "\n");
                     }
                   }}
-                  rows={1}
                   placeholder={isFirstEmpty ? "ここに工事内容を入力" : ""}
-                  className="px-3 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground min-w-0 resize-none leading-snug placeholder:text-muted-foreground/40"
-                  style={{ fieldSizing: "content" } as React.CSSProperties}
+                  className="block w-full px-3 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground resize-none leading-snug placeholder:text-muted-foreground/40 overflow-hidden"
                 />
-                <input
-                  type="text"
+                <Select
                   value={row.unit ?? ""}
-                  onChange={(e) => updateRow(i, "unit", e.target.value)}
-                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-center min-w-0"
-                />
+                  onValueChange={(v) => updateRow(i, "unit", v)}
+                >
+                  <SelectTrigger className="border-0 border-r border-foreground rounded-none shadow-none h-auto py-2 px-2 text-center justify-center focus:ring-0 focus:bg-accent/10 [&>svg]:opacity-30 hover:[&>svg]:opacity-70 self-start min-h-[36px]">
+                    <SelectValue placeholder="" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIT_OPTIONS.map((u) => (
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <input
                   type="number"
                   min="0"
@@ -417,7 +463,7 @@ export default function QuoteNewPage() {
                     const n = e.target.valueAsNumber;
                     updateRow(i, "quantity", Number.isFinite(n) ? n : 0);
                   }}
-                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-right tabular-nums min-w-0"
+                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-right tabular-nums min-w-0 self-start min-h-[36px]"
                 />
                 <input
                   type="number"
@@ -428,15 +474,15 @@ export default function QuoteNewPage() {
                     const n = e.target.valueAsNumber;
                     updateRow(i, "unitPrice", Number.isFinite(n) ? n : 0);
                   }}
-                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-right tabular-nums min-w-0"
+                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-right tabular-nums min-w-0 self-start min-h-[36px]"
                 />
-                <div className="px-3 py-2 text-right tabular-nums border-r border-foreground self-center">
+                <div className="px-3 py-2 text-right tabular-nums border-r border-foreground self-start min-h-[36px]">
                   {amount > 0 ? formatCurrency(amount) : ""}
                 </div>
                 <button
                   type="button"
                   onClick={() => clearRow(i)}
-                  className="text-muted-foreground/40 hover:text-destructive flex items-center justify-center"
+                  className="text-muted-foreground/40 hover:text-destructive flex items-start justify-center pt-2.5"
                   aria-label="行をクリア"
                   title="行をクリア"
                 >

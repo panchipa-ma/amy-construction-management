@@ -1,8 +1,54 @@
 import { LineItem } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
-import { useRef } from "react";
+import { UNIT_OPTIONS } from "@/lib/units";
+import { useLayoutEffect, useRef } from "react";
+
+function AutoGrowTextarea({
+  value,
+  onChange,
+  onKeyDown,
+  readOnly,
+  className,
+  inputRef,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  readOnly?: boolean;
+  className?: string;
+  inputRef?: React.MutableRefObject<HTMLTextAreaElement | null>;
+}) {
+  const internalRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = internalRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={(el) => {
+        internalRef.current = el;
+        if (inputRef) inputRef.current = el;
+      }}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={onKeyDown}
+      readOnly={readOnly}
+      rows={1}
+      className={className}
+    />
+  );
+}
 
 export function LineItemsEditor({
   items,
@@ -13,7 +59,7 @@ export function LineItemsEditor({
   onChange: (items: LineItem[]) => void;
   minRows?: number;
 }) {
-  const lastDescRef = useRef<HTMLInputElement | null>(null);
+  const lastDescRef = useRef<HTMLTextAreaElement | null>(null);
 
   const updateItem = (index: number, field: keyof LineItem, value: any) => {
     const newItems = [...items];
@@ -62,37 +108,57 @@ export function LineItemsEditor({
           return (
             <div
               key={index}
-              className={`grid grid-cols-[40px_1fr_70px_90px_120px_140px_40px] border-t border-border text-sm ${
+              className={`grid grid-cols-[40px_1fr_70px_90px_120px_140px_40px] border-t border-border text-sm items-stretch ${
                 isReal ? "bg-background" : "bg-muted/20"
               }`}
             >
-              <div className="px-2 py-1.5 text-center text-muted-foreground tabular-nums border-r border-border self-center">
+              <div className="px-2 py-2 text-center text-muted-foreground tabular-nums border-r border-border">
                 {index + 1}
               </div>
-              <input
-                ref={isLastReal ? lastDescRef : undefined}
-                value={item?.description ?? ""}
-                onFocus={() => {
-                  if (!isReal) addItem();
-                }}
-                onChange={(e) => {
-                  if (isReal) updateItem(index, "description", e.target.value);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    if (isLastReal) addItem();
-                  }
-                }}
-                readOnly={!isReal}
-                className="px-2 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-border min-w-0 text-foreground"
-              />
-              <input
-                value={item?.unit ?? ""}
-                onChange={(e) => isReal && updateItem(index, "unit", e.target.value)}
-                readOnly={!isReal}
-                className="px-2 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-border text-center min-w-0 text-foreground"
-              />
+              {isReal ? (
+                <AutoGrowTextarea
+                  inputRef={isLastReal ? lastDescRef : undefined}
+                  value={item.description}
+                  onChange={(v) => updateItem(index, "description", v)}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" &&
+                      !e.shiftKey &&
+                      !e.nativeEvent.isComposing
+                    ) {
+                      e.preventDefault();
+                      updateItem(index, "description", item.description + "\n");
+                    }
+                  }}
+                  className="block w-full px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-border min-w-0 text-foreground resize-none leading-snug overflow-hidden"
+                />
+              ) : (
+                <input
+                  value=""
+                  onFocus={() => addItem()}
+                  readOnly
+                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-border min-w-0 text-foreground"
+                />
+              )}
+              {isReal ? (
+                <Select
+                  value={item.unit ?? ""}
+                  onValueChange={(v) => updateItem(index, "unit", v)}
+                >
+                  <SelectTrigger className="border-0 border-r border-border rounded-none shadow-none h-auto py-2 px-2 text-center justify-center focus:ring-0 focus:bg-accent/10 [&>svg]:opacity-30 hover:[&>svg]:opacity-70 self-start min-h-[36px]">
+                    <SelectValue placeholder="" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIT_OPTIONS.map((u) => (
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="border-r border-border" />
+              )}
               <input
                 type="number"
                 min="0"
@@ -104,7 +170,7 @@ export function LineItemsEditor({
                   updateItem(index, "quantity", Number.isFinite(n) ? n : 0);
                 }}
                 disabled={!isReal}
-                className="px-2 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-border text-right tabular-nums min-w-0"
+                className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-border text-right tabular-nums min-w-0 self-start min-h-[36px]"
               />
               <input
                 type="number"
@@ -117,12 +183,12 @@ export function LineItemsEditor({
                   updateItem(index, "unitPrice", Number.isFinite(n) ? n : 0);
                 }}
                 disabled={!isReal}
-                className="px-2 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-border text-right tabular-nums min-w-0"
+                className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-border text-right tabular-nums min-w-0 self-start min-h-[36px]"
               />
-              <div className="px-2 py-1.5 text-right tabular-nums border-r border-border self-center">
+              <div className="px-2 py-2 text-right tabular-nums border-r border-border self-start min-h-[36px]">
                 {isReal ? formatCurrency(amount) : ""}
               </div>
-              <div className="flex items-center justify-center">
+              <div className="flex items-start justify-center pt-2.5">
                 {isReal && (
                   <button
                     type="button"

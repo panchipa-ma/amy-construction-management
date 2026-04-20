@@ -287,37 +287,47 @@ export default function QuoteDetailPage() {
 
         {/* 件名 + 自社情報 */}
         <div className="grid grid-cols-[1.4fr_1fr] gap-8 items-start">
-          <div className="space-y-2">
-            <div className="grid grid-cols-[64px_1fr] text-sm border border-foreground">
-              <div className="px-2 py-1.5 bg-muted/40 border-r border-foreground font-semibold flex items-center">
-                件名
+          <div className="space-y-3">
+            <div className="border-l-4 border-foreground pl-3 py-0.5">
+              <div className="text-[11px] text-muted-foreground tracking-widest">
+                件 名
               </div>
-              <div className="px-2 py-1.5">{subjectName || "—"}</div>
+              <div className="text-base font-semibold leading-snug">
+                {subjectName || "—"}
+              </div>
             </div>
             <p className="text-sm leading-relaxed pt-1 pl-1">
               下記のとおり、御見積もり申し上げます。
             </p>
           </div>
-          <div className="text-xs leading-relaxed border-l-2 border-foreground/80 pl-4">
-            <div className="font-semibold text-sm mb-0.5">
-              {COMPANY_INFO.name}
+          <div className="flex items-start gap-3 border-l-2 border-foreground/80 pl-4">
+            <div className="text-xs leading-relaxed flex-1 min-w-0">
+              <div className="font-semibold text-sm mb-0.5">
+                {COMPANY_INFO.name}
+              </div>
+              <div className="text-muted-foreground">
+                {COMPANY_INFO.postalCode}
+              </div>
+              <div className="text-muted-foreground">
+                {COMPANY_INFO.address}
+              </div>
+              <div className="mt-1.5">TEL: {COMPANY_INFO.tel}</div>
+              <div>FAX: {COMPANY_INFO.fax}</div>
+              <div className="truncate">
+                E-Mail:{" "}
+                <a
+                  href={`mailto:${COMPANY_INFO.email}`}
+                  className="text-accent hover:underline print:text-foreground print:no-underline"
+                >
+                  {COMPANY_INFO.email}
+                </a>
+              </div>
+              <div className="mt-0.5">担当: {COMPANY_INFO.contact}</div>
             </div>
-            <div className="text-muted-foreground">
-              {COMPANY_INFO.postalCode}
+            {/* 印 stamp box */}
+            <div className="w-14 h-14 border border-foreground/60 rounded-full flex items-center justify-center text-[10px] text-muted-foreground shrink-0 mt-1">
+              印
             </div>
-            <div className="text-muted-foreground">{COMPANY_INFO.address}</div>
-            <div className="mt-1.5">TEL: {COMPANY_INFO.tel}</div>
-            <div>FAX: {COMPANY_INFO.fax}</div>
-            <div>
-              E-Mail:{" "}
-              <a
-                href={`mailto:${COMPANY_INFO.email}`}
-                className="text-accent hover:underline print:text-foreground print:no-underline"
-              >
-                {COMPANY_INFO.email}
-              </a>
-            </div>
-            <div className="mt-0.5">担当: {COMPANY_INFO.contact}</div>
           </div>
         </div>
 
