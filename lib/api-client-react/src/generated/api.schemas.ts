@@ -88,6 +88,12 @@ export interface Project {
   plannedCost: number;
   /** 実績原価合計 */
   actualCost: number;
+  /** 営業歩合率 (%, 売上に対して) */
+  salesCommissionRate?: number;
+  /** 担当営業 */
+  salesRep?: string | null;
+  /** 担当現場監督 */
+  siteSupervisor?: string | null;
   notes?: string | null;
   createdAt: string;
 }
@@ -102,6 +108,9 @@ export interface CreateProjectBody {
   startDate?: string | null;
   endDate?: string | null;
   contractAmount?: number;
+  salesCommissionRate?: number | null;
+  salesRep?: string | null;
+  siteSupervisor?: string | null;
   notes?: string | null;
 }
 
@@ -115,6 +124,9 @@ export interface UpdateProjectBody {
   startDate?: string | null;
   endDate?: string | null;
   contractAmount?: number;
+  salesCommissionRate?: number | null;
+  salesRep?: string | null;
+  siteSupervisor?: string | null;
   notes?: string | null;
 }
 

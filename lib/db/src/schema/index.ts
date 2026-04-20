@@ -47,6 +47,9 @@ export const projectsTable = pgTable("projects", {
   startDate: date("start_date"),
   endDate: date("end_date"),
   contractAmount: numeric("contract_amount").notNull().default("0"),
+  salesCommissionRate: numeric("sales_commission_rate").notNull().default("5"),
+  salesRep: text("sales_rep"),
+  siteSupervisor: text("site_supervisor"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

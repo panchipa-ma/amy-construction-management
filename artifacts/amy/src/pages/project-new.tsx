@@ -47,6 +47,9 @@ export default function ProjectNewPage() {
     startDate: "",
     endDate: "",
     contractAmount: "0",
+    salesCommissionRate: "5",
+    salesRep: "",
+    siteSupervisor: "",
     notes: "",
   });
 
@@ -68,6 +71,9 @@ export default function ProjectNewPage() {
           startDate: form.startDate || null,
           endDate: form.endDate || null,
           contractAmount: Number(form.contractAmount) || 0,
+          salesCommissionRate: Number(form.salesCommissionRate) || 5,
+          salesRep: form.salesRep || null,
+          siteSupervisor: form.siteSupervisor || null,
           notes: form.notes || null,
         },
       });
@@ -219,6 +225,41 @@ export default function ProjectNewPage() {
                   onChange={(e) =>
                     setForm({ ...form, contractAmount: e.target.value })
                   }
+                />
+              </div>
+              <div>
+                <Label htmlFor="salesRep">担当営業</Label>
+                <Input
+                  id="salesRep"
+                  value={form.salesRep}
+                  onChange={(e) => setForm({ ...form, salesRep: e.target.value })}
+                  placeholder="例: 田中"
+                />
+              </div>
+              <div>
+                <Label htmlFor="salesCommissionRate">営業歩合率 (%) ※売上に対して</Label>
+                <Input
+                  id="salesCommissionRate"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={form.salesCommissionRate}
+                  onChange={(e) =>
+                    setForm({ ...form, salesCommissionRate: e.target.value })
+                  }
+                  placeholder="5.0 〜 7.5"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="siteSupervisor">担当現場監督</Label>
+                <Input
+                  id="siteSupervisor"
+                  value={form.siteSupervisor}
+                  onChange={(e) =>
+                    setForm({ ...form, siteSupervisor: e.target.value })
+                  }
+                  placeholder="例: 鈴木 (規定利率20%超過粗利の30%が歩合)"
                 />
               </div>
               <div className="col-span-2">

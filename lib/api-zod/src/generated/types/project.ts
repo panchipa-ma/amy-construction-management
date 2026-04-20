@@ -26,6 +26,12 @@ export interface Project {
   plannedCost: number;
   /** 実績原価合計 */
   actualCost: number;
+  /** 営業歩合率 (%, 売上に対して) */
+  salesCommissionRate?: number;
+  /** 担当営業 */
+  salesRep?: string | null;
+  /** 担当現場監督 */
+  siteSupervisor?: string | null;
   notes?: string | null;
   createdAt: Date;
 }

@@ -110,6 +110,12 @@ export const ListProjectsResponseItem = zod.object({
   contractAmount: zod.number().describe("契約金額 (税抜, 円)"),
   plannedCost: zod.number().describe("予算原価合計"),
   actualCost: zod.number().describe("実績原価合計"),
+  salesCommissionRate: zod
+    .number()
+    .optional()
+    .describe("営業歩合率 (%, 売上に対して)"),
+  salesRep: zod.string().nullish().describe("担当営業"),
+  siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -131,6 +137,9 @@ export const CreateProjectBody = zod.object({
   startDate: zod.coerce.date().nullish(),
   endDate: zod.coerce.date().nullish(),
   contractAmount: zod.number().optional(),
+  salesCommissionRate: zod.number().nullish(),
+  salesRep: zod.string().nullish(),
+  siteSupervisor: zod.string().nullish(),
   notes: zod.string().nullish(),
 });
 
@@ -157,6 +166,12 @@ export const CreateProjectResponse = zod.object({
   contractAmount: zod.number().describe("契約金額 (税抜, 円)"),
   plannedCost: zod.number().describe("予算原価合計"),
   actualCost: zod.number().describe("実績原価合計"),
+  salesCommissionRate: zod
+    .number()
+    .optional()
+    .describe("営業歩合率 (%, 売上に対して)"),
+  salesRep: zod.string().nullish().describe("担当営業"),
+  siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -188,6 +203,12 @@ export const GetProjectResponse = zod.object({
   contractAmount: zod.number().describe("契約金額 (税抜, 円)"),
   plannedCost: zod.number().describe("予算原価合計"),
   actualCost: zod.number().describe("実績原価合計"),
+  salesCommissionRate: zod
+    .number()
+    .optional()
+    .describe("営業歩合率 (%, 売上に対して)"),
+  salesRep: zod.string().nullish().describe("担当営業"),
+  siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -208,6 +229,9 @@ export const UpdateProjectBody = zod.object({
   startDate: zod.coerce.date().nullish(),
   endDate: zod.coerce.date().nullish(),
   contractAmount: zod.number().optional(),
+  salesCommissionRate: zod.number().nullish(),
+  salesRep: zod.string().nullish(),
+  siteSupervisor: zod.string().nullish(),
   notes: zod.string().nullish(),
 });
 
@@ -234,6 +258,12 @@ export const UpdateProjectResponse = zod.object({
   contractAmount: zod.number().describe("契約金額 (税抜, 円)"),
   plannedCost: zod.number().describe("予算原価合計"),
   actualCost: zod.number().describe("実績原価合計"),
+  salesCommissionRate: zod
+    .number()
+    .optional()
+    .describe("営業歩合率 (%, 売上に対して)"),
+  salesRep: zod.string().nullish().describe("担当営業"),
+  siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });

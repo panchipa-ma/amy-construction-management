@@ -17,5 +17,8 @@ export interface CreateProjectBody {
   startDate?: Date | null;
   endDate?: Date | null;
   contractAmount?: number;
+  salesCommissionRate?: number | null;
+  salesRep?: string | null;
+  siteSupervisor?: string | null;
   notes?: string | null;
 }

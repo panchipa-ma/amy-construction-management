@@ -39,7 +39,13 @@ type Project = {
   startDate?: string | null;
   endDate?: string | null;
   notes?: string | null;
+  salesCommissionRate?: number | null;
+  salesRep?: string | null;
+  siteSupervisor?: string | null;
 };
+
+const STANDARD_PROFIT_RATE = 0.20; // 規定利率 20%
+const SUPERVISOR_COMMISSION_RATE = 0.30; // 監督歩合 30%
 
 function pct(num: number, den: number): string {
   if (den === 0) return "-";
@@ -60,17 +66,32 @@ export function LedgerSpreadsheet({
   const orderProfitRate = orderAmount > 0 ? orderProfit / orderAmount : 0;
 
   // 締め (actual) values
-  const finalCost = ledger.actualCost;
-  const finalProfit = orderAmount - finalCost;
+  const actualCost = ledger.actualCost;
+  const grossProfit = orderAmount - actualCost; // 粗利 (歩合控除前)
+
+  // 営業歩合 = 売上 × 営業歩合率
+  const salesCommissionRate = (project.salesCommissionRate ?? 5) / 100;
+  const salesCommission = Math.round(orderAmount * salesCommissionRate);
+
+  // 規定粗利額 = 売上 × 20% (規定利率)
+  const standardProfit = Math.round(orderAmount * STANDARD_PROFIT_RATE);
+
+  // 営業歩合控除後粗利
+  const profitAfterSales = grossProfit - salesCommission;
+
+  // 規定超過粗利 (営業歩合を引いた後で規定利率を超えた分)
+  const excessProfit = Math.max(0, profitAfterSales - standardProfit);
+
+  // 監督歩合 = 超過粗利 × 30%
+  const supervisorCommission = Math.round(excessProfit * SUPERVISOR_COMMISSION_RATE);
+
+  // 最終会社利益
+  const finalProfit = grossProfit - salesCommission - supervisorCommission;
   const finalProfitRate = orderAmount > 0 ? finalProfit / orderAmount : 0;
 
   // 予算 column = 受注原価 (planned cost target)
   const budgetCost = orderCost;
   const budgetProfit = orderAmount - budgetCost;
-  const budgetProfitRate = orderAmount > 0 ? budgetProfit / orderAmount : 0;
-
-  // 歩合 (vs planned) — diff between actual and planned profit
-  const profitDiff = finalProfit - orderProfit;
 
   // build category column totals
   const totalsByCat: Record<Cat, number> = {
@@ -102,8 +123,14 @@ export function LedgerSpreadsheet({
               <tr>
                 <th>契約番号</th>
                 <td>{project.code ?? ""}</td>
-                <th>主担当者</th>
-                <td></td>
+                <th>担当現場監督</th>
+                <td>{project.siteSupervisor ?? ""}</td>
+              </tr>
+              <tr>
+                <th>担当営業</th>
+                <td>{project.salesRep ?? ""}</td>
+                <th>営業歩合率</th>
+                <td className="tabular-nums">{(project.salesCommissionRate ?? 5).toFixed(1)}%</td>
               </tr>
               <tr>
                 <th>案件名</th>
@@ -164,8 +191,8 @@ export function LedgerSpreadsheet({
                 <td className="text-right">{formatCurrency(orderAmount)}</td>
                 <th className="!font-medium !bg-muted/50">予算金額</th>
                 <td className="text-right">{formatCurrency(orderAmount)}</td>
-                <th className="!font-medium !bg-muted/50">利益</th>
-                <td className="text-right">{formatCurrency(finalProfit)}</td>
+                <th className="!font-medium !bg-muted/50">売上金額</th>
+                <td className="text-right">{formatCurrency(orderAmount)}</td>
               </tr>
               <tr>
                 <th>原価</th>
@@ -173,11 +200,8 @@ export function LedgerSpreadsheet({
                 <td className="text-right">{formatCurrency(orderCost)}</td>
                 <th className="!font-medium !bg-muted/50">予算原価</th>
                 <td className="text-right">{formatCurrency(budgetCost)}</td>
-                <th className="!font-medium !bg-muted/50">歩合</th>
-                <td className={`text-right ${profitDiff < 0 ? "text-destructive font-medium" : ""}`}>
-                  {profitDiff >= 0 ? "+" : ""}
-                  {formatCurrency(profitDiff)}
-                </td>
+                <th className="!font-medium !bg-muted/50">実原価</th>
+                <td className="text-right">{formatCurrency(actualCost)}</td>
               </tr>
               <tr>
                 <th>粗利額</th>
@@ -185,9 +209,9 @@ export function LedgerSpreadsheet({
                 <td className="text-right">{formatCurrency(orderProfit)}</td>
                 <th className="!font-medium !bg-muted/50">予算粗利額</th>
                 <td className="text-right">{formatCurrency(budgetProfit)}</td>
-                <th className="!font-medium !bg-muted/50">最終粗利額</th>
-                <td className={`text-right font-semibold ${finalProfit < 0 ? "text-destructive" : "text-emerald-700"}`}>
-                  {formatCurrency(finalProfit)}
+                <th className="!font-medium !bg-muted/50">粗利額</th>
+                <td className={`text-right ${grossProfit < 0 ? "text-destructive" : ""}`}>
+                  {formatCurrency(grossProfit)}
                 </td>
               </tr>
               <tr>
@@ -196,10 +220,95 @@ export function LedgerSpreadsheet({
                 <td className="text-right">{pct(orderProfit, orderAmount)}</td>
                 <th className="!font-medium !bg-muted/50">予算粗利率</th>
                 <td className="text-right">{pct(budgetProfit, orderAmount)}</td>
-                <th className="!font-medium !bg-muted/50">最終粗利率</th>
-                <td className={`text-right font-semibold ${finalProfitRate < 0 ? "text-destructive" : ""}`}>
+                <th className="!font-medium !bg-muted/50">粗利率</th>
+                <td className={`text-right ${grossProfit < 0 ? "text-destructive" : ""}`}>
+                  {pct(grossProfit, orderAmount)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 歩合・最終利益 */}
+      <div className="border border-border overflow-hidden">
+        <div className="bg-emerald-50 dark:bg-emerald-950/40 text-center py-1.5 font-semibold text-xs border-b border-border">
+          歩合・最終利益 (規定利率 20% / 監督歩合 30%)
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-xs tabular-nums">
+            <thead className="bg-muted/50">
+              <tr className="[&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1.5 [&_th]:font-medium">
+                <th className="text-left">項目</th>
+                <th className="text-right w-32">金額</th>
+                <th className="text-right w-20">率</th>
+                <th className="text-left">計算式</th>
+              </tr>
+            </thead>
+            <tbody className="[&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1.5">
+              <tr>
+                <td className="font-medium">売上</td>
+                <td className="text-right">{formatCurrency(orderAmount)}</td>
+                <td className="text-right text-muted-foreground">100.0%</td>
+                <td className="text-muted-foreground">受注金額</td>
+              </tr>
+              <tr>
+                <td className="font-medium">実原価</td>
+                <td className="text-right text-destructive">−{formatCurrency(actualCost)}</td>
+                <td className="text-right text-muted-foreground">{pct(actualCost, orderAmount)}</td>
+                <td className="text-muted-foreground">原価明細 実績合計</td>
+              </tr>
+              <tr className="bg-muted/30">
+                <td className="font-semibold">粗利</td>
+                <td className={`text-right font-semibold ${grossProfit < 0 ? "text-destructive" : ""}`}>
+                  {formatCurrency(grossProfit)}
+                </td>
+                <td className="text-right">{pct(grossProfit, orderAmount)}</td>
+                <td className="text-muted-foreground">売上 − 実原価</td>
+              </tr>
+              <tr>
+                <td className="font-medium">営業歩合 ({(salesCommissionRate * 100).toFixed(1)}%)</td>
+                <td className="text-right text-destructive">−{formatCurrency(salesCommission)}</td>
+                <td className="text-right text-muted-foreground">{(salesCommissionRate * 100).toFixed(1)}%</td>
+                <td className="text-muted-foreground">売上 × 営業歩合率 ({project.salesRep ?? "担当営業"})</td>
+              </tr>
+              <tr className="bg-muted/30">
+                <td className="font-medium">営業歩合控除後 粗利</td>
+                <td className={`text-right ${profitAfterSales < 0 ? "text-destructive" : ""}`}>
+                  {formatCurrency(profitAfterSales)}
+                </td>
+                <td className="text-right">{pct(profitAfterSales, orderAmount)}</td>
+                <td className="text-muted-foreground">粗利 − 営業歩合</td>
+              </tr>
+              <tr>
+                <td className="font-medium">規定粗利額 (20%)</td>
+                <td className="text-right text-muted-foreground">{formatCurrency(standardProfit)}</td>
+                <td className="text-right text-muted-foreground">20.0%</td>
+                <td className="text-muted-foreground">売上 × 規定利率</td>
+              </tr>
+              <tr>
+                <td className="font-medium">規定超過粗利</td>
+                <td className={`text-right ${excessProfit > 0 ? "text-emerald-700 font-medium" : "text-muted-foreground"}`}>
+                  {formatCurrency(excessProfit)}
+                </td>
+                <td className="text-right text-muted-foreground">{pct(excessProfit, orderAmount)}</td>
+                <td className="text-muted-foreground">max(0, 営業歩合控除後粗利 − 規定粗利額)</td>
+              </tr>
+              <tr>
+                <td className="font-medium">監督歩合 (30%)</td>
+                <td className="text-right text-destructive">−{formatCurrency(supervisorCommission)}</td>
+                <td className="text-right text-muted-foreground">{pct(supervisorCommission, orderAmount)}</td>
+                <td className="text-muted-foreground">規定超過粗利 × 30% ({project.siteSupervisor ?? "担当監督"})</td>
+              </tr>
+              <tr className="bg-emerald-50 dark:bg-emerald-950/30">
+                <td className="font-bold">最終会社利益</td>
+                <td className={`text-right font-bold ${finalProfit < 0 ? "text-destructive" : "text-emerald-700"}`}>
+                  {formatCurrency(finalProfit)}
+                </td>
+                <td className={`text-right font-bold ${finalProfit < 0 ? "text-destructive" : ""}`}>
                   {pct(finalProfit, orderAmount)}
                 </td>
+                <td className="text-muted-foreground">粗利 − 営業歩合 − 監督歩合</td>
               </tr>
             </tbody>
           </table>
