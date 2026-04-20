@@ -90,6 +90,7 @@ import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { LedgerSummary } from "@/components/ledger-summary";
+import { LedgerSpreadsheet } from "@/components/ledger-spreadsheet";
 import { ProjectGantt } from "@/components/project-gantt";
 
 const COST_CATEGORY_LABEL: Record<string, string> = {
@@ -376,7 +377,18 @@ export default function ProjectDetailPage() {
             <Skeleton className="h-96 w-full" />
           ) : (
             <>
-              <LedgerSummary ledger={ledger} />
+              <Tabs defaultValue="sheet" className="w-full">
+                <TabsList>
+                  <TabsTrigger value="sheet">台帳形式</TabsTrigger>
+                  <TabsTrigger value="summary">サマリー</TabsTrigger>
+                </TabsList>
+                <TabsContent value="sheet" className="mt-3">
+                  <LedgerSpreadsheet ledger={ledger} project={project} />
+                </TabsContent>
+                <TabsContent value="summary" className="mt-3">
+                  <LedgerSummary ledger={ledger} />
+                </TabsContent>
+              </Tabs>
 
               <Card>
                 <CardHeader className="flex-row items-center justify-between">

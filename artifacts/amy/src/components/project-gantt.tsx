@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProjectPhases,
@@ -62,7 +62,9 @@ const PRESETS = [
   "クリーニング",
   "引渡し",
 ];
+const CUSTOM = "__custom__";
 
+const DAY_PX = 28; // base day width
 function dateOnly(s: string): Date {
   return new Date(s.slice(0, 10) + "T00:00:00");
 }
@@ -74,6 +76,12 @@ function addDays(d: Date, n: number): Date {
   r.setDate(r.getDate() + n);
   return r;
 }
+function toISO(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
 function fmtMonthDay(d: Date): string {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
@@ -82,12 +90,20 @@ function makeEmptyForm() {
   const today = todayLocalISO();
   return {
     name: "",
+    nameSelect: PRESETS[0],
+    customMode: false,
     startDate: today,
     endDate: today,
     status: "planned" as "planned" | "in_progress" | "done",
     notes: "",
   };
 }
+
+type DragState =
+  | { kind: "move"; id: string; startX: number; startDate: string; endDate: string }
+  | { kind: "resize-l"; id: string; startX: number; startDate: string; endDate: string }
+  | { kind: "resize-r"; id: string; startX: number; startDate: string; endDate: string }
+  | null;
 
 export function ProjectGantt({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
@@ -102,12 +118,28 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectPhase | null>(null);
   const [form, setForm] = useState(makeEmptyForm);
+  const [drag, setDrag] = useState<DragState>(null);
+  // optimistic overrides (id -> {startDate,endDate})
+  const [override, setOverride] = useState<Record<string, { s: string; e: string }>>(
+    {},
+  );
+  const dragRef = useRef<DragState>(null);
+  const overrideRef = useRef<Record<string, { s: string; e: string }>>({});
+  const committingRef = useRef<Set<string>>(new Set());
+  const timelineRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    dragRef.current = drag;
+  }, [drag]);
+  useEffect(() => {
+    overrideRef.current = override;
+  }, [override]);
 
   const phases = phasesQ.data ?? [];
 
   const range = useMemo(() => {
     if (phases.length === 0) {
       const today = new Date();
+      today.setHours(0, 0, 0, 0);
       return { min: today, max: addDays(today, 30), totalDays: 30 };
     }
     let min = dateOnly(phases[0].startDate);
@@ -118,29 +150,109 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
       if (s < min) min = s;
       if (e > max) max = e;
     }
-    min = addDays(min, -2);
-    max = addDays(max, 2);
+    min = addDays(min, -3);
+    max = addDays(max, 3);
     return { min, max, totalDays: Math.max(1, diffDays(min, max)) };
   }, [phases]);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
   const todayOffset =
     today >= range.min && today <= range.max
-      ? (diffDays(range.min, today) / range.totalDays) * 100
+      ? diffDays(range.min, today) * DAY_PX
       : null;
 
-  const monthMarkers = useMemo(() => {
-    const markers: { date: Date; offset: number }[] = [];
-    const cursor = new Date(range.min);
-    cursor.setDate(1);
-    while (cursor <= range.max) {
-      const off = (diffDays(range.min, cursor) / range.totalDays) * 100;
-      if (off >= 0 && off <= 100) markers.push({ date: new Date(cursor), offset: off });
-      cursor.setMonth(cursor.getMonth() + 1);
+  const dayMarkers = useMemo(() => {
+    const arr: { date: Date; isMonthStart: boolean }[] = [];
+    for (let i = 0; i <= range.totalDays; i++) {
+      const d = addDays(range.min, i);
+      arr.push({ date: d, isMonthStart: d.getDate() === 1 });
     }
-    return markers;
+    return arr;
   }, [range]);
+
+  // pointer drag handling — listeners are stable; read latest via refs to avoid races
+  useEffect(() => {
+    const onMove = (ev: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const dx = ev.clientX - d.startX;
+      const days = Math.round(dx / DAY_PX);
+      if (days === 0) {
+        setOverride((prev) => {
+          if (!prev[d.id]) return prev;
+          const { [d.id]: _, ...rest } = prev;
+          return rest;
+        });
+        return;
+      }
+      const s0 = dateOnly(d.startDate);
+      const e0 = dateOnly(d.endDate);
+      let ns = s0;
+      let ne = e0;
+      if (d.kind === "move") {
+        ns = addDays(s0, days);
+        ne = addDays(e0, days);
+      } else if (d.kind === "resize-l") {
+        ns = addDays(s0, days);
+        if (ns > e0) ns = e0;
+      } else if (d.kind === "resize-r") {
+        ne = addDays(e0, days);
+        if (ne < s0) ne = s0;
+      }
+      setOverride((prev) => ({
+        ...prev,
+        [d.id]: { s: toISO(ns), e: toISO(ne) },
+      }));
+    };
+    const onUp = async () => {
+      const d = dragRef.current;
+      if (!d) return;
+      const id = d.id;
+      const kind = d.kind;
+      // Guard against duplicate commits (pointerup + pointercancel)
+      if (committingRef.current.has(id)) {
+        setDrag(null);
+        return;
+      }
+      committingRef.current.add(id);
+      setDrag(null);
+      const ov = overrideRef.current[id];
+      if (!ov) {
+        committingRef.current.delete(id);
+        return;
+      }
+      const patch: { startDate?: string; endDate?: string } = {};
+      if (kind === "move" || kind === "resize-l") patch.startDate = ov.s;
+      if (kind === "move" || kind === "resize-r") patch.endDate = ov.e;
+      try {
+        await updateMut.mutateAsync({ id, data: patch });
+        await queryClient.invalidateQueries({
+          queryKey: getListProjectPhasesQueryKey(projectId),
+        });
+        toast({ title: "工程を更新しました" });
+      } catch (err) {
+        toast({ title: apiErrorMessage(err), variant: "destructive" });
+      } finally {
+        setOverride((prev) => {
+          const { [id]: _, ...rest } = prev;
+          return rest;
+        });
+        committingRef.current.delete(id);
+      }
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [projectId, queryClient, toast, updateMut]);
 
   const refresh = () =>
     queryClient.invalidateQueries({
@@ -154,8 +266,11 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
   };
   const openEdit = (p: ProjectPhase) => {
     setEditing(p);
+    const isPreset = PRESETS.includes(p.name);
     setForm({
       name: p.name,
+      nameSelect: isPreset ? p.name : CUSTOM,
+      customMode: !isPreset,
       startDate: p.startDate,
       endDate: p.endDate,
       status: p.status,
@@ -165,8 +280,13 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
   };
 
   const submit = async () => {
-    if (!form.name || !form.startDate || !form.endDate) {
-      toast({ title: "工程名・開始日・終了日は必須です", variant: "destructive" });
+    const finalName = form.customMode ? form.name.trim() : form.nameSelect;
+    if (!finalName) {
+      toast({ title: "工程名を入力してください", variant: "destructive" });
+      return;
+    }
+    if (!form.startDate || !form.endDate) {
+      toast({ title: "開始日・終了日は必須です", variant: "destructive" });
       return;
     }
     if (form.endDate < form.startDate) {
@@ -178,7 +298,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
         await updateMut.mutateAsync({
           id: editing.id,
           data: {
-            name: form.name,
+            name: finalName,
             startDate: form.startDate,
             endDate: form.endDate,
             status: form.status,
@@ -189,7 +309,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
         await createMut.mutateAsync({
           projectId,
           data: {
-            name: form.name,
+            name: finalName,
             startDate: form.startDate,
             endDate: form.endDate,
             status: form.status,
@@ -216,12 +336,30 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
     }
   };
 
+  const startDrag = (
+    e: React.PointerEvent,
+    kind: "move" | "resize-l" | "resize-r",
+    p: ProjectPhase,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDrag({
+      kind,
+      id: p.id,
+      startX: e.clientX,
+      startDate: p.startDate,
+      endDate: p.endDate,
+    });
+  };
+
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <div>
           <CardTitle className="text-base">工程表</CardTitle>
-          <CardDescription>工程の期間と進捗をガントチャートで管理します。</CardDescription>
+          <CardDescription>
+            工程バーをドラッグで移動、左右の端をドラッグで日数変更ができます。
+          </CardDescription>
         </div>
         <Button onClick={openNew} className="gap-2">
           <Plus className="w-4 h-4" />
@@ -239,40 +377,22 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
             </p>
           </div>
         ) : (
-          <div className="space-y-1">
-            {/* timeline header */}
-            <div className="flex pb-2 border-b">
-              <div className="w-56 flex-shrink-0 text-xs font-medium text-muted-foreground">
+          <div className="flex border rounded-md overflow-hidden">
+            {/* fixed left column */}
+            <div className="w-56 flex-shrink-0 border-r bg-card">
+              <div className="h-12 border-b bg-muted/30 flex items-end px-3 pb-1.5 text-xs font-semibold text-muted-foreground">
                 工程
               </div>
-              <div className="flex-1 relative h-6">
-                {monthMarkers.map((m, i) => (
+              {phases.map((p) => {
+                const ov = override[p.id];
+                const sIso = ov?.s ?? p.startDate;
+                const eIso = ov?.e ?? p.endDate;
+                const days = diffDays(dateOnly(sIso), dateOnly(eIso)) + 1;
+                return (
                   <div
-                    key={i}
-                    className="absolute top-0 text-[10px] text-muted-foreground border-l border-muted h-full pl-1"
-                    style={{ left: `${m.offset}%` }}
+                    key={p.id}
+                    className="h-12 border-b flex flex-col justify-center px-3 group"
                   >
-                    {m.date.getMonth() + 1}月
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* rows */}
-            {phases.map((p) => {
-              const s = dateOnly(p.startDate);
-              const e = dateOnly(p.endDate);
-              const left = (diffDays(range.min, s) / range.totalDays) * 100;
-              const width = Math.max(
-                ((diffDays(s, e) + 1) / range.totalDays) * 100,
-                1.5,
-              );
-              const days = diffDays(s, e) + 1;
-              return (
-                <div
-                  key={p.id}
-                  className="flex items-center group hover:bg-muted/40 -mx-2 px-2 rounded"
-                >
-                  <div className="w-56 flex-shrink-0 py-2.5 pr-3">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm truncate">
                         {p.name}
@@ -281,58 +401,154 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                         {STATUS_LABEL[p.status]}
                       </Badge>
                     </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      {fmtMonthDay(s)}–{fmtMonthDay(e)} ({days}日)
+                    <div className="text-[11px] text-muted-foreground tabular-nums">
+                      {fmtMonthDay(dateOnly(sIso))}–{fmtMonthDay(dateOnly(eIso))} (
+                      {days}日)
                     </div>
                   </div>
-                  <div className="flex-1 relative h-10">
-                    {todayOffset != null && (
+                );
+              })}
+            </div>
+
+            {/* timeline scroll area */}
+            <div ref={timelineRef} className="flex-1 overflow-x-auto">
+              <div
+                className="relative"
+                style={{ width: (range.totalDays + 1) * DAY_PX }}
+              >
+                {/* day header */}
+                <div className="h-12 border-b bg-muted/30 relative">
+                  {dayMarkers.map((m, i) => {
+                    const left = i * DAY_PX;
+                    const isWeekend =
+                      m.date.getDay() === 0 || m.date.getDay() === 6;
+                    return (
                       <div
-                        className="absolute top-0 bottom-0 w-px bg-destructive/60 z-10"
-                        style={{ left: `${todayOffset}%` }}
-                        title="今日"
-                      />
-                    )}
+                        key={i}
+                        className={`absolute top-0 bottom-0 border-l ${m.isMonthStart ? "border-foreground/30" : "border-border/40"} ${isWeekend ? "bg-muted/40" : ""}`}
+                        style={{ left, width: DAY_PX }}
+                      >
+                        {m.isMonthStart && (
+                          <div className="absolute top-1 left-1 text-[10px] font-semibold text-foreground/70 whitespace-nowrap">
+                            {m.date.getMonth() + 1}月
+                          </div>
+                        )}
+                        <div
+                          className={`absolute bottom-1 left-0 right-0 text-center text-[10px] tabular-nums ${m.date.getDay() === 0 ? "text-destructive" : m.date.getDay() === 6 ? "text-blue-600" : "text-muted-foreground"}`}
+                        >
+                          {m.date.getDate()}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* rows */}
+                {phases.map((p) => {
+                  const ov = override[p.id];
+                  const sIso = ov?.s ?? p.startDate;
+                  const eIso = ov?.e ?? p.endDate;
+                  const s = dateOnly(sIso);
+                  const e = dateOnly(eIso);
+                  const left = diffDays(range.min, s) * DAY_PX;
+                  const width = (diffDays(s, e) + 1) * DAY_PX;
+                  const dragging = drag?.id === p.id;
+                  return (
                     <div
-                      className={`absolute top-1/2 -translate-y-1/2 h-6 rounded ${STATUS_CLR[p.status]} text-white text-[10px] flex items-center px-2 shadow-sm`}
-                      style={{ left: `${left}%`, width: `${width}%` }}
-                      title={`${p.name}: ${formatDate(p.startDate)} 〜 ${formatDate(p.endDate)}`}
+                      key={p.id}
+                      className="h-12 border-b relative group"
                     >
-                      <span className="truncate">{p.name}</span>
-                    </div>
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex gap-0.5 bg-background/95 rounded shadow-sm">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => openEdit(p)}
+                      {/* day grid stripes */}
+                      {dayMarkers.map((m, i) => {
+                        const isWeekend =
+                          m.date.getDay() === 0 || m.date.getDay() === 6;
+                        return (
+                          <div
+                            key={i}
+                            className={`absolute top-0 bottom-0 border-l ${m.isMonthStart ? "border-foreground/20" : "border-border/30"} ${isWeekend ? "bg-muted/30" : ""}`}
+                            style={{ left: i * DAY_PX, width: DAY_PX }}
+                          />
+                        );
+                      })}
+                      {todayOffset != null && (
+                        <div
+                          className="absolute top-0 bottom-0 w-px bg-destructive/70 z-10 pointer-events-none"
+                          style={{ left: todayOffset }}
+                        />
+                      )}
+                      {/* the bar */}
+                      <div
+                        className={`absolute top-1/2 -translate-y-1/2 h-7 rounded ${STATUS_CLR[p.status]} text-white text-xs flex items-center shadow-sm select-none ${dragging ? "ring-2 ring-primary opacity-90" : ""}`}
+                        style={{ left, width: Math.max(width, 12) }}
+                        title={`${p.name}: ${formatDate(sIso)} 〜 ${formatDate(eIso)}`}
                       >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(p.id)}
+                        {/* left handle */}
+                        <div
+                          className="w-2 h-full cursor-ew-resize rounded-l hover:bg-white/30 flex-shrink-0"
+                          onPointerDown={(ev) => startDrag(ev, "resize-l", p)}
+                        />
+                        {/* body */}
+                        <div
+                          className="flex-1 px-1 truncate cursor-grab active:cursor-grabbing"
+                          onPointerDown={(ev) => startDrag(ev, "move", p)}
+                          onDoubleClick={() => openEdit(p)}
+                        >
+                          {p.name}
+                        </div>
+                        {/* right handle */}
+                        <div
+                          className="w-2 h-full cursor-ew-resize rounded-r hover:bg-white/30 flex-shrink-0"
+                          onPointerDown={(ev) => startDrag(ev, "resize-r", p)}
+                        />
+                      </div>
+                      {/* hover actions */}
+                      <div
+                        className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex gap-0.5 bg-background/95 rounded shadow-sm border z-20"
+                        style={{ left: Math.max(left + width + 6, 0) }}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => openEdit(p)}
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(p.id)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
-            {todayOffset != null && (
-              <div className="flex items-center pt-3 border-t mt-3 text-xs text-muted-foreground">
-                <div className="w-56" />
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-px bg-destructive" />
-                  今日 ({fmtMonthDay(today)})
-                </div>
+                  );
+                })}
               </div>
-            )}
+            </div>
           </div>
         )}
+        <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded bg-slate-400" />予定
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded bg-primary" />進行中
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded bg-emerald-600" />完了
+          </div>
+          {todayOffset != null && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-px bg-destructive" />今日
+            </div>
+          )}
+          <div className="ml-auto text-[11px]">
+            ヒント: バーをドラッグで移動 / 端をドラッグで日数変更 / ダブルクリックで編集
+          </div>
+        </div>
       </CardContent>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -344,19 +560,38 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="phName">工程名 *</Label>
-              <Input
-                id="phName"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="例: 解体, 下地, クロス..."
-                list="phase-presets"
-              />
-              <datalist id="phase-presets">
-                {PRESETS.map((p) => (
-                  <option key={p} value={p} />
-                ))}
-              </datalist>
+              <Label>工事項目 *</Label>
+              <Select
+                value={form.nameSelect}
+                onValueChange={(v) => {
+                  if (v === CUSTOM) {
+                    setForm({ ...form, nameSelect: v, customMode: true, name: form.name });
+                  } else {
+                    setForm({ ...form, nameSelect: v, customMode: false, name: v });
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRESETS.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={CUSTOM}>その他（自由入力）</SelectItem>
+                </SelectContent>
+              </Select>
+              {form.customMode && (
+                <Input
+                  className="mt-2"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="工事項目名を入力"
+                  autoFocus
+                />
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

@@ -31,6 +31,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { CostCategoryBadge } from "@/components/cost-category-badge";
 import { LedgerSummary } from "@/components/ledger-summary";
+import { LedgerSpreadsheet } from "@/components/ledger-spreadsheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { ExternalLink } from "lucide-react";
 
@@ -112,9 +114,19 @@ export default function LedgerPage() {
         </Card>
       ) : (
         <>
-          <LedgerSummary ledger={ledger} />
-
-          <Card>
+          <Tabs defaultValue="sheet" className="w-full">
+            <TabsList>
+              <TabsTrigger value="sheet">台帳形式</TabsTrigger>
+              <TabsTrigger value="summary">サマリー</TabsTrigger>
+            </TabsList>
+            <TabsContent value="sheet" className="mt-3">
+              {selectedProject && (
+                <LedgerSpreadsheet ledger={ledger} project={selectedProject} />
+              )}
+            </TabsContent>
+            <TabsContent value="summary" className="mt-3 space-y-6">
+              <LedgerSummary ledger={ledger} />
+              <Card>
             <CardHeader>
               <CardTitle className="text-base">原価明細</CardTitle>
               <CardDescription>
@@ -177,6 +189,8 @@ export default function LedgerPage() {
               )}
             </CardContent>
           </Card>
+            </TabsContent>
+          </Tabs>
         </>
       )}
     </div>
