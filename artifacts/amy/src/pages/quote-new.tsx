@@ -169,7 +169,7 @@ export default function QuoteNewPage() {
   );
 
   return (
-    <div className="max-w-[900px] mx-auto space-y-4">
+    <div className="max-w-[1100px] mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <Link
           href="/quotes"
@@ -353,7 +353,7 @@ export default function QuoteNewPage() {
 
         {/* Items table */}
         <div className="border border-foreground">
-          <div className="grid grid-cols-[40px_1fr_70px_80px_120px_140px_30px] bg-muted/40 text-xs font-semibold">
+          <div className="grid grid-cols-[36px_1fr_56px_70px_100px_120px_28px] bg-muted/40 text-xs font-semibold">
             <div className="px-2 py-1.5 text-center border-r border-foreground">
               No.
             </div>
@@ -379,7 +379,7 @@ export default function QuoteNewPage() {
             return (
               <div
                 key={i}
-                className="grid grid-cols-[40px_1fr_70px_80px_120px_140px_30px] border-t border-foreground text-xs hover:bg-accent/5"
+                className="grid grid-cols-[36px_1fr_56px_70px_100px_120px_28px] border-t border-foreground text-xs hover:bg-accent/5"
               >
                 <div className="px-2 py-1 text-center text-muted-foreground tabular-nums border-r border-foreground self-center">
                   {i + 1}
@@ -434,7 +434,7 @@ export default function QuoteNewPage() {
             );
           })}
           {/* 小計 / 消費税 / 合計 footer rows */}
-          <div className="grid grid-cols-[40px_1fr_70px_80px_120px_140px_30px] border-t border-foreground text-xs">
+          <div className="grid grid-cols-[36px_1fr_56px_70px_100px_120px_28px] border-t border-foreground text-xs">
             <div className="col-span-4"></div>
             <div className="px-2 py-1 bg-muted/40 border-l border-foreground text-right font-semibold">
               小計
@@ -444,7 +444,7 @@ export default function QuoteNewPage() {
             </div>
             <div></div>
           </div>
-          <div className="grid grid-cols-[40px_1fr_70px_80px_120px_140px_30px] border-t border-foreground text-xs">
+          <div className="grid grid-cols-[36px_1fr_56px_70px_100px_120px_28px] border-t border-foreground text-xs">
             <div className="col-span-4"></div>
             <div className="px-2 py-1 bg-muted/40 border-l border-foreground text-right font-semibold">
               消費税
@@ -454,7 +454,7 @@ export default function QuoteNewPage() {
             </div>
             <div></div>
           </div>
-          <div className="grid grid-cols-[40px_1fr_70px_80px_120px_140px_30px] border-t border-foreground text-xs">
+          <div className="grid grid-cols-[36px_1fr_56px_70px_100px_120px_28px] border-t border-foreground text-xs">
             <div className="col-span-4"></div>
             <div className="px-2 py-1 bg-muted/40 border-l border-foreground text-right font-bold">
               合計
