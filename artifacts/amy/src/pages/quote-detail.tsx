@@ -5,6 +5,7 @@ import {
   useDeleteQuote,
   useConvertQuoteToInvoice,
   useImportQuoteToLedger,
+  useGetProject,
   getGetQuoteQueryKey,
   getListQuotesQueryKey,
   getListInvoicesQueryKey,
@@ -13,12 +14,6 @@ import {
   CostCategory,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -38,14 +33,6 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -54,12 +41,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Trash2, FileText, BookOpen } from "lucide-react";
+import {
+  ArrowLeft,
+  Trash2,
+  FileText,
+  BookOpen,
+  Printer,
+} from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
+import { COMPANY_INFO, QUOTE_TERMS } from "@/lib/company-info";
+
+const MIN_ROWS = 16;
+
+function formatJpDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const era = d.getFullYear() >= 2019 ? `R${d.getFullYear() - 2018}` : `${d.getFullYear()}`;
+  return `${era}.${d.getMonth() + 1}.${d.getDate()}`;
+}
 
 export default function QuoteDetailPage() {
   const [, params] = useRoute("/quotes/:id");
@@ -69,6 +73,13 @@ export default function QuoteDetailPage() {
   const { toast } = useToast();
   const { data: quote, isLoading } = useGetQuote(id, {
     query: { enabled: !!id, queryKey: getGetQuoteQueryKey(id) },
+  });
+  const projectIdForQuery = quote?.projectId ?? "";
+  const { data: project } = useGetProject(projectIdForQuery, {
+    query: {
+      enabled: !!projectIdForQuery,
+      queryKey: getGetProjectQueryKey(projectIdForQuery),
+    },
   });
   const deleteMut = useDeleteQuote();
   const convertMut = useConvertQuoteToInvoice();
@@ -153,28 +164,38 @@ export default function QuoteDetailPage() {
   };
 
   if (isLoading || !quote) {
-    return <Skeleton className="h-96 w-full max-w-3xl" />;
+    return <Skeleton className="h-96 w-full max-w-4xl" />;
   }
 
+  const customerName = project?.customerName ?? "";
+  const subjectName = quote.projectName ?? project?.name ?? "";
+  const items = quote.items;
+  const displayCount = Math.max(items.length, MIN_ROWS);
+
   return (
-    <div className="max-w-3xl space-y-6">
-      <Link
-        href="/quotes"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        見積書一覧に戻る
-      </Link>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">見積書 {quote.quoteNumber}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {quote.projectName}
-          </p>
-        </div>
+    <div className="space-y-6">
+      {/* Action header — hidden in print */}
+      <div className="print:hidden flex items-center justify-between max-w-[820px]">
+        <Link
+          href="/quotes"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          見積書一覧に戻る
+        </Link>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
+            size="sm"
+            onClick={() => window.print()}
+            className="gap-2"
+          >
+            <Printer className="w-4 h-4" />
+            印刷
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => {
               setConvertForm({
                 invoiceNumber: quote.quoteNumber.replace(/^Q/i, "INV"),
@@ -190,14 +211,16 @@ export default function QuoteDetailPage() {
           </Button>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setImportOpen(true)}
             className="gap-2"
           >
             <BookOpen className="w-4 h-4" />
-            施工台帳に取込
+            台帳に取込
           </Button>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setAskDelete(true)}
             className="gap-2 text-destructive hover:text-destructive"
           >
@@ -207,82 +230,197 @@ export default function QuoteDetailPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">基本情報</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <dt className="text-muted-foreground">発行日</dt>
-              <dd>{formatDate(quote.issueDate)}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">有効期限</dt>
-              <dd>{formatDate(quote.validUntil)}</dd>
-            </div>
-            {quote.notes && (
-              <div className="col-span-2">
-                <dt className="text-muted-foreground">備考</dt>
-                <dd className="whitespace-pre-wrap">{quote.notes}</dd>
-              </div>
-            )}
-          </dl>
-        </CardContent>
-      </Card>
+      {/* Quote document */}
+      <div className="bg-white border border-border max-w-[820px] mx-auto p-8 text-[13px] text-foreground print:border-0 print:p-0 print:max-w-none print:mx-0">
+        <h1 className="text-center text-2xl font-bold tracking-[0.5em] pb-2 mb-4">
+          御 見 積 書
+        </h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">明細</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>摘要</TableHead>
-                <TableHead className="w-16">単位</TableHead>
-                <TableHead className="text-right w-20">数量</TableHead>
-                <TableHead className="text-right w-28">単価</TableHead>
-                <TableHead className="text-right w-32">金額</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {quote.items.map((item, i) => (
-                <TableRow key={i}>
-                  <TableCell>{item.description}</TableCell>
-                  <TableCell>{item.unit ?? ""}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {item.quantity}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatCurrency(item.unitPrice)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatCurrency(item.quantity * item.unitPrice)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <div className="ml-auto w-72 space-y-2 pt-4 border-t">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">小計</span>
-              <span className="tabular-nums">
-                {formatCurrency(quote.subtotal)}
+        {/* Top section: customer (left) + meta (right) */}
+        <div className="grid grid-cols-2 gap-6 mb-3">
+          <div className="space-y-1">
+            <div className="flex items-end gap-2 border-b border-foreground pb-1">
+              <span className="text-xl font-semibold flex-1">
+                {customerName || "—"}
               </span>
+              <span className="text-base">御中</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">消費税 (10%)</span>
-              <span className="tabular-nums">{formatCurrency(quote.tax)}</span>
-            </div>
-            <div className="flex justify-between font-bold text-lg pt-2 border-t">
-              <span>合計</span>
-              <span className="tabular-nums">{formatCurrency(quote.total)}</span>
+            <div className="grid grid-cols-[80px_1fr] text-xs">
+              <div className="border border-foreground px-2 py-1 bg-muted/40">
+                ご担当
+              </div>
+              <div className="border border-foreground border-l-0 px-2 py-1 flex items-center justify-end gap-1">
+                <span></span>
+                <span className="text-muted-foreground">様</span>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="text-xs space-y-1">
+            <div className="grid grid-cols-[80px_1fr]">
+              <div className="border border-foreground px-2 py-1 bg-muted/40">
+                見積No.
+              </div>
+              <div className="border border-foreground border-l-0 px-2 py-1 text-right tabular-nums">
+                {quote.quoteNumber}
+              </div>
+            </div>
+            <div className="grid grid-cols-[80px_1fr]">
+              <div className="border border-foreground px-2 py-1 bg-muted/40">
+                見積日
+              </div>
+              <div className="border border-foreground border-l-0 px-2 py-1 text-right tabular-nums">
+                {formatJpDate(quote.issueDate)}
+              </div>
+            </div>
+          </div>
+        </div>
 
+        {/* 件名 + 自社情報 */}
+        <div className="grid grid-cols-2 gap-6 mb-3">
+          <div>
+            <div className="grid grid-cols-[60px_1fr] mb-2">
+              <div className="border border-foreground px-2 py-1 bg-muted/40 font-semibold">
+                件名:
+              </div>
+              <div className="border border-foreground border-l-0 px-2 py-1">
+                {subjectName}
+              </div>
+            </div>
+            <p className="text-xs leading-relaxed">
+              下記のとおり、御見積もり申し上げます。
+            </p>
+          </div>
+          <div className="text-xs leading-relaxed">
+            <div className="font-semibold">{COMPANY_INFO.name}</div>
+            <div>{COMPANY_INFO.postalCode}</div>
+            <div>{COMPANY_INFO.address}</div>
+            <div className="mt-1">TEL: {COMPANY_INFO.tel}</div>
+            <div>FAX: {COMPANY_INFO.fax}</div>
+            <div>
+              E-Mail:{" "}
+              <a
+                href={`mailto:${COMPANY_INFO.email}`}
+                className="text-accent hover:underline print:text-foreground print:no-underline"
+              >
+                {COMPANY_INFO.email}
+              </a>
+            </div>
+            <div>担当: {COMPANY_INFO.contact}</div>
+          </div>
+        </div>
+
+        {/* Terms row */}
+        <div className="grid grid-cols-3 text-xs mb-3">
+          <div className="border border-foreground px-2 py-1">
+            <span className="text-muted-foreground">納期:</span>{" "}
+            {QUOTE_TERMS.delivery}
+          </div>
+          <div className="border border-foreground border-l-0 px-2 py-1">
+            <span className="text-muted-foreground">支払条件:</span>{" "}
+            {QUOTE_TERMS.payment}
+          </div>
+          <div className="border border-foreground border-l-0 px-2 py-1">
+            <span className="text-muted-foreground">有効期限:</span>{" "}
+            {quote.validUntil ? formatJpDate(quote.validUntil) : QUOTE_TERMS.validity}
+          </div>
+        </div>
+
+        {/* 合計金額 prominent */}
+        <div className="flex items-stretch border border-foreground mb-3">
+          <div className="w-32 px-3 py-2 bg-muted/40 font-semibold border-r border-foreground flex items-center">
+            合計金額
+          </div>
+          <div className="flex-1 px-4 py-2 flex items-center justify-end gap-3">
+            <span className="text-2xl font-bold tabular-nums">
+              {formatCurrency(quote.total)}
+            </span>
+            <span className="text-xs text-muted-foreground">(税込)</span>
+          </div>
+        </div>
+
+        {/* Items table */}
+        <div className="border border-foreground">
+          <div className="grid grid-cols-[40px_1fr_80px_120px_140px] bg-muted/40 text-xs font-semibold">
+            <div className="px-2 py-1.5 text-center border-r border-foreground">
+              No.
+            </div>
+            <div className="px-2 py-1.5 border-r border-foreground">摘要</div>
+            <div className="px-2 py-1.5 border-r border-foreground text-right">
+              数量
+            </div>
+            <div className="px-2 py-1.5 border-r border-foreground text-right">
+              単価
+            </div>
+            <div className="px-2 py-1.5 text-right">金額</div>
+          </div>
+          {Array.from({ length: displayCount }).map((_, i) => {
+            const item = items[i];
+            const amount = item ? item.quantity * item.unitPrice : 0;
+            return (
+              <div
+                key={i}
+                className="grid grid-cols-[40px_1fr_80px_120px_140px] border-t border-foreground text-xs min-h-[24px]"
+              >
+                <div className="px-2 py-1 text-center text-muted-foreground tabular-nums border-r border-foreground">
+                  {i + 1}
+                </div>
+                <div className="px-2 py-1 border-r border-foreground">
+                  {item?.description ?? ""}
+                </div>
+                <div className="px-2 py-1 text-right tabular-nums border-r border-foreground">
+                  {item ? `${item.quantity}${item.unit ? ` ${item.unit}` : ""}` : ""}
+                </div>
+                <div className="px-2 py-1 text-right tabular-nums border-r border-foreground">
+                  {item ? formatCurrency(item.unitPrice) : ""}
+                </div>
+                <div className="px-2 py-1 text-right tabular-nums">
+                  {item ? formatCurrency(amount) : ""}
+                </div>
+              </div>
+            );
+          })}
+          {/* totals rows */}
+          <div className="grid grid-cols-[40px_1fr_80px_120px_140px] border-t border-foreground text-xs">
+            <div className="col-span-3"></div>
+            <div className="px-2 py-1 bg-muted/40 border-l border-foreground text-right font-semibold">
+              小計
+            </div>
+            <div className="px-2 py-1 border-l border-foreground text-right tabular-nums">
+              {formatCurrency(quote.subtotal)}
+            </div>
+          </div>
+          <div className="grid grid-cols-[40px_1fr_80px_120px_140px] border-t border-foreground text-xs">
+            <div className="col-span-3"></div>
+            <div className="px-2 py-1 bg-muted/40 border-l border-foreground text-right font-semibold">
+              消費税
+            </div>
+            <div className="px-2 py-1 border-l border-foreground text-right tabular-nums">
+              {formatCurrency(quote.tax)}
+            </div>
+          </div>
+          <div className="grid grid-cols-[40px_1fr_80px_120px_140px] border-t border-foreground text-xs">
+            <div className="col-span-3"></div>
+            <div className="px-2 py-1 bg-muted/40 border-l border-foreground text-right font-bold">
+              合計
+            </div>
+            <div className="px-2 py-1 border-l border-foreground text-right tabular-nums font-bold">
+              {formatCurrency(quote.total)}
+            </div>
+          </div>
+        </div>
+
+        {/* 備考 */}
+        <div className="grid grid-cols-[60px_1fr] mt-4 border border-foreground">
+          <div className="px-2 py-2 bg-muted/40 border-r border-foreground text-xs">
+            備考
+          </div>
+          <div className="px-3 py-2 text-xs whitespace-pre-wrap min-h-[60px]">
+            {quote.notes ?? ""}
+          </div>
+        </div>
+      </div>
+
+      {/* Dialogs */}
       <Dialog open={convertOpen} onOpenChange={setConvertOpen}>
         <DialogContent>
           <DialogHeader>
@@ -355,8 +493,7 @@ export default function QuoteDetailPage() {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              見積明細の各行を予算原価として施工台帳 (案件「{quote.projectName}
-              」) に登録します。
+              見積明細の各行を予算原価として施工台帳 (案件「{subjectName}」) に登録します。
             </p>
             <div>
               <Label>原価カテゴリ</Label>

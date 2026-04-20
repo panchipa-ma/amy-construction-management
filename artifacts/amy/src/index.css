@@ -204,3 +204,16 @@
     pointer-events: none;
   }
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+  html, body {
+    background: white !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+}
