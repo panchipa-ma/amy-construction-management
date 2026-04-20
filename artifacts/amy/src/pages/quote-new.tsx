@@ -379,22 +379,31 @@ export default function QuoteNewPage() {
             return (
               <div
                 key={i}
-                className="grid grid-cols-[36px_1fr_56px_70px_100px_120px_28px] border-t border-foreground text-xs hover:bg-accent/5"
+                className="grid grid-cols-[36px_1fr_56px_70px_100px_120px_28px] border-t border-foreground text-xs hover:bg-accent/5 min-h-[36px]"
               >
-                <div className="px-2 py-1 text-center text-muted-foreground tabular-nums border-r border-foreground self-center">
+                <div className="px-2 py-2 text-center text-muted-foreground tabular-nums border-r border-foreground self-stretch flex items-center justify-center">
                   {i + 1}
                 </div>
-                <input
+                <textarea
                   value={row.description}
                   onChange={(e) => updateRow(i, "description", e.target.value)}
-                  placeholder=""
-                  className="px-2 py-1 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground min-w-0"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      e.preventDefault();
+                      updateRow(i, "description", row.description + "\n");
+                    }
+                  }}
+                  rows={1}
+                  placeholder="例: クロス張替 LDK 天井・壁"
+                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground min-w-0 resize-none text-xs leading-snug"
+                  style={{ fieldSizing: "content" } as React.CSSProperties}
                 />
                 <input
+                  type="text"
                   value={row.unit ?? ""}
                   onChange={(e) => updateRow(i, "unit", e.target.value)}
-                  placeholder=""
-                  className="px-2 py-1 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-center min-w-0"
+                  placeholder="式"
+                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-center min-w-0 placeholder:text-muted-foreground/40"
                 />
                 <input
                   type="number"
@@ -405,7 +414,7 @@ export default function QuoteNewPage() {
                     const n = e.target.valueAsNumber;
                     updateRow(i, "quantity", Number.isFinite(n) ? n : 0);
                   }}
-                  className="px-2 py-1 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-right tabular-nums min-w-0"
+                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-right tabular-nums min-w-0"
                 />
                 <input
                   type="number"
@@ -416,9 +425,9 @@ export default function QuoteNewPage() {
                     const n = e.target.valueAsNumber;
                     updateRow(i, "unitPrice", Number.isFinite(n) ? n : 0);
                   }}
-                  className="px-2 py-1 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-right tabular-nums min-w-0"
+                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-right tabular-nums min-w-0"
                 />
-                <div className="px-2 py-1 text-right tabular-nums border-r border-foreground self-center">
+                <div className="px-2 py-2 text-right tabular-nums border-r border-foreground self-center">
                   {amount > 0 ? formatCurrency(amount) : ""}
                 </div>
                 <button
