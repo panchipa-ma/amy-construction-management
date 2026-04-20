@@ -233,7 +233,7 @@ export default function QuoteDetailPage() {
       </div>
 
       {/* Quote document */}
-      <div className="quote-paper max-w-[1040px] mx-auto px-12 py-8 text-[14px] text-foreground print:border-0 print:p-0 print:max-w-none print:mx-0 print:shadow-none">
+      <div className="quote-paper max-w-[1040px] mx-auto px-8 py-8 text-[14px] text-foreground print:border-0 print:p-0 print:max-w-none print:mx-0 print:shadow-none">
         {/* Decorative top accent */}
         <div className="flex items-center gap-3 mb-3">
           <div className="h-[3px] flex-1 bg-primary" />
@@ -360,7 +360,7 @@ export default function QuoteDetailPage() {
 
         {/* Items table */}
         <div className="border-2 border-foreground mb-4">
-          <div className="grid grid-cols-[36px_minmax(0,1fr)_60px_72px_104px_124px] bg-primary text-primary-foreground text-[11.5px] font-semibold tracking-wider">
+          <div className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px] bg-primary text-primary-foreground text-[11.5px] font-semibold tracking-wider">
             <div className="px-1.5 py-1.5 text-center border-r border-primary-foreground/20">
               No.
             </div>
@@ -384,7 +384,7 @@ export default function QuoteDetailPage() {
             return (
               <div
                 key={i}
-                className="grid grid-cols-[36px_minmax(0,1fr)_60px_72px_104px_124px] border-t border-foreground/30 text-[13px] min-h-[34px]"
+                className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px] border-t border-foreground/30 text-[13px] min-h-[34px]"
               >
                 <div className="px-1.5 py-1.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[12px]">
                   {item ? i + 1 : ""}
@@ -408,7 +408,7 @@ export default function QuoteDetailPage() {
             );
           })}
           {/* totals rows */}
-          <div className="grid grid-cols-[36px_minmax(0,1fr)_60px_72px_104px_124px] border-t-2 border-foreground text-[12px] bg-muted/30">
+          <div className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px] border-t-2 border-foreground text-[12px] bg-muted/30">
             <div className="col-span-4"></div>
             <div className="px-2 py-1.5 border-l border-foreground/30 text-right font-semibold">
               小計
@@ -417,7 +417,7 @@ export default function QuoteDetailPage() {
               {formatCurrency(quote.subtotal)}
             </div>
           </div>
-          <div className="grid grid-cols-[36px_minmax(0,1fr)_60px_72px_104px_124px] border-t border-foreground/30 text-[12px] bg-muted/30">
+          <div className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px] border-t border-foreground/30 text-[12px] bg-muted/30">
             <div className="col-span-4"></div>
             <div className="px-2 py-1.5 border-l border-foreground/30 text-right font-semibold">
               消費税
@@ -426,7 +426,7 @@ export default function QuoteDetailPage() {
               {formatCurrency(quote.tax)}
             </div>
           </div>
-          <div className="grid grid-cols-[36px_minmax(0,1fr)_60px_72px_104px_124px] border-t border-foreground/30 text-[13px] bg-primary text-primary-foreground">
+          <div className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px] border-t border-foreground/30 text-[13px] bg-primary text-primary-foreground">
             <div className="col-span-4"></div>
             <div className="px-2 py-2 border-l border-primary-foreground/20 text-right font-bold">
               合計

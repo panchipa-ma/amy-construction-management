@@ -194,7 +194,7 @@ export default function QuoteNewPage() {
 
   // Column template — description gets the widest space
   const colTemplate =
-    "grid-cols-[36px_minmax(0,1fr)_60px_72px_104px_124px_28px]";
+    "grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px_24px]";
 
   return (
     <div className="quote-workbench -m-8 min-h-[calc(100vh-0px)] py-6 px-6">
@@ -230,7 +230,7 @@ export default function QuoteNewPage() {
       <form
         id="quote-form"
         onSubmit={submit}
-        className="quote-paper max-w-[1040px] mx-auto px-12 py-8 text-[14px] text-foreground"
+        className="quote-paper max-w-[1040px] mx-auto px-8 py-8 text-[14px] text-foreground"
       >
         {/* Decorative top accent */}
         <div className="flex items-center gap-3 mb-3">
