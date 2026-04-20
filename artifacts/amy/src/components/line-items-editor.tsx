@@ -72,20 +72,11 @@ export function LineItemsEditor({
               <input
                 ref={isLastReal ? lastDescRef : undefined}
                 value={item?.description ?? ""}
+                onFocus={() => {
+                  if (!isReal) addItem();
+                }}
                 onChange={(e) => {
-                  if (!isReal) {
-                    onChange([
-                      ...items,
-                      {
-                        description: e.target.value,
-                        unit: "式",
-                        quantity: 1,
-                        unitPrice: 0,
-                      },
-                    ]);
-                  } else {
-                    updateItem(index, "description", e.target.value);
-                  }
+                  if (isReal) updateItem(index, "description", e.target.value);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -93,14 +84,14 @@ export function LineItemsEditor({
                     if (isLastReal) addItem();
                   }
                 }}
-                placeholder={isReal ? "" : ""}
-                className="px-2 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-border min-w-0"
+                readOnly={!isReal}
+                className="px-2 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-border min-w-0 text-foreground"
               />
               <input
                 value={item?.unit ?? ""}
                 onChange={(e) => isReal && updateItem(index, "unit", e.target.value)}
-                disabled={!isReal}
-                className="px-2 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-border text-center min-w-0"
+                readOnly={!isReal}
+                className="px-2 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-border text-center min-w-0 text-foreground"
               />
               <input
                 type="number"

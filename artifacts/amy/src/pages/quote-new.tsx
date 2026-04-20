@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useCreateQuote,
   useListProjects,
+  useListCustomers,
   getListQuotesQueryKey,
   type LineItem,
 } from "@workspace/api-client-react";
@@ -37,9 +38,11 @@ export default function QuoteNewPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const projectsQ = useListProjects();
+  const customersQ = useListCustomers();
   const createMut = useCreateQuote();
 
   const [projectId, setProjectId] = useState(searchParamProjectId());
+  const [customerId, setCustomerId] = useState("");
   const [quoteNumber, setQuoteNumber] = useState(() => {
     const d = new Date();
     return `Q-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`;
@@ -56,6 +59,10 @@ export default function QuoteNewPage() {
   const selectedProject = useMemo(
     () => (projectsQ.data ?? []).find((p) => p.id === projectId),
     [projectsQ.data, projectId],
+  );
+  const selectedCustomer = useMemo(
+    () => (customersQ.data ?? []).find((c) => c.id === customerId),
+    [customersQ.data, customerId],
   );
 
   const totals = useMemo(() => {
@@ -153,28 +160,47 @@ export default function QuoteNewPage() {
             <div className="space-y-3">
               <div>
                 <Label className="text-xs text-muted-foreground">
-                  御中 (案件 → お客様自動入力)
+                  お客様 (御中)
                 </Label>
+                <Select value={customerId} onValueChange={setCustomerId}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="お客様を選択してください" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(customersQ.data ?? []).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedCustomer && (
+                  <div className="mt-2 px-3 py-2 bg-muted/40 rounded text-sm">
+                    <span className="font-semibold">
+                      {selectedCustomer.name}
+                    </span>
+                    <span className="text-muted-foreground"> 御中</span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">案件</Label>
                 <Select value={projectId} onValueChange={setProjectId}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="案件を選択してください" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(projectsQ.data ?? []).map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.customerName} — {p.name}
-                      </SelectItem>
-                    ))}
+                    {(projectsQ.data ?? [])
+                      .filter(
+                        (p) => !customerId || p.customerId === customerId,
+                      )
+                      .map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
-                {selectedProject && (
-                  <div className="mt-2 px-3 py-2 bg-muted/40 rounded text-sm">
-                    <span className="font-semibold">
-                      {selectedProject.customerName}
-                    </span>
-                    <span className="text-muted-foreground"> 御中</span>
-                  </div>
-                )}
               </div>
             </div>
             <div className="space-y-3">
@@ -225,7 +251,7 @@ export default function QuoteNewPage() {
               <div className="mt-1 px-3 py-2 bg-muted/40 rounded text-sm min-h-[36px] flex items-center">
                 {selectedProject?.name ?? (
                   <span className="text-muted-foreground">
-                    案件選択で自動入力されます
+                    案件を選択すると表示されます
                   </span>
                 )}
               </div>
