@@ -167,6 +167,23 @@ export const scheduleEntriesTable = pgTable("schedule_entries", {
     .defaultNow(),
 });
 
+export const projectPhasesTable = pgTable("project_phases", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projectsTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  status: text("status").notNull().default("planned"),
+  color: text("color"),
+  sortOrder: numeric("sort_order").notNull().default("0"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const progressLogsTable = pgTable("progress_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
   projectId: uuid("project_id")

@@ -844,6 +844,112 @@ export const DeleteScheduleEntryParams = zod.object({
   id: zod.coerce.string(),
 });
 
+export const ListProjectPhasesParams = zod.object({
+  projectId: zod.coerce.string(),
+});
+
+export const ListProjectPhasesResponseItem = zod.object({
+  id: zod.string(),
+  projectId: zod.string(),
+  name: zod.string(),
+  startDate: zod.coerce.date(),
+  endDate: zod.coerce.date(),
+  status: zod.enum(["planned", "in_progress", "done"]),
+  color: zod.string().nullish(),
+  sortOrder: zod.number(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListProjectPhasesResponse = zod.array(
+  ListProjectPhasesResponseItem,
+);
+
+export const CreateProjectPhaseParams = zod.object({
+  projectId: zod.coerce.string(),
+});
+
+export const CreateProjectPhaseBody = zod.object({
+  name: zod.string(),
+  startDate: zod.coerce.date(),
+  endDate: zod.coerce.date(),
+  status: zod.enum(["planned", "in_progress", "done"]).optional(),
+  color: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+  notes: zod.string().nullish(),
+});
+
+export const CreateProjectPhaseResponse = zod.object({
+  id: zod.string(),
+  projectId: zod.string(),
+  name: zod.string(),
+  startDate: zod.coerce.date(),
+  endDate: zod.coerce.date(),
+  status: zod.enum(["planned", "in_progress", "done"]),
+  color: zod.string().nullish(),
+  sortOrder: zod.number(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+export const UpdateProjectPhaseParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateProjectPhaseBody = zod.object({
+  name: zod.string().optional(),
+  startDate: zod.coerce.date().optional(),
+  endDate: zod.coerce.date().optional(),
+  status: zod.enum(["planned", "in_progress", "done"]).optional(),
+  color: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateProjectPhaseResponse = zod.object({
+  id: zod.string(),
+  projectId: zod.string(),
+  name: zod.string(),
+  startDate: zod.coerce.date(),
+  endDate: zod.coerce.date(),
+  status: zod.enum(["planned", "in_progress", "done"]),
+  color: zod.string().nullish(),
+  sortOrder: zod.number(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+export const DeleteProjectPhaseParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary All staff with their currently assigned projects (derived from schedule entries)
+ */
+export const ListStaffAssignmentsQueryParams = zod.object({
+  from: zod.date().optional(),
+  to: zod.date().optional(),
+});
+
+export const ListStaffAssignmentsResponseItem = zod.object({
+  staffId: zod.string(),
+  staffName: zod.string(),
+  role: zod.string(),
+  company: zod.string().nullish(),
+  projects: zod.array(
+    zod.object({
+      projectId: zod.string(),
+      projectName: zod.string(),
+      unitNumber: zod.string().nullish(),
+      days: zod.number(),
+      firstDate: zod.coerce.date(),
+      lastDate: zod.coerce.date(),
+    }),
+  ),
+});
+export const ListStaffAssignmentsResponse = zod.array(
+  ListStaffAssignmentsResponseItem,
+);
+
 export const ListProgressLogsQueryParams = zod.object({
   projectId: zod.coerce.string().optional(),
 });

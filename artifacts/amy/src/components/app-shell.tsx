@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, FolderKanban, FileText, Receipt, CalendarDays, Users, HardHat, Upload, ReceiptText, BookOpen } from "lucide-react";
+import { LayoutDashboard, FolderKanban, FileText, Receipt, CalendarDays, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList } from "lucide-react";
 
 const navItems = [
   { name: "ダッシュボード", href: "/", icon: LayoutDashboard },
@@ -10,6 +10,7 @@ const navItems = [
   { name: "職人請求書", href: "/vendor-invoices", icon: Upload },
   { name: "領収書", href: "/receipts", icon: ReceiptText },
   { name: "スケジュール", href: "/schedule", icon: CalendarDays },
+  { name: "職人案件一覧", href: "/staff-assignments", icon: ClipboardList },
   { name: "顧客", href: "/customers", icon: Users },
   { name: "職人", href: "/staff", icon: HardHat },
 ];

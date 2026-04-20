@@ -11,6 +11,7 @@ import progressRouter from "./progress";
 import dashboardRouter from "./dashboard";
 import vendorInvoicesRouter from "./vendor-invoices";
 import receiptsRouter from "./receipts";
+import phasesRouter from "./phases";
 import storageRouter from "./storage";
 
 const router: IRouter = Router();
@@ -27,6 +28,7 @@ router.use(scheduleRouter);
 router.use(progressRouter);
 router.use(vendorInvoicesRouter);
 router.use(receiptsRouter);
+router.use(phasesRouter);
 router.use(storageRouter);
 
 export default router;

@@ -226,6 +226,83 @@ export interface RequestUploadUrlResponse {
   metadata?: RequestUploadUrlBody;
 }
 
+export type ProjectPhaseStatus =
+  (typeof ProjectPhaseStatus)[keyof typeof ProjectPhaseStatus];
+
+export const ProjectPhaseStatus = {
+  planned: "planned",
+  in_progress: "in_progress",
+  done: "done",
+} as const;
+
+export interface ProjectPhase {
+  id: string;
+  projectId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: ProjectPhaseStatus;
+  color?: string | null;
+  sortOrder: number;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export type CreateProjectPhaseBodyStatus =
+  (typeof CreateProjectPhaseBodyStatus)[keyof typeof CreateProjectPhaseBodyStatus];
+
+export const CreateProjectPhaseBodyStatus = {
+  planned: "planned",
+  in_progress: "in_progress",
+  done: "done",
+} as const;
+
+export interface CreateProjectPhaseBody {
+  name: string;
+  startDate: string;
+  endDate: string;
+  status?: CreateProjectPhaseBodyStatus;
+  color?: string | null;
+  sortOrder?: number;
+  notes?: string | null;
+}
+
+export type UpdateProjectPhaseBodyStatus =
+  (typeof UpdateProjectPhaseBodyStatus)[keyof typeof UpdateProjectPhaseBodyStatus];
+
+export const UpdateProjectPhaseBodyStatus = {
+  planned: "planned",
+  in_progress: "in_progress",
+  done: "done",
+} as const;
+
+export interface UpdateProjectPhaseBody {
+  name?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: UpdateProjectPhaseBodyStatus;
+  color?: string | null;
+  sortOrder?: number;
+  notes?: string | null;
+}
+
+export type StaffAssignmentProjectsItem = {
+  projectId: string;
+  projectName: string;
+  unitNumber?: string | null;
+  days: number;
+  firstDate: string;
+  lastDate: string;
+};
+
+export interface StaffAssignment {
+  staffId: string;
+  staffName: string;
+  role: string;
+  company?: string | null;
+  projects: StaffAssignmentProjectsItem[];
+}
+
 export interface LineItem {
   description: string;
   unit?: string | null;
@@ -441,6 +518,11 @@ export type ListCostEntriesParams = {
 
 export type ListScheduleEntriesParams = {
   projectId?: string;
+  from?: string;
+  to?: string;
+};
+
+export type ListStaffAssignmentsParams = {
   from?: string;
   to?: string;
 };

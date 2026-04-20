@@ -30,26 +30,9 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { CostCategoryBadge } from "@/components/cost-category-badge";
-import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import { LedgerSummary } from "@/components/ledger-summary";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { ExternalLink } from "lucide-react";
-
-const COST_CATEGORY_LABEL: Record<string, string> = {
-  material: "材料費",
-  subcontract: "外注費",
-  labor: "労務費",
-  expense: "経費",
-  other: "その他",
-};
 
 export default function LedgerPage() {
   const projectsQ = useListProjects();
@@ -129,105 +112,7 @@ export default function LedgerPage() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription className="text-xs">契約金額</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl font-bold tabular-nums">
-                  {formatCurrency(ledger.contractAmount)}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription className="text-xs">計画原価</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl font-bold tabular-nums">
-                  {formatCurrency(ledger.plannedCost)}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription className="text-xs">実績原価</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={`text-xl font-bold tabular-nums ${ledger.actualCost > ledger.plannedCost ? "text-destructive" : ""}`}
-                >
-                  {formatCurrency(ledger.actualCost)}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription className="text-xs">粗利</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={`text-xl font-bold tabular-nums ${ledger.grossProfit < 0 ? "text-destructive" : "text-emerald-700"}`}
-                >
-                  {formatCurrency(ledger.grossProfit)}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription className="text-xs">粗利率</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={`text-xl font-bold tabular-nums ${(ledger.grossProfitRate ?? 0) < 0 ? "text-destructive" : "text-emerald-700"}`}
-                >
-                  {formatPercent(ledger.grossProfitRate)}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                カテゴリ別 計画 vs 実績
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart
-                  data={ledger.byCategory.map((c) => ({
-                    category:
-                      COST_CATEGORY_LABEL[c.category] ?? c.category,
-                    計画: c.plannedAmount,
-                    実績: c.actualAmount,
-                  }))}
-                >
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="category" tick={{ fontSize: 12 }} />
-                  <YAxis
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(v) =>
-                      v >= 10000 ? `${Math.round(v / 10000)}万` : `${v}`
-                    }
-                  />
-                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                  <Legend />
-                  <Bar
-                    dataKey="計画"
-                    fill="hsl(var(--accent))"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="実績"
-                    fill="hsl(var(--primary))"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          <LedgerSummary ledger={ledger} />
 
           <Card>
             <CardHeader>

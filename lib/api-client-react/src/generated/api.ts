@@ -26,6 +26,7 @@ import type {
   CreateInvoiceBody,
   CreateProgressLogBody,
   CreateProjectBody,
+  CreateProjectPhaseBody,
   CreateQuoteBody,
   CreateReceiptBody,
   CreateScheduleEntryBody,
@@ -43,19 +44,23 @@ import type {
   ListQuotesParams,
   ListReceiptsParams,
   ListScheduleEntriesParams,
+  ListStaffAssignmentsParams,
   ListVendorInvoicesParams,
   MatchReceiptBody,
   MatchVendorInvoiceBody,
   ProgressLog,
   Project,
   ProjectLedger,
+  ProjectPhase,
   Quote,
   Receipt,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
   ScheduleEntry,
   Staff,
+  StaffAssignment,
   UpdateProjectBody,
+  UpdateProjectPhaseBody,
   VendorInvoice,
 } from "./api.schemas";
 
@@ -2932,6 +2937,428 @@ export const useDeleteScheduleEntry = <
 > => {
   return useMutation(getDeleteScheduleEntryMutationOptions(options));
 };
+
+export const getListProjectPhasesUrl = (projectId: string) => {
+  return `/api/projects/${projectId}/phases`;
+};
+
+export const listProjectPhases = async (
+  projectId: string,
+  options?: RequestInit,
+): Promise<ProjectPhase[]> => {
+  return customFetch<ProjectPhase[]>(getListProjectPhasesUrl(projectId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListProjectPhasesQueryKey = (projectId: string) => {
+  return [`/api/projects/${projectId}/phases`] as const;
+};
+
+export const getListProjectPhasesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProjectPhases>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listProjectPhases>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListProjectPhasesQueryKey(projectId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listProjectPhases>>
+  > = ({ signal }) =>
+    listProjectPhases(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProjectPhases>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListProjectPhasesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProjectPhases>>
+>;
+export type ListProjectPhasesQueryError = ErrorType<unknown>;
+
+export function useListProjectPhases<
+  TData = Awaited<ReturnType<typeof listProjectPhases>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listProjectPhases>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListProjectPhasesQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateProjectPhaseUrl = (projectId: string) => {
+  return `/api/projects/${projectId}/phases`;
+};
+
+export const createProjectPhase = async (
+  projectId: string,
+  createProjectPhaseBody: CreateProjectPhaseBody,
+  options?: RequestInit,
+): Promise<ProjectPhase> => {
+  return customFetch<ProjectPhase>(getCreateProjectPhaseUrl(projectId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createProjectPhaseBody),
+  });
+};
+
+export const getCreateProjectPhaseMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProjectPhase>>,
+    TError,
+    { projectId: string; data: BodyType<CreateProjectPhaseBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createProjectPhase>>,
+  TError,
+  { projectId: string; data: BodyType<CreateProjectPhaseBody> },
+  TContext
+> => {
+  const mutationKey = ["createProjectPhase"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createProjectPhase>>,
+    { projectId: string; data: BodyType<CreateProjectPhaseBody> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return createProjectPhase(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateProjectPhaseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createProjectPhase>>
+>;
+export type CreateProjectPhaseMutationBody = BodyType<CreateProjectPhaseBody>;
+export type CreateProjectPhaseMutationError = ErrorType<unknown>;
+
+export const useCreateProjectPhase = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProjectPhase>>,
+    TError,
+    { projectId: string; data: BodyType<CreateProjectPhaseBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createProjectPhase>>,
+  TError,
+  { projectId: string; data: BodyType<CreateProjectPhaseBody> },
+  TContext
+> => {
+  return useMutation(getCreateProjectPhaseMutationOptions(options));
+};
+
+export const getUpdateProjectPhaseUrl = (id: string) => {
+  return `/api/project-phases/${id}`;
+};
+
+export const updateProjectPhase = async (
+  id: string,
+  updateProjectPhaseBody: UpdateProjectPhaseBody,
+  options?: RequestInit,
+): Promise<ProjectPhase> => {
+  return customFetch<ProjectPhase>(getUpdateProjectPhaseUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateProjectPhaseBody),
+  });
+};
+
+export const getUpdateProjectPhaseMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProjectPhase>>,
+    TError,
+    { id: string; data: BodyType<UpdateProjectPhaseBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateProjectPhase>>,
+  TError,
+  { id: string; data: BodyType<UpdateProjectPhaseBody> },
+  TContext
+> => {
+  const mutationKey = ["updateProjectPhase"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateProjectPhase>>,
+    { id: string; data: BodyType<UpdateProjectPhaseBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateProjectPhase(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateProjectPhaseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateProjectPhase>>
+>;
+export type UpdateProjectPhaseMutationBody = BodyType<UpdateProjectPhaseBody>;
+export type UpdateProjectPhaseMutationError = ErrorType<unknown>;
+
+export const useUpdateProjectPhase = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProjectPhase>>,
+    TError,
+    { id: string; data: BodyType<UpdateProjectPhaseBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateProjectPhase>>,
+  TError,
+  { id: string; data: BodyType<UpdateProjectPhaseBody> },
+  TContext
+> => {
+  return useMutation(getUpdateProjectPhaseMutationOptions(options));
+};
+
+export const getDeleteProjectPhaseUrl = (id: string) => {
+  return `/api/project-phases/${id}`;
+};
+
+export const deleteProjectPhase = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteProjectPhaseUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteProjectPhaseMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProjectPhase>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteProjectPhase>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteProjectPhase"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteProjectPhase>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteProjectPhase(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteProjectPhaseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteProjectPhase>>
+>;
+
+export type DeleteProjectPhaseMutationError = ErrorType<unknown>;
+
+export const useDeleteProjectPhase = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProjectPhase>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteProjectPhase>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteProjectPhaseMutationOptions(options));
+};
+
+/**
+ * @summary All staff with their currently assigned projects (derived from schedule entries)
+ */
+export const getListStaffAssignmentsUrl = (
+  params?: ListStaffAssignmentsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/staff/assignments?${stringifiedParams}`
+    : `/api/staff/assignments`;
+};
+
+export const listStaffAssignments = async (
+  params?: ListStaffAssignmentsParams,
+  options?: RequestInit,
+): Promise<StaffAssignment[]> => {
+  return customFetch<StaffAssignment[]>(getListStaffAssignmentsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListStaffAssignmentsQueryKey = (
+  params?: ListStaffAssignmentsParams,
+) => {
+  return [`/api/staff/assignments`, ...(params ? [params] : [])] as const;
+};
+
+export const getListStaffAssignmentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listStaffAssignments>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListStaffAssignmentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listStaffAssignments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListStaffAssignmentsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listStaffAssignments>>
+  > = ({ signal }) =>
+    listStaffAssignments(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listStaffAssignments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListStaffAssignmentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listStaffAssignments>>
+>;
+export type ListStaffAssignmentsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary All staff with their currently assigned projects (derived from schedule entries)
+ */
+
+export function useListStaffAssignments<
+  TData = Awaited<ReturnType<typeof listStaffAssignments>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListStaffAssignmentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listStaffAssignments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListStaffAssignmentsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getListProgressLogsUrl = (params?: ListProgressLogsParams) => {
   const normalizedParams = new URLSearchParams();

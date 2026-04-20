@@ -570,6 +570,96 @@ paths:
         "204":
           description: Deleted
 
+  /projects/{projectId}/phases:
+    get:
+      operationId: listProjectPhases
+      tags: [phases]
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ProjectPhase" }
+    post:
+      operationId: createProjectPhase
+      tags: [phases]
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateProjectPhaseBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectPhase" }
+
+  /project-phases/{id}:
+    patch:
+      operationId: updateProjectPhase
+      tags: [phases]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateProjectPhaseBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectPhase" }
+    delete:
+      operationId: deleteProjectPhase
+      tags: [phases]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /staff/assignments:
+    get:
+      operationId: listStaffAssignments
+      tags: [staff]
+      summary: All staff with their currently assigned projects (derived from schedule entries)
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StaffAssignment" }
+
   /progress-logs:
     get:
       operationId: listProgressLogs
@@ -1037,6 +1127,65 @@ components:
         uploadURL: { type: string, format: uri }
         objectPath: { type: string }
         metadata: { $ref: "#/components/schemas/RequestUploadUrlBody" }
+
+    ProjectPhase:
+      type: object
+      required: [id, projectId, name, startDate, endDate, status, sortOrder, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        status: { type: string, enum: [planned, in_progress, done] }
+        color: { type: string, nullable: true }
+        sortOrder: { type: number }
+        notes: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    CreateProjectPhaseBody:
+      type: object
+      required: [name, startDate, endDate]
+      properties:
+        name: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        status: { type: string, enum: [planned, in_progress, done] }
+        color: { type: string, nullable: true }
+        sortOrder: { type: number }
+        notes: { type: string, nullable: true }
+
+    UpdateProjectPhaseBody:
+      type: object
+      properties:
+        name: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        status: { type: string, enum: [planned, in_progress, done] }
+        color: { type: string, nullable: true }
+        sortOrder: { type: number }
+        notes: { type: string, nullable: true }
+
+    StaffAssignment:
+      type: object
+      required: [staffId, staffName, role, projects]
+      properties:
+        staffId: { type: string }
+        staffName: { type: string }
+        role: { type: string }
+        company: { type: string, nullable: true }
+        projects:
+          type: array
+          items:
+            type: object
+            required: [projectId, projectName, days, firstDate, lastDate]
+            properties:
+              projectId: { type: string }
+              projectName: { type: string }
+              unitNumber: { type: string, nullable: true }
+              days: { type: integer }
+              firstDate: { type: string, format: date }
+              lastDate: { type: string, format: date }
 
     LineItem:
       type: object

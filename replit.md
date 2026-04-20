@@ -10,7 +10,7 @@ UI is entirely in Japanese. No authentication — single-tenant tool.
 
 pnpm monorepo with TypeScript project references.
 
-- `lib/db` — Drizzle ORM, Postgres schema (9 tables: customers, staff, projects, quotes, invoices, cost_entries, schedule_entries, progress_logs, vendor_invoices). `projects.unitNumber` (マンション号室) for auto-routing.
+- `lib/db` — Drizzle ORM, Postgres schema (10 tables: customers, staff, projects, quotes, invoices, cost_entries, schedule_entries, progress_logs, vendor_invoices, project_phases). `projects.unitNumber` (マンション号室) for auto-routing.
 - `lib/object-storage-web` — Uppy-based `<ObjectUploader>` component for presigned PUT uploads. React is a peer dep only (do NOT add `react` as devDep — duplicates React copy and breaks hooks).
 - `lib/api-spec` — OpenAPI 3 source of truth (`openapi.yaml`).
 - `lib/api-zod` — Generated Zod validators (orval). Re-exports schemas namespace under `types`.

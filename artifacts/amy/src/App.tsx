@@ -21,6 +21,7 @@ import SchedulePage from "@/pages/schedule";
 import VendorInvoicesPage from "@/pages/vendor-invoices";
 import ReceiptsPage from "@/pages/receipts";
 import LedgerPage from "@/pages/ledger";
+import StaffAssignmentsPage from "@/pages/staff-assignments";
 
 function Router() {
   return (
@@ -41,6 +42,7 @@ function Router() {
       <Route path="/vendor-invoices" component={VendorInvoicesPage} />
       <Route path="/receipts" component={ReceiptsPage} />
       <Route path="/ledger" component={LedgerPage} />
+      <Route path="/staff-assignments" component={StaffAssignmentsPage} />
       <Route component={NotFound} />
     </Switch>
   );
