@@ -172,6 +172,45 @@ export interface MatchVendorInvoiceBody {
   projectId: string;
 }
 
+export type ReceiptStatus = (typeof ReceiptStatus)[keyof typeof ReceiptStatus];
+
+export const ReceiptStatus = {
+  matched: "matched",
+  unmatched: "unmatched",
+} as const;
+
+export interface Receipt {
+  id: string;
+  projectId?: string | null;
+  projectName?: string | null;
+  costEntryId?: string | null;
+  vendor: string;
+  unitNumber?: string | null;
+  amount: number;
+  receiptDate: string;
+  category: CostCategory;
+  fileUrl: string;
+  fileName: string;
+  notes?: string | null;
+  status: ReceiptStatus;
+  uploadedAt: string;
+}
+
+export interface CreateReceiptBody {
+  vendor: string;
+  unitNumber?: string | null;
+  amount: number;
+  receiptDate: string;
+  category: CostCategory;
+  fileUrl: string;
+  fileName: string;
+  notes?: string | null;
+}
+
+export interface MatchReceiptBody {
+  projectId: string;
+}
+
 export interface RequestUploadUrlBody {
   /** @minLength 1 */
   name: string;
@@ -420,6 +459,19 @@ export type ListVendorInvoicesStatus =
   (typeof ListVendorInvoicesStatus)[keyof typeof ListVendorInvoicesStatus];
 
 export const ListVendorInvoicesStatus = {
+  matched: "matched",
+  unmatched: "unmatched",
+} as const;
+
+export type ListReceiptsParams = {
+  projectId?: string;
+  status?: ListReceiptsStatus;
+};
+
+export type ListReceiptsStatus =
+  (typeof ListReceiptsStatus)[keyof typeof ListReceiptsStatus];
+
+export const ListReceiptsStatus = {
   matched: "matched",
   unmatched: "unmatched",
 } as const;

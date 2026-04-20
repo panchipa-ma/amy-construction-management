@@ -19,6 +19,8 @@ import InvoiceNewPage from "@/pages/invoice-new";
 import InvoiceDetailPage from "@/pages/invoice-detail";
 import SchedulePage from "@/pages/schedule";
 import VendorInvoicesPage from "@/pages/vendor-invoices";
+import ReceiptsPage from "@/pages/receipts";
+import LedgerPage from "@/pages/ledger";
 
 function Router() {
   return (
@@ -37,6 +39,8 @@ function Router() {
       <Route path="/invoices/:id" component={InvoiceDetailPage} />
       <Route path="/schedule" component={SchedulePage} />
       <Route path="/vendor-invoices" component={VendorInvoicesPage} />
+      <Route path="/receipts" component={ReceiptsPage} />
+      <Route path="/ledger" component={LedgerPage} />
       <Route component={NotFound} />
     </Switch>
   );

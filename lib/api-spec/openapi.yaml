@@ -720,6 +720,76 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/VendorInvoice" }
 
+  /receipts:
+    get:
+      operationId: listReceipts
+      tags: [receipts]
+      parameters:
+        - in: query
+          name: projectId
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string, enum: [matched, unmatched] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Receipt" }
+    post:
+      operationId: createReceipt
+      tags: [receipts]
+      summary: Upload an expense receipt; auto-matched to a project by unit number when provided
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateReceiptBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Receipt" }
+
+  /receipts/{id}:
+    delete:
+      operationId: deleteReceipt
+      tags: [receipts]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /receipts/{id}/match:
+    post:
+      operationId: matchReceipt
+      tags: [receipts]
+      summary: Manually attach an unmatched receipt to a project
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MatchReceiptBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Receipt" }
+
   /storage/uploads/request-url:
     post:
       operationId: requestUploadUrl
@@ -909,6 +979,44 @@ components:
         notes: { type: string, nullable: true }
 
     MatchVendorInvoiceBody:
+      type: object
+      required: [projectId]
+      properties:
+        projectId: { type: string }
+
+    Receipt:
+      type: object
+      required: [id, vendor, amount, receiptDate, category, fileUrl, fileName, status, uploadedAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string, nullable: true }
+        projectName: { type: string, nullable: true }
+        costEntryId: { type: string, nullable: true }
+        vendor: { type: string }
+        unitNumber: { type: string, nullable: true }
+        amount: { type: number }
+        receiptDate: { type: string, format: date }
+        category: { $ref: "#/components/schemas/CostCategory" }
+        fileUrl: { type: string }
+        fileName: { type: string }
+        notes: { type: string, nullable: true }
+        status: { type: string, enum: [matched, unmatched] }
+        uploadedAt: { type: string, format: date-time }
+
+    CreateReceiptBody:
+      type: object
+      required: [vendor, amount, receiptDate, category, fileUrl, fileName]
+      properties:
+        vendor: { type: string }
+        unitNumber: { type: string, nullable: true }
+        amount: { type: number }
+        receiptDate: { type: string, format: date }
+        category: { $ref: "#/components/schemas/CostCategory" }
+        fileUrl: { type: string }
+        fileName: { type: string }
+        notes: { type: string, nullable: true }
+
+    MatchReceiptBody:
       type: object
       required: [projectId]
       properties:

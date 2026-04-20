@@ -27,6 +27,7 @@ import type {
   CreateProgressLogBody,
   CreateProjectBody,
   CreateQuoteBody,
+  CreateReceiptBody,
   CreateScheduleEntryBody,
   CreateStaffBody,
   CreateVendorInvoiceBody,
@@ -40,13 +41,16 @@ import type {
   ListProgressLogsParams,
   ListProjectsParams,
   ListQuotesParams,
+  ListReceiptsParams,
   ListScheduleEntriesParams,
   ListVendorInvoicesParams,
+  MatchReceiptBody,
   MatchVendorInvoiceBody,
   ProgressLog,
   Project,
   ProjectLedger,
   Quote,
+  Receipt,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
   ScheduleEntry,
@@ -3613,6 +3617,344 @@ export const useMatchVendorInvoice = <
   TContext
 > => {
   return useMutation(getMatchVendorInvoiceMutationOptions(options));
+};
+
+export const getListReceiptsUrl = (params?: ListReceiptsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/receipts?${stringifiedParams}`
+    : `/api/receipts`;
+};
+
+export const listReceipts = async (
+  params?: ListReceiptsParams,
+  options?: RequestInit,
+): Promise<Receipt[]> => {
+  return customFetch<Receipt[]>(getListReceiptsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListReceiptsQueryKey = (params?: ListReceiptsParams) => {
+  return [`/api/receipts`, ...(params ? [params] : [])] as const;
+};
+
+export const getListReceiptsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listReceipts>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListReceiptsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReceipts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListReceiptsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listReceipts>>> = ({
+    signal,
+  }) => listReceipts(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listReceipts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListReceiptsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listReceipts>>
+>;
+export type ListReceiptsQueryError = ErrorType<unknown>;
+
+export function useListReceipts<
+  TData = Awaited<ReturnType<typeof listReceipts>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListReceiptsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReceipts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListReceiptsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Upload an expense receipt; auto-matched to a project by unit number when provided
+ */
+export const getCreateReceiptUrl = () => {
+  return `/api/receipts`;
+};
+
+export const createReceipt = async (
+  createReceiptBody: CreateReceiptBody,
+  options?: RequestInit,
+): Promise<Receipt> => {
+  return customFetch<Receipt>(getCreateReceiptUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createReceiptBody),
+  });
+};
+
+export const getCreateReceiptMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createReceipt>>,
+    TError,
+    { data: BodyType<CreateReceiptBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createReceipt>>,
+  TError,
+  { data: BodyType<CreateReceiptBody> },
+  TContext
+> => {
+  const mutationKey = ["createReceipt"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createReceipt>>,
+    { data: BodyType<CreateReceiptBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createReceipt(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateReceiptMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createReceipt>>
+>;
+export type CreateReceiptMutationBody = BodyType<CreateReceiptBody>;
+export type CreateReceiptMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Upload an expense receipt; auto-matched to a project by unit number when provided
+ */
+export const useCreateReceipt = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createReceipt>>,
+    TError,
+    { data: BodyType<CreateReceiptBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createReceipt>>,
+  TError,
+  { data: BodyType<CreateReceiptBody> },
+  TContext
+> => {
+  return useMutation(getCreateReceiptMutationOptions(options));
+};
+
+export const getDeleteReceiptUrl = (id: string) => {
+  return `/api/receipts/${id}`;
+};
+
+export const deleteReceipt = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteReceiptUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteReceiptMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteReceipt>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteReceipt>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteReceipt"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteReceipt>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteReceipt(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteReceiptMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteReceipt>>
+>;
+
+export type DeleteReceiptMutationError = ErrorType<unknown>;
+
+export const useDeleteReceipt = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteReceipt>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteReceipt>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteReceiptMutationOptions(options));
+};
+
+/**
+ * @summary Manually attach an unmatched receipt to a project
+ */
+export const getMatchReceiptUrl = (id: string) => {
+  return `/api/receipts/${id}/match`;
+};
+
+export const matchReceipt = async (
+  id: string,
+  matchReceiptBody: MatchReceiptBody,
+  options?: RequestInit,
+): Promise<Receipt> => {
+  return customFetch<Receipt>(getMatchReceiptUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(matchReceiptBody),
+  });
+};
+
+export const getMatchReceiptMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof matchReceipt>>,
+    TError,
+    { id: string; data: BodyType<MatchReceiptBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof matchReceipt>>,
+  TError,
+  { id: string; data: BodyType<MatchReceiptBody> },
+  TContext
+> => {
+  const mutationKey = ["matchReceipt"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof matchReceipt>>,
+    { id: string; data: BodyType<MatchReceiptBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return matchReceipt(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MatchReceiptMutationResult = NonNullable<
+  Awaited<ReturnType<typeof matchReceipt>>
+>;
+export type MatchReceiptMutationBody = BodyType<MatchReceiptBody>;
+export type MatchReceiptMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Manually attach an unmatched receipt to a project
+ */
+export const useMatchReceipt = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof matchReceipt>>,
+    TError,
+    { id: string; data: BodyType<MatchReceiptBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof matchReceipt>>,
+  TError,
+  { id: string; data: BodyType<MatchReceiptBody> },
+  TContext
+> => {
+  return useMutation(getMatchReceiptMutationOptions(options));
 };
 
 /**

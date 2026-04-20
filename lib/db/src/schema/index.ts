@@ -74,6 +74,26 @@ export const vendorInvoicesTable = pgTable("vendor_invoices", {
     .defaultNow(),
 });
 
+export const receiptsTable = pgTable("receipts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id").references(() => projectsTable.id, {
+    onDelete: "set null",
+  }),
+  costEntryId: uuid("cost_entry_id"),
+  vendor: text("vendor").notNull(),
+  unitNumber: text("unit_number"),
+  amount: numeric("amount").notNull(),
+  receiptDate: date("receipt_date").notNull(),
+  category: text("category").notNull().default("expense"),
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name").notNull(),
+  notes: text("notes"),
+  status: text("status").notNull().default("unmatched"),
+  uploadedAt: timestamp("uploaded_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export type LineItemJson = {
   description: string;
   unit?: string | null;

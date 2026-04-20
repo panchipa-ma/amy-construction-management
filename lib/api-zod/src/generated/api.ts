@@ -1038,6 +1038,92 @@ export const MatchVendorInvoiceResponse = zod.object({
   uploadedAt: zod.coerce.date(),
 });
 
+export const ListReceiptsQueryParams = zod.object({
+  projectId: zod.coerce.string().optional(),
+  status: zod.enum(["matched", "unmatched"]).optional(),
+});
+
+export const ListReceiptsResponseItem = zod.object({
+  id: zod.string(),
+  projectId: zod.string().nullish(),
+  projectName: zod.string().nullish(),
+  costEntryId: zod.string().nullish(),
+  vendor: zod.string(),
+  unitNumber: zod.string().nullish(),
+  amount: zod.number(),
+  receiptDate: zod.coerce.date(),
+  category: zod.enum(["material", "subcontract", "labor", "expense", "other"]),
+  fileUrl: zod.string(),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["matched", "unmatched"]),
+  uploadedAt: zod.coerce.date(),
+});
+export const ListReceiptsResponse = zod.array(ListReceiptsResponseItem);
+
+/**
+ * @summary Upload an expense receipt; auto-matched to a project by unit number when provided
+ */
+export const CreateReceiptBody = zod.object({
+  vendor: zod.string(),
+  unitNumber: zod.string().nullish(),
+  amount: zod.number(),
+  receiptDate: zod.coerce.date(),
+  category: zod.enum(["material", "subcontract", "labor", "expense", "other"]),
+  fileUrl: zod.string(),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+});
+
+export const CreateReceiptResponse = zod.object({
+  id: zod.string(),
+  projectId: zod.string().nullish(),
+  projectName: zod.string().nullish(),
+  costEntryId: zod.string().nullish(),
+  vendor: zod.string(),
+  unitNumber: zod.string().nullish(),
+  amount: zod.number(),
+  receiptDate: zod.coerce.date(),
+  category: zod.enum(["material", "subcontract", "labor", "expense", "other"]),
+  fileUrl: zod.string(),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["matched", "unmatched"]),
+  uploadedAt: zod.coerce.date(),
+});
+
+export const DeleteReceiptParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary Manually attach an unmatched receipt to a project
+ */
+export const MatchReceiptParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const MatchReceiptBody = zod.object({
+  projectId: zod.string(),
+});
+
+export const MatchReceiptResponse = zod.object({
+  id: zod.string(),
+  projectId: zod.string().nullish(),
+  projectName: zod.string().nullish(),
+  costEntryId: zod.string().nullish(),
+  vendor: zod.string(),
+  unitNumber: zod.string().nullish(),
+  amount: zod.number(),
+  receiptDate: zod.coerce.date(),
+  category: zod.enum(["material", "subcontract", "labor", "expense", "other"]),
+  fileUrl: zod.string(),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["matched", "unmatched"]),
+  uploadedAt: zod.coerce.date(),
+});
+
 /**
  * @summary Request a presigned URL for direct file upload
  */
