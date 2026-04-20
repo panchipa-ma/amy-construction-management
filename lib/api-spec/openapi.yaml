@@ -1,36 +1,945 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: AMY 施工管理 API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: dashboard
+  - name: projects
+  - name: customers
+  - name: staff
+  - name: quotes
+  - name: invoices
+  - name: costs
+  - name: schedule
+  - name: progress
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
           content:
             application/json:
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Overview KPIs across all projects
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardSummary" }
+
+  /dashboard/recent-activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      summary: Recent activity feed across the workspace
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
+                type: array
+                items: { $ref: "#/components/schemas/ActivityItem" }
+
+  /dashboard/cost-pipeline:
+    get:
+      operationId: getCostPipeline
+      tags: [dashboard]
+      summary: Aggregated planned vs actual cost across active projects
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CostPipelineItem" }
+
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      parameters:
+        - in: query
+          name: status
+          schema: { $ref: "#/components/schemas/ProjectStatus" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Project" }
+    post:
+      operationId: createProject
+      tags: [projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateProjectBody" }
+      responses:
+        "200":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+
+  /projects/{id}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateProjectBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /projects/{id}/ledger:
+    get:
+      operationId: getProjectLedger
+      tags: [projects]
+      summary: Construction cost ledger summary for a project (planned vs actual)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectLedger" }
+
+  /customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Customer" }
+    post:
+      operationId: createCustomer
+      tags: [customers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCustomerBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Customer" }
+
+  /customers/{id}:
+    patch:
+      operationId: updateCustomer
+      tags: [customers]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCustomerBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Customer" }
+    delete:
+      operationId: deleteCustomer
+      tags: [customers]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /staff:
+    get:
+      operationId: listStaff
+      tags: [staff]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Staff" }
+    post:
+      operationId: createStaff
+      tags: [staff]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateStaffBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Staff" }
+
+  /staff/{id}:
+    patch:
+      operationId: updateStaff
+      tags: [staff]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateStaffBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Staff" }
+    delete:
+      operationId: deleteStaff
+      tags: [staff]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /quotes:
+    get:
+      operationId: listQuotes
+      tags: [quotes]
+      parameters:
+        - in: query
+          name: projectId
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Quote" }
+    post:
+      operationId: createQuote
+      tags: [quotes]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateQuoteBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Quote" }
+
+  /quotes/{id}:
+    get:
+      operationId: getQuote
+      tags: [quotes]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Quote" }
+    patch:
+      operationId: updateQuote
+      tags: [quotes]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateQuoteBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Quote" }
+    delete:
+      operationId: deleteQuote
+      tags: [quotes]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /invoices:
+    get:
+      operationId: listInvoices
+      tags: [invoices]
+      parameters:
+        - in: query
+          name: projectId
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Invoice" }
+    post:
+      operationId: createInvoice
+      tags: [invoices]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateInvoiceBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+
+  /invoices/{id}:
+    get:
+      operationId: getInvoice
+      tags: [invoices]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+    patch:
+      operationId: updateInvoice
+      tags: [invoices]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateInvoiceBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+    delete:
+      operationId: deleteInvoice
+      tags: [invoices]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /cost-entries:
+    get:
+      operationId: listCostEntries
+      tags: [costs]
+      parameters:
+        - in: query
+          name: projectId
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CostEntry" }
+    post:
+      operationId: createCostEntry
+      tags: [costs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCostEntryBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CostEntry" }
+
+  /cost-entries/{id}:
+    patch:
+      operationId: updateCostEntry
+      tags: [costs]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCostEntryBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CostEntry" }
+    delete:
+      operationId: deleteCostEntry
+      tags: [costs]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /schedule:
+    get:
+      operationId: listScheduleEntries
+      tags: [schedule]
+      parameters:
+        - in: query
+          name: projectId
+          schema: { type: string }
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ScheduleEntry" }
+    post:
+      operationId: createScheduleEntry
+      tags: [schedule]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateScheduleEntryBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScheduleEntry" }
+
+  /schedule/{id}:
+    patch:
+      operationId: updateScheduleEntry
+      tags: [schedule]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateScheduleEntryBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScheduleEntry" }
+    delete:
+      operationId: deleteScheduleEntry
+      tags: [schedule]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /progress-logs:
+    get:
+      operationId: listProgressLogs
+      tags: [progress]
+      parameters:
+        - in: query
+          name: projectId
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ProgressLog" }
+    post:
+      operationId: createProgressLog
+      tags: [progress]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateProgressLogBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProgressLog" }
+
+  /progress-logs/{id}:
+    delete:
+      operationId: deleteProgressLog
+      tags: [progress]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
-          type: string
-      required:
-        - status
+        status: { type: string }
 
+    ProjectStatus:
+      type: string
+      enum: [estimating, contracted, in_progress, completed, archived]
+
+    CostCategory:
+      type: string
+      enum: [material, subcontract, labor, expense, other]
+
+    Customer:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        contactName: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    CreateCustomerBody:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        contactName: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+
+    Staff:
+      type: object
+      required: [id, name, role, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        role: { type: string, description: "職種 (大工/クロス/電気 など)" }
+        phone: { type: string, nullable: true }
+        dailyRate: { type: number, nullable: true, description: "日当 (円)" }
+        company: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    CreateStaffBody:
+      type: object
+      required: [name, role]
+      properties:
+        name: { type: string }
+        role: { type: string }
+        phone: { type: string, nullable: true }
+        dailyRate: { type: number, nullable: true }
+        company: { type: string, nullable: true }
+
+    Project:
+      type: object
+      required: [id, name, status, customerId, customerName, contractAmount, plannedCost, actualCost, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        code: { type: string, nullable: true, description: "案件番号" }
+        status: { $ref: "#/components/schemas/ProjectStatus" }
+        customerId: { type: string }
+        customerName: { type: string }
+        siteAddress: { type: string, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        contractAmount: { type: number, description: "契約金額 (税抜, 円)" }
+        plannedCost: { type: number, description: "予算原価合計" }
+        actualCost: { type: number, description: "実績原価合計" }
+        notes: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    CreateProjectBody:
+      type: object
+      required: [name, customerId, status]
+      properties:
+        name: { type: string }
+        code: { type: string, nullable: true }
+        status: { $ref: "#/components/schemas/ProjectStatus" }
+        customerId: { type: string }
+        siteAddress: { type: string, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        contractAmount: { type: number }
+        notes: { type: string, nullable: true }
+
+    UpdateProjectBody:
+      type: object
+      properties:
+        name: { type: string }
+        code: { type: string, nullable: true }
+        status: { $ref: "#/components/schemas/ProjectStatus" }
+        customerId: { type: string }
+        siteAddress: { type: string, nullable: true }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        contractAmount: { type: number }
+        notes: { type: string, nullable: true }
+
+    LineItem:
+      type: object
+      required: [description, quantity, unitPrice]
+      properties:
+        description: { type: string }
+        unit: { type: string, nullable: true }
+        quantity: { type: number }
+        unitPrice: { type: number }
+
+    Quote:
+      type: object
+      required: [id, projectId, quoteNumber, issueDate, items, subtotal, tax, total, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        projectName: { type: string }
+        quoteNumber: { type: string }
+        issueDate: { type: string, format: date }
+        validUntil: { type: string, format: date, nullable: true }
+        notes: { type: string, nullable: true }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LineItem" }
+        subtotal: { type: number }
+        tax: { type: number }
+        total: { type: number }
+        createdAt: { type: string, format: date-time }
+
+    CreateQuoteBody:
+      type: object
+      required: [projectId, quoteNumber, issueDate, items]
+      properties:
+        projectId: { type: string }
+        quoteNumber: { type: string }
+        issueDate: { type: string, format: date }
+        validUntil: { type: string, format: date, nullable: true }
+        notes: { type: string, nullable: true }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LineItem" }
+
+    Invoice:
+      type: object
+      required: [id, projectId, invoiceNumber, issueDate, items, subtotal, tax, total, paid, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        projectName: { type: string }
+        invoiceNumber: { type: string }
+        issueDate: { type: string, format: date }
+        dueDate: { type: string, format: date, nullable: true }
+        notes: { type: string, nullable: true }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LineItem" }
+        subtotal: { type: number }
+        tax: { type: number }
+        total: { type: number }
+        paid: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    CreateInvoiceBody:
+      type: object
+      required: [projectId, invoiceNumber, issueDate, items]
+      properties:
+        projectId: { type: string }
+        invoiceNumber: { type: string }
+        issueDate: { type: string, format: date }
+        dueDate: { type: string, format: date, nullable: true }
+        notes: { type: string, nullable: true }
+        paid: { type: boolean }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LineItem" }
+
+    CostEntry:
+      type: object
+      required: [id, projectId, category, description, plannedAmount, actualAmount, entryDate, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        projectName: { type: string }
+        category: { $ref: "#/components/schemas/CostCategory" }
+        description: { type: string, description: "工事項目 / 摘要" }
+        vendor: { type: string, nullable: true, description: "仕入先 / 外注先" }
+        plannedAmount: { type: number, description: "予算原価 (円)" }
+        actualAmount: { type: number, description: "実績原価 (円)" }
+        entryDate: { type: string, format: date }
+        notes: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    CreateCostEntryBody:
+      type: object
+      required: [projectId, category, description, plannedAmount, actualAmount, entryDate]
+      properties:
+        projectId: { type: string }
+        category: { $ref: "#/components/schemas/CostCategory" }
+        description: { type: string }
+        vendor: { type: string, nullable: true }
+        plannedAmount: { type: number }
+        actualAmount: { type: number }
+        entryDate: { type: string, format: date }
+        notes: { type: string, nullable: true }
+
+    ScheduleEntry:
+      type: object
+      required: [id, projectId, projectName, staffId, staffName, date, task, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        projectName: { type: string }
+        staffId: { type: string }
+        staffName: { type: string }
+        date: { type: string, format: date }
+        task: { type: string }
+        startTime: { type: string, nullable: true, description: "HH:MM" }
+        endTime: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    CreateScheduleEntryBody:
+      type: object
+      required: [projectId, staffId, date, task]
+      properties:
+        projectId: { type: string }
+        staffId: { type: string }
+        date: { type: string, format: date }
+        task: { type: string }
+        startTime: { type: string, nullable: true }
+        endTime: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+
+    ProgressLog:
+      type: object
+      required: [id, projectId, projectName, date, title, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        projectName: { type: string }
+        date: { type: string, format: date }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        photoUrl: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    CreateProgressLogBody:
+      type: object
+      required: [projectId, date, title]
+      properties:
+        projectId: { type: string }
+        date: { type: string, format: date }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        photoUrl: { type: string, nullable: true }
+
+    ProjectLedger:
+      type: object
+      required: [projectId, contractAmount, plannedCost, actualCost, grossProfit, byCategory, entries]
+      properties:
+        projectId: { type: string }
+        projectName: { type: string }
+        contractAmount: { type: number }
+        plannedCost: { type: number }
+        actualCost: { type: number }
+        grossProfit: { type: number, description: "粗利 = 契約金額 - 実績原価" }
+        grossProfitRate: { type: number, description: "粗利率 (%)" }
+        byCategory:
+          type: array
+          items: { $ref: "#/components/schemas/LedgerCategoryRow" }
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/CostEntry" }
+
+    LedgerCategoryRow:
+      type: object
+      required: [category, plannedAmount, actualAmount]
+      properties:
+        category: { $ref: "#/components/schemas/CostCategory" }
+        plannedAmount: { type: number }
+        actualAmount: { type: number }
+
+    DashboardSummary:
+      type: object
+      required: [activeProjects, completedThisMonth, contractValueActive, plannedCostActive, actualCostActive, grossProfitActive, unpaidInvoiceTotal, statusBreakdown]
+      properties:
+        activeProjects: { type: integer }
+        completedThisMonth: { type: integer }
+        contractValueActive: { type: number }
+        plannedCostActive: { type: number }
+        actualCostActive: { type: number }
+        grossProfitActive: { type: number }
+        unpaidInvoiceTotal: { type: number }
+        statusBreakdown:
+          type: array
+          items:
+            type: object
+            required: [status, count]
+            properties:
+              status: { $ref: "#/components/schemas/ProjectStatus" }
+              count: { type: integer }
+
+    ActivityItem:
+      type: object
+      required: [id, kind, title, timestamp]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [project, cost, quote, invoice, schedule, progress] }
+        title: { type: string }
+        subtitle: { type: string, nullable: true }
+        projectId: { type: string, nullable: true }
+        projectName: { type: string, nullable: true }
+        timestamp: { type: string, format: date-time }
+
+    CostPipelineItem:
+      type: object
+      required: [projectId, projectName, status, contractAmount, plannedCost, actualCost]
+      properties:
+        projectId: { type: string }
+        projectName: { type: string }
+        status: { $ref: "#/components/schemas/ProjectStatus" }
+        contractAmount: { type: number }
+        plannedCost: { type: number }
+        actualCost: { type: number }

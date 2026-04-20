@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "AMY 施工管理"
+version = "1.0.0"
+id = "artifacts/amy"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21459
+
+[services.development]
+run = "pnpm --filter @workspace/amy run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/amy", "run", "build" ]
+publicDir = "artifacts/amy/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21459"
+BASE_PATH = "/"
