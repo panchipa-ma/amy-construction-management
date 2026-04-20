@@ -50,6 +50,7 @@ async function serializeProject(p: ProjectRow) {
     customerId: p.customerId,
     customerName: customer?.name ?? "",
     siteAddress: p.siteAddress,
+    unitNumber: p.unitNumber,
     startDate: isoDate(p.startDate),
     endDate: isoDate(p.endDate),
     contractAmount: n(p.contractAmount),
@@ -95,6 +96,7 @@ router.post("/projects", async (req, res): Promise<void> => {
       status: parsed.data.status,
       customerId: parsed.data.customerId,
       siteAddress: parsed.data.siteAddress ?? null,
+      unitNumber: parsed.data.unitNumber ?? null,
       startDate: isoDate(parsed.data.startDate),
       endDate: isoDate(parsed.data.endDate),
       contractAmount:

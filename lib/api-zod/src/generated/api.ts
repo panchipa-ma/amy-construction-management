@@ -101,6 +101,10 @@ export const ListProjectsResponseItem = zod.object({
   customerId: zod.string(),
   customerName: zod.string(),
   siteAddress: zod.string().nullish(),
+  unitNumber: zod
+    .string()
+    .nullish()
+    .describe("マンション号室 (自動振分けキー)"),
   startDate: zod.coerce.date().nullish(),
   endDate: zod.coerce.date().nullish(),
   contractAmount: zod.number().describe("契約金額 (税抜, 円)"),
@@ -123,6 +127,7 @@ export const CreateProjectBody = zod.object({
   ]),
   customerId: zod.string(),
   siteAddress: zod.string().nullish(),
+  unitNumber: zod.string().nullish(),
   startDate: zod.coerce.date().nullish(),
   endDate: zod.coerce.date().nullish(),
   contractAmount: zod.number().optional(),
@@ -143,6 +148,10 @@ export const CreateProjectResponse = zod.object({
   customerId: zod.string(),
   customerName: zod.string(),
   siteAddress: zod.string().nullish(),
+  unitNumber: zod
+    .string()
+    .nullish()
+    .describe("マンション号室 (自動振分けキー)"),
   startDate: zod.coerce.date().nullish(),
   endDate: zod.coerce.date().nullish(),
   contractAmount: zod.number().describe("契約金額 (税抜, 円)"),
@@ -170,6 +179,10 @@ export const GetProjectResponse = zod.object({
   customerId: zod.string(),
   customerName: zod.string(),
   siteAddress: zod.string().nullish(),
+  unitNumber: zod
+    .string()
+    .nullish()
+    .describe("マンション号室 (自動振分けキー)"),
   startDate: zod.coerce.date().nullish(),
   endDate: zod.coerce.date().nullish(),
   contractAmount: zod.number().describe("契約金額 (税抜, 円)"),
@@ -191,6 +204,7 @@ export const UpdateProjectBody = zod.object({
     .optional(),
   customerId: zod.string().optional(),
   siteAddress: zod.string().nullish(),
+  unitNumber: zod.string().nullish(),
   startDate: zod.coerce.date().nullish(),
   endDate: zod.coerce.date().nullish(),
   contractAmount: zod.number().optional(),
@@ -211,6 +225,10 @@ export const UpdateProjectResponse = zod.object({
   customerId: zod.string(),
   customerName: zod.string(),
   siteAddress: zod.string().nullish(),
+  unitNumber: zod
+    .string()
+    .nullish()
+    .describe("マンション号室 (自動振分けキー)"),
   startDate: zod.coerce.date().nullish(),
   endDate: zod.coerce.date().nullish(),
   contractAmount: zod.number().describe("契約金額 (税抜, 円)"),
@@ -859,6 +877,187 @@ export const CreateProgressLogResponse = zod.object({
   description: zod.string().nullish(),
   photoUrl: zod.string().nullish(),
   createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Create an invoice from an existing quote (line items copied)
+ */
+export const ConvertQuoteToInvoiceParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ConvertQuoteToInvoiceBody = zod.object({
+  invoiceNumber: zod.string(),
+  issueDate: zod.coerce.date(),
+  dueDate: zod.coerce.date().nullish(),
+});
+
+export const ConvertQuoteToInvoiceResponse = zod.object({
+  id: zod.string(),
+  projectId: zod.string(),
+  projectName: zod.string().optional(),
+  invoiceNumber: zod.string(),
+  issueDate: zod.coerce.date(),
+  dueDate: zod.coerce.date().nullish(),
+  notes: zod.string().nullish(),
+  items: zod.array(
+    zod.object({
+      description: zod.string(),
+      unit: zod.string().nullish(),
+      quantity: zod.number(),
+      unitPrice: zod.number(),
+    }),
+  ),
+  subtotal: zod.number(),
+  tax: zod.number(),
+  total: zod.number(),
+  paid: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Create planned cost entries on the ledger from quote line items
+ */
+export const ImportQuoteToLedgerParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const importQuoteToLedgerBodyReplaceExistingDefault = false;
+
+export const ImportQuoteToLedgerBody = zod.object({
+  category: zod.enum(["material", "subcontract", "labor", "expense", "other"]),
+  entryDate: zod.coerce.date(),
+  replaceExisting: zod
+    .boolean()
+    .default(importQuoteToLedgerBodyReplaceExistingDefault)
+    .describe("既存の同案件の計画原価を全削除してから取込"),
+});
+
+export const ImportQuoteToLedgerResponseItem = zod.object({
+  id: zod.string(),
+  projectId: zod.string(),
+  projectName: zod.string().optional(),
+  category: zod.enum(["material", "subcontract", "labor", "expense", "other"]),
+  description: zod.string().describe("工事項目 \/ 摘要"),
+  vendor: zod.string().nullish().describe("仕入先 \/ 外注先"),
+  plannedAmount: zod.number().describe("予算原価 (円)"),
+  actualAmount: zod.number().describe("実績原価 (円)"),
+  entryDate: zod.coerce.date(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ImportQuoteToLedgerResponse = zod.array(
+  ImportQuoteToLedgerResponseItem,
+);
+
+export const ListVendorInvoicesQueryParams = zod.object({
+  projectId: zod.coerce.string().optional(),
+  staffId: zod.coerce.string().optional(),
+  status: zod.enum(["matched", "unmatched"]).optional(),
+});
+
+export const ListVendorInvoicesResponseItem = zod.object({
+  id: zod.string(),
+  staffId: zod.string(),
+  staffName: zod.string(),
+  projectId: zod.string().nullish(),
+  projectName: zod.string().nullish(),
+  costEntryId: zod.string().nullish(),
+  unitNumber: zod.string().describe("マンション号室"),
+  amount: zod.number(),
+  invoiceDate: zod.coerce.date(),
+  fileUrl: zod.string().describe("objectPath (e.g. \/objects\/uploads\/uuid)"),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["matched", "unmatched"]),
+  uploadedAt: zod.coerce.date(),
+});
+export const ListVendorInvoicesResponse = zod.array(
+  ListVendorInvoicesResponseItem,
+);
+
+/**
+ * @summary Submit a craftsman invoice; auto-matched to a project by unit number
+ */
+export const CreateVendorInvoiceBody = zod.object({
+  staffId: zod.string(),
+  unitNumber: zod.string(),
+  amount: zod.number(),
+  invoiceDate: zod.coerce.date(),
+  fileUrl: zod.string(),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+});
+
+export const CreateVendorInvoiceResponse = zod.object({
+  id: zod.string(),
+  staffId: zod.string(),
+  staffName: zod.string(),
+  projectId: zod.string().nullish(),
+  projectName: zod.string().nullish(),
+  costEntryId: zod.string().nullish(),
+  unitNumber: zod.string().describe("マンション号室"),
+  amount: zod.number(),
+  invoiceDate: zod.coerce.date(),
+  fileUrl: zod.string().describe("objectPath (e.g. \/objects\/uploads\/uuid)"),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["matched", "unmatched"]),
+  uploadedAt: zod.coerce.date(),
+});
+
+export const DeleteVendorInvoiceParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary Manually attach an unmatched invoice to a project
+ */
+export const MatchVendorInvoiceParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const MatchVendorInvoiceBody = zod.object({
+  projectId: zod.string(),
+});
+
+export const MatchVendorInvoiceResponse = zod.object({
+  id: zod.string(),
+  staffId: zod.string(),
+  staffName: zod.string(),
+  projectId: zod.string().nullish(),
+  projectName: zod.string().nullish(),
+  costEntryId: zod.string().nullish(),
+  unitNumber: zod.string().describe("マンション号室"),
+  amount: zod.number(),
+  invoiceDate: zod.coerce.date(),
+  fileUrl: zod.string().describe("objectPath (e.g. \/objects\/uploads\/uuid)"),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["matched", "unmatched"]),
+  uploadedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Request a presigned URL for direct file upload
+ */
+
+export const RequestUploadUrlBody = zod.object({
+  name: zod.string().min(1),
+  size: zod.number().min(1),
+  contentType: zod.string().min(1),
+});
+
+export const RequestUploadUrlResponse = zod.object({
+  uploadURL: zod.string().url(),
+  objectPath: zod.string(),
+  metadata: zod
+    .object({
+      name: zod.string().min(1),
+      size: zod.number().min(1),
+      contentType: zod.string().min(1),
+    })
+    .optional(),
 });
 
 export const DeleteProgressLogParams = zod.object({

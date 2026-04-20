@@ -78,6 +78,8 @@ export interface Project {
   customerId: string;
   customerName: string;
   siteAddress?: string | null;
+  /** マンション号室 (自動振分けキー) */
+  unitNumber?: string | null;
   startDate?: string | null;
   endDate?: string | null;
   /** 契約金額 (税抜, 円) */
@@ -96,6 +98,7 @@ export interface CreateProjectBody {
   status: ProjectStatus;
   customerId: string;
   siteAddress?: string | null;
+  unitNumber?: string | null;
   startDate?: string | null;
   endDate?: string | null;
   contractAmount?: number;
@@ -108,10 +111,80 @@ export interface UpdateProjectBody {
   status?: ProjectStatus;
   customerId?: string;
   siteAddress?: string | null;
+  unitNumber?: string | null;
   startDate?: string | null;
   endDate?: string | null;
   contractAmount?: number;
   notes?: string | null;
+}
+
+export interface ConvertQuoteToInvoiceBody {
+  invoiceNumber: string;
+  issueDate: string;
+  dueDate?: string | null;
+}
+
+export interface ImportQuoteToLedgerBody {
+  category: CostCategory;
+  entryDate: string;
+  /** 既存の同案件の計画原価を全削除してから取込 */
+  replaceExisting?: boolean;
+}
+
+export type VendorInvoiceStatus =
+  (typeof VendorInvoiceStatus)[keyof typeof VendorInvoiceStatus];
+
+export const VendorInvoiceStatus = {
+  matched: "matched",
+  unmatched: "unmatched",
+} as const;
+
+export interface VendorInvoice {
+  id: string;
+  staffId: string;
+  staffName: string;
+  projectId?: string | null;
+  projectName?: string | null;
+  costEntryId?: string | null;
+  /** マンション号室 */
+  unitNumber: string;
+  amount: number;
+  invoiceDate: string;
+  /** objectPath (e.g. /objects/uploads/uuid) */
+  fileUrl: string;
+  fileName: string;
+  notes?: string | null;
+  status: VendorInvoiceStatus;
+  uploadedAt: string;
+}
+
+export interface CreateVendorInvoiceBody {
+  staffId: string;
+  unitNumber: string;
+  amount: number;
+  invoiceDate: string;
+  fileUrl: string;
+  fileName: string;
+  notes?: string | null;
+}
+
+export interface MatchVendorInvoiceBody {
+  projectId: string;
+}
+
+export interface RequestUploadUrlBody {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface RequestUploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata?: RequestUploadUrlBody;
 }
 
 export interface LineItem {
@@ -336,3 +409,17 @@ export type ListScheduleEntriesParams = {
 export type ListProgressLogsParams = {
   projectId?: string;
 };
+
+export type ListVendorInvoicesParams = {
+  projectId?: string;
+  staffId?: string;
+  status?: ListVendorInvoicesStatus;
+};
+
+export type ListVendorInvoicesStatus =
+  (typeof ListVendorInvoicesStatus)[keyof typeof ListVendorInvoicesStatus];
+
+export const ListVendorInvoicesStatus = {
+  matched: "matched",
+  unmatched: "unmatched",
+} as const;

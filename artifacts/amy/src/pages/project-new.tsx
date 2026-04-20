@@ -43,6 +43,7 @@ export default function ProjectNewPage() {
     customerId: "",
     status: ProjectStatus.estimating as ProjectStatus,
     siteAddress: "",
+    unitNumber: "",
     startDate: "",
     endDate: "",
     contractAmount: "0",
@@ -63,6 +64,7 @@ export default function ProjectNewPage() {
           customerId: form.customerId,
           status: form.status,
           siteAddress: form.siteAddress || null,
+          unitNumber: form.unitNumber || null,
           startDate: form.startDate || null,
           endDate: form.endDate || null,
           contractAmount: Number(form.contractAmount) || 0,
@@ -171,6 +173,20 @@ export default function ProjectNewPage() {
                     setForm({ ...form, siteAddress: e.target.value })
                   }
                 />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="unitNumber">マンション号室</Label>
+                <Input
+                  id="unitNumber"
+                  value={form.unitNumber}
+                  onChange={(e) =>
+                    setForm({ ...form, unitNumber: e.target.value })
+                  }
+                  placeholder="例: 305号室"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  職人請求書を号室で自動振分けする際に使用します
+                </p>
               </div>
               <div>
                 <Label htmlFor="startDate">着工日</Label>

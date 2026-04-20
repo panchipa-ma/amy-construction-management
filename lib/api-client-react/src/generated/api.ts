@@ -18,6 +18,7 @@ import type {
 
 import type {
   ActivityItem,
+  ConvertQuoteToInvoiceBody,
   CostEntry,
   CostPipelineItem,
   CreateCostEntryBody,
@@ -28,9 +29,11 @@ import type {
   CreateQuoteBody,
   CreateScheduleEntryBody,
   CreateStaffBody,
+  CreateVendorInvoiceBody,
   Customer,
   DashboardSummary,
   HealthStatus,
+  ImportQuoteToLedgerBody,
   Invoice,
   ListCostEntriesParams,
   ListInvoicesParams,
@@ -38,13 +41,18 @@ import type {
   ListProjectsParams,
   ListQuotesParams,
   ListScheduleEntriesParams,
+  ListVendorInvoicesParams,
+  MatchVendorInvoiceBody,
   ProgressLog,
   Project,
   ProjectLedger,
   Quote,
+  RequestUploadUrlBody,
+  RequestUploadUrlResponse,
   ScheduleEntry,
   Staff,
   UpdateProjectBody,
+  VendorInvoice,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -3089,6 +3097,608 @@ export const useCreateProgressLog = <
   TContext
 > => {
   return useMutation(getCreateProgressLogMutationOptions(options));
+};
+
+/**
+ * @summary Create an invoice from an existing quote (line items copied)
+ */
+export const getConvertQuoteToInvoiceUrl = (id: string) => {
+  return `/api/quotes/${id}/convert-to-invoice`;
+};
+
+export const convertQuoteToInvoice = async (
+  id: string,
+  convertQuoteToInvoiceBody: ConvertQuoteToInvoiceBody,
+  options?: RequestInit,
+): Promise<Invoice> => {
+  return customFetch<Invoice>(getConvertQuoteToInvoiceUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(convertQuoteToInvoiceBody),
+  });
+};
+
+export const getConvertQuoteToInvoiceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof convertQuoteToInvoice>>,
+    TError,
+    { id: string; data: BodyType<ConvertQuoteToInvoiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof convertQuoteToInvoice>>,
+  TError,
+  { id: string; data: BodyType<ConvertQuoteToInvoiceBody> },
+  TContext
+> => {
+  const mutationKey = ["convertQuoteToInvoice"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof convertQuoteToInvoice>>,
+    { id: string; data: BodyType<ConvertQuoteToInvoiceBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return convertQuoteToInvoice(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConvertQuoteToInvoiceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof convertQuoteToInvoice>>
+>;
+export type ConvertQuoteToInvoiceMutationBody =
+  BodyType<ConvertQuoteToInvoiceBody>;
+export type ConvertQuoteToInvoiceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create an invoice from an existing quote (line items copied)
+ */
+export const useConvertQuoteToInvoice = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof convertQuoteToInvoice>>,
+    TError,
+    { id: string; data: BodyType<ConvertQuoteToInvoiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof convertQuoteToInvoice>>,
+  TError,
+  { id: string; data: BodyType<ConvertQuoteToInvoiceBody> },
+  TContext
+> => {
+  return useMutation(getConvertQuoteToInvoiceMutationOptions(options));
+};
+
+/**
+ * @summary Create planned cost entries on the ledger from quote line items
+ */
+export const getImportQuoteToLedgerUrl = (id: string) => {
+  return `/api/quotes/${id}/import-to-ledger`;
+};
+
+export const importQuoteToLedger = async (
+  id: string,
+  importQuoteToLedgerBody: ImportQuoteToLedgerBody,
+  options?: RequestInit,
+): Promise<CostEntry[]> => {
+  return customFetch<CostEntry[]>(getImportQuoteToLedgerUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(importQuoteToLedgerBody),
+  });
+};
+
+export const getImportQuoteToLedgerMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importQuoteToLedger>>,
+    TError,
+    { id: string; data: BodyType<ImportQuoteToLedgerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importQuoteToLedger>>,
+  TError,
+  { id: string; data: BodyType<ImportQuoteToLedgerBody> },
+  TContext
+> => {
+  const mutationKey = ["importQuoteToLedger"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importQuoteToLedger>>,
+    { id: string; data: BodyType<ImportQuoteToLedgerBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return importQuoteToLedger(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportQuoteToLedgerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importQuoteToLedger>>
+>;
+export type ImportQuoteToLedgerMutationBody = BodyType<ImportQuoteToLedgerBody>;
+export type ImportQuoteToLedgerMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create planned cost entries on the ledger from quote line items
+ */
+export const useImportQuoteToLedger = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importQuoteToLedger>>,
+    TError,
+    { id: string; data: BodyType<ImportQuoteToLedgerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importQuoteToLedger>>,
+  TError,
+  { id: string; data: BodyType<ImportQuoteToLedgerBody> },
+  TContext
+> => {
+  return useMutation(getImportQuoteToLedgerMutationOptions(options));
+};
+
+export const getListVendorInvoicesUrl = (params?: ListVendorInvoicesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/vendor-invoices?${stringifiedParams}`
+    : `/api/vendor-invoices`;
+};
+
+export const listVendorInvoices = async (
+  params?: ListVendorInvoicesParams,
+  options?: RequestInit,
+): Promise<VendorInvoice[]> => {
+  return customFetch<VendorInvoice[]>(getListVendorInvoicesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListVendorInvoicesQueryKey = (
+  params?: ListVendorInvoicesParams,
+) => {
+  return [`/api/vendor-invoices`, ...(params ? [params] : [])] as const;
+};
+
+export const getListVendorInvoicesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listVendorInvoices>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListVendorInvoicesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listVendorInvoices>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListVendorInvoicesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listVendorInvoices>>
+  > = ({ signal }) => listVendorInvoices(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listVendorInvoices>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListVendorInvoicesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listVendorInvoices>>
+>;
+export type ListVendorInvoicesQueryError = ErrorType<unknown>;
+
+export function useListVendorInvoices<
+  TData = Awaited<ReturnType<typeof listVendorInvoices>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListVendorInvoicesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listVendorInvoices>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListVendorInvoicesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Submit a craftsman invoice; auto-matched to a project by unit number
+ */
+export const getCreateVendorInvoiceUrl = () => {
+  return `/api/vendor-invoices`;
+};
+
+export const createVendorInvoice = async (
+  createVendorInvoiceBody: CreateVendorInvoiceBody,
+  options?: RequestInit,
+): Promise<VendorInvoice> => {
+  return customFetch<VendorInvoice>(getCreateVendorInvoiceUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createVendorInvoiceBody),
+  });
+};
+
+export const getCreateVendorInvoiceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createVendorInvoice>>,
+    TError,
+    { data: BodyType<CreateVendorInvoiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createVendorInvoice>>,
+  TError,
+  { data: BodyType<CreateVendorInvoiceBody> },
+  TContext
+> => {
+  const mutationKey = ["createVendorInvoice"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createVendorInvoice>>,
+    { data: BodyType<CreateVendorInvoiceBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createVendorInvoice(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateVendorInvoiceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createVendorInvoice>>
+>;
+export type CreateVendorInvoiceMutationBody = BodyType<CreateVendorInvoiceBody>;
+export type CreateVendorInvoiceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Submit a craftsman invoice; auto-matched to a project by unit number
+ */
+export const useCreateVendorInvoice = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createVendorInvoice>>,
+    TError,
+    { data: BodyType<CreateVendorInvoiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createVendorInvoice>>,
+  TError,
+  { data: BodyType<CreateVendorInvoiceBody> },
+  TContext
+> => {
+  return useMutation(getCreateVendorInvoiceMutationOptions(options));
+};
+
+export const getDeleteVendorInvoiceUrl = (id: string) => {
+  return `/api/vendor-invoices/${id}`;
+};
+
+export const deleteVendorInvoice = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteVendorInvoiceUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteVendorInvoiceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVendorInvoice>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteVendorInvoice>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteVendorInvoice"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteVendorInvoice>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteVendorInvoice(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteVendorInvoiceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteVendorInvoice>>
+>;
+
+export type DeleteVendorInvoiceMutationError = ErrorType<unknown>;
+
+export const useDeleteVendorInvoice = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVendorInvoice>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteVendorInvoice>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteVendorInvoiceMutationOptions(options));
+};
+
+/**
+ * @summary Manually attach an unmatched invoice to a project
+ */
+export const getMatchVendorInvoiceUrl = (id: string) => {
+  return `/api/vendor-invoices/${id}/match`;
+};
+
+export const matchVendorInvoice = async (
+  id: string,
+  matchVendorInvoiceBody: MatchVendorInvoiceBody,
+  options?: RequestInit,
+): Promise<VendorInvoice> => {
+  return customFetch<VendorInvoice>(getMatchVendorInvoiceUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(matchVendorInvoiceBody),
+  });
+};
+
+export const getMatchVendorInvoiceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof matchVendorInvoice>>,
+    TError,
+    { id: string; data: BodyType<MatchVendorInvoiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof matchVendorInvoice>>,
+  TError,
+  { id: string; data: BodyType<MatchVendorInvoiceBody> },
+  TContext
+> => {
+  const mutationKey = ["matchVendorInvoice"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof matchVendorInvoice>>,
+    { id: string; data: BodyType<MatchVendorInvoiceBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return matchVendorInvoice(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MatchVendorInvoiceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof matchVendorInvoice>>
+>;
+export type MatchVendorInvoiceMutationBody = BodyType<MatchVendorInvoiceBody>;
+export type MatchVendorInvoiceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Manually attach an unmatched invoice to a project
+ */
+export const useMatchVendorInvoice = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof matchVendorInvoice>>,
+    TError,
+    { id: string; data: BodyType<MatchVendorInvoiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof matchVendorInvoice>>,
+  TError,
+  { id: string; data: BodyType<MatchVendorInvoiceBody> },
+  TContext
+> => {
+  return useMutation(getMatchVendorInvoiceMutationOptions(options));
+};
+
+/**
+ * @summary Request a presigned URL for direct file upload
+ */
+export const getRequestUploadUrlUrl = () => {
+  return `/api/storage/uploads/request-url`;
+};
+
+export const requestUploadUrl = async (
+  requestUploadUrlBody: RequestUploadUrlBody,
+  options?: RequestInit,
+): Promise<RequestUploadUrlResponse> => {
+  return customFetch<RequestUploadUrlResponse>(getRequestUploadUrlUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(requestUploadUrlBody),
+  });
+};
+
+export const getRequestUploadUrlMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    TError,
+    { data: BodyType<RequestUploadUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestUploadUrl>>,
+  TError,
+  { data: BodyType<RequestUploadUrlBody> },
+  TContext
+> => {
+  const mutationKey = ["requestUploadUrl"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    { data: BodyType<RequestUploadUrlBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestUploadUrl(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestUploadUrlMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestUploadUrl>>
+>;
+export type RequestUploadUrlMutationBody = BodyType<RequestUploadUrlBody>;
+export type RequestUploadUrlMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Request a presigned URL for direct file upload
+ */
+export const useRequestUploadUrl = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    TError,
+    { data: BodyType<RequestUploadUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestUploadUrl>>,
+  TError,
+  { data: BodyType<RequestUploadUrlBody> },
+  TContext
+> => {
+  return useMutation(getRequestUploadUrlMutationOptions(options));
 };
 
 export const getDeleteProgressLogUrl = (id: string) => {

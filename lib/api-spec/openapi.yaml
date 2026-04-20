@@ -17,6 +17,8 @@ tags:
   - name: costs
   - name: schedule
   - name: progress
+  - name: vendorInvoices
+  - name: Storage
 paths:
   /healthz:
     get:
@@ -599,6 +601,142 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ProgressLog" }
 
+  /quotes/{id}/convert-to-invoice:
+    post:
+      operationId: convertQuoteToInvoice
+      tags: [quotes]
+      summary: Create an invoice from an existing quote (line items copied)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConvertQuoteToInvoiceBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+
+  /quotes/{id}/import-to-ledger:
+    post:
+      operationId: importQuoteToLedger
+      tags: [quotes]
+      summary: Create planned cost entries on the ledger from quote line items
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ImportQuoteToLedgerBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CostEntry" }
+
+  /vendor-invoices:
+    get:
+      operationId: listVendorInvoices
+      tags: [vendorInvoices]
+      parameters:
+        - in: query
+          name: projectId
+          schema: { type: string }
+        - in: query
+          name: staffId
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string, enum: [matched, unmatched] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/VendorInvoice" }
+    post:
+      operationId: createVendorInvoice
+      tags: [vendorInvoices]
+      summary: Submit a craftsman invoice; auto-matched to a project by unit number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateVendorInvoiceBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VendorInvoice" }
+
+  /vendor-invoices/{id}:
+    delete:
+      operationId: deleteVendorInvoice
+      tags: [vendorInvoices]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /vendor-invoices/{id}/match:
+    post:
+      operationId: matchVendorInvoice
+      tags: [vendorInvoices]
+      summary: Manually attach an unmatched invoice to a project
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MatchVendorInvoiceBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VendorInvoice" }
+
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [Storage]
+      summary: Request a presigned URL for direct file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RequestUploadUrlBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RequestUploadUrlResponse" }
+
   /progress-logs/{id}:
     delete:
       operationId: deleteProgressLog
@@ -685,6 +823,7 @@ components:
         customerId: { type: string }
         customerName: { type: string }
         siteAddress: { type: string, nullable: true }
+        unitNumber: { type: string, nullable: true, description: "マンション号室 (自動振分けキー)" }
         startDate: { type: string, format: date, nullable: true }
         endDate: { type: string, format: date, nullable: true }
         contractAmount: { type: number, description: "契約金額 (税抜, 円)" }
@@ -702,6 +841,7 @@ components:
         status: { $ref: "#/components/schemas/ProjectStatus" }
         customerId: { type: string }
         siteAddress: { type: string, nullable: true }
+        unitNumber: { type: string, nullable: true }
         startDate: { type: string, format: date, nullable: true }
         endDate: { type: string, format: date, nullable: true }
         contractAmount: { type: number }
@@ -715,10 +855,80 @@ components:
         status: { $ref: "#/components/schemas/ProjectStatus" }
         customerId: { type: string }
         siteAddress: { type: string, nullable: true }
+        unitNumber: { type: string, nullable: true }
         startDate: { type: string, format: date, nullable: true }
         endDate: { type: string, format: date, nullable: true }
         contractAmount: { type: number }
         notes: { type: string, nullable: true }
+
+    ConvertQuoteToInvoiceBody:
+      type: object
+      required: [invoiceNumber, issueDate]
+      properties:
+        invoiceNumber: { type: string }
+        issueDate: { type: string, format: date }
+        dueDate: { type: string, format: date, nullable: true }
+
+    ImportQuoteToLedgerBody:
+      type: object
+      required: [category, entryDate]
+      properties:
+        category: { $ref: "#/components/schemas/CostCategory" }
+        entryDate: { type: string, format: date }
+        replaceExisting: { type: boolean, description: "既存の同案件の計画原価を全削除してから取込", default: false }
+
+    VendorInvoice:
+      type: object
+      required: [id, staffId, staffName, unitNumber, amount, invoiceDate, fileUrl, fileName, status, uploadedAt]
+      properties:
+        id: { type: string }
+        staffId: { type: string }
+        staffName: { type: string }
+        projectId: { type: string, nullable: true }
+        projectName: { type: string, nullable: true }
+        costEntryId: { type: string, nullable: true }
+        unitNumber: { type: string, description: "マンション号室" }
+        amount: { type: number }
+        invoiceDate: { type: string, format: date }
+        fileUrl: { type: string, description: "objectPath (e.g. /objects/uploads/uuid)" }
+        fileName: { type: string }
+        notes: { type: string, nullable: true }
+        status: { type: string, enum: [matched, unmatched] }
+        uploadedAt: { type: string, format: date-time }
+
+    CreateVendorInvoiceBody:
+      type: object
+      required: [staffId, unitNumber, amount, invoiceDate, fileUrl, fileName]
+      properties:
+        staffId: { type: string }
+        unitNumber: { type: string }
+        amount: { type: number }
+        invoiceDate: { type: string, format: date }
+        fileUrl: { type: string }
+        fileName: { type: string }
+        notes: { type: string, nullable: true }
+
+    MatchVendorInvoiceBody:
+      type: object
+      required: [projectId]
+      properties:
+        projectId: { type: string }
+
+    RequestUploadUrlBody:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string, minLength: 1 }
+        size: { type: integer, minimum: 1 }
+        contentType: { type: string, minLength: 1 }
+
+    RequestUploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL: { type: string, format: uri }
+        objectPath: { type: string }
+        metadata: { $ref: "#/components/schemas/RequestUploadUrlBody" }
 
     LineItem:
       type: object

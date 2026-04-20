@@ -16,6 +16,8 @@ export interface Project {
   customerId: string;
   customerName: string;
   siteAddress?: string | null;
+  /** マンション号室 (自動振分けキー) */
+  unitNumber?: string | null;
   startDate?: Date | null;
   endDate?: Date | null;
   /** 契約金額 (税抜, 円) */

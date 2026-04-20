@@ -43,11 +43,33 @@ export const projectsTable = pgTable("projects", {
     .notNull()
     .references(() => customersTable.id, { onDelete: "restrict" }),
   siteAddress: text("site_address"),
+  unitNumber: text("unit_number"),
   startDate: date("start_date"),
   endDate: date("end_date"),
   contractAmount: numeric("contract_amount").notNull().default("0"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const vendorInvoicesTable = pgTable("vendor_invoices", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  staffId: uuid("staff_id")
+    .notNull()
+    .references(() => staffTable.id, { onDelete: "restrict" }),
+  projectId: uuid("project_id").references(() => projectsTable.id, {
+    onDelete: "set null",
+  }),
+  costEntryId: uuid("cost_entry_id"),
+  unitNumber: text("unit_number").notNull(),
+  amount: numeric("amount").notNull(),
+  invoiceDate: date("invoice_date").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name").notNull(),
+  notes: text("notes"),
+  status: text("status").notNull().default("unmatched"),
+  uploadedAt: timestamp("uploaded_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });

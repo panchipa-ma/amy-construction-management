@@ -3,8 +3,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetQuote,
   useDeleteQuote,
+  useConvertQuoteToInvoice,
+  useImportQuoteToLedger,
   getGetQuoteQueryKey,
   getListQuotesQueryKey,
+  getListInvoicesQueryKey,
+  getGetProjectQueryKey,
+  getGetProjectLedgerQueryKey,
+  CostCategory,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +20,23 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -31,7 +54,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2, FileText, BookOpen } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
@@ -48,7 +71,74 @@ export default function QuoteDetailPage() {
     query: { enabled: !!id, queryKey: getGetQuoteQueryKey(id) },
   });
   const deleteMut = useDeleteQuote();
+  const convertMut = useConvertQuoteToInvoice();
+  const importMut = useImportQuoteToLedger();
   const [askDelete, setAskDelete] = useState(false);
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const [convertForm, setConvertForm] = useState({
+    invoiceNumber: "",
+    issueDate: today,
+    dueDate: "",
+  });
+  const [importForm, setImportForm] = useState({
+    category: CostCategory.material as CostCategory,
+    entryDate: today,
+    replaceExisting: false,
+  });
+
+  const handleConvert = async () => {
+    if (!convertForm.invoiceNumber) {
+      toast({ title: "請求書番号は必須です", variant: "destructive" });
+      return;
+    }
+    try {
+      const inv = await convertMut.mutateAsync({
+        id,
+        data: {
+          invoiceNumber: convertForm.invoiceNumber,
+          issueDate: convertForm.issueDate,
+          dueDate: convertForm.dueDate || null,
+        },
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getListInvoicesQueryKey(),
+      });
+      await invalidateDashboard(queryClient);
+      toast({ title: "請求書を作成しました" });
+      setConvertOpen(false);
+      setLocation(`/invoices/${inv.id}`);
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+    }
+  };
+
+  const handleImport = async () => {
+    if (!quote) return;
+    try {
+      await importMut.mutateAsync({
+        id,
+        data: {
+          category: importForm.category,
+          entryDate: importForm.entryDate,
+          replaceExisting: importForm.replaceExisting,
+        },
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getGetProjectLedgerQueryKey(quote.projectId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getGetProjectQueryKey(quote.projectId),
+      });
+      await invalidateDashboard(queryClient);
+      toast({ title: "施工台帳に取込みました" });
+      setImportOpen(false);
+      setLocation(`/projects/${quote.projectId}`);
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+    }
+  };
 
   const handleDelete = async () => {
     try {
@@ -82,14 +172,39 @@ export default function QuoteDetailPage() {
             {quote.projectName}
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setAskDelete(true)}
-          className="gap-2 text-destructive hover:text-destructive"
-        >
-          <Trash2 className="w-4 h-4" />
-          削除
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setConvertForm({
+                invoiceNumber: quote.quoteNumber.replace(/^Q/i, "INV"),
+                issueDate: today,
+                dueDate: "",
+              });
+              setConvertOpen(true);
+            }}
+            className="gap-2"
+          >
+            <FileText className="w-4 h-4" />
+            請求書に変換
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="gap-2"
+          >
+            <BookOpen className="w-4 h-4" />
+            施工台帳に取込
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setAskDelete(true)}
+            className="gap-2 text-destructive hover:text-destructive"
+          >
+            <Trash2 className="w-4 h-4" />
+            削除
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -167,6 +282,138 @@ export default function QuoteDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={convertOpen} onOpenChange={setConvertOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>請求書に変換</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              この見積書の明細をコピーして新しい請求書を作成します。
+            </p>
+            <div>
+              <Label htmlFor="invoiceNumber">請求書番号 *</Label>
+              <Input
+                id="invoiceNumber"
+                value={convertForm.invoiceNumber}
+                onChange={(e) =>
+                  setConvertForm({
+                    ...convertForm,
+                    invoiceNumber: e.target.value,
+                  })
+                }
+                placeholder="例: INV-2026-001"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="cIssueDate">発行日</Label>
+                <Input
+                  id="cIssueDate"
+                  type="date"
+                  value={convertForm.issueDate}
+                  onChange={(e) =>
+                    setConvertForm({
+                      ...convertForm,
+                      issueDate: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <Label htmlFor="cDueDate">支払期日</Label>
+                <Input
+                  id="cDueDate"
+                  type="date"
+                  value={convertForm.dueDate}
+                  onChange={(e) =>
+                    setConvertForm({
+                      ...convertForm,
+                      dueDate: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConvertOpen(false)}>
+              キャンセル
+            </Button>
+            <Button onClick={handleConvert} disabled={convertMut.isPending}>
+              請求書を作成
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>施工台帳に取込</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              見積明細の各行を予算原価として施工台帳 (案件「{quote.projectName}
+              」) に登録します。
+            </p>
+            <div>
+              <Label>原価カテゴリ</Label>
+              <Select
+                value={importForm.category}
+                onValueChange={(v) =>
+                  setImportForm({ ...importForm, category: v as CostCategory })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={CostCategory.material}>材料費</SelectItem>
+                  <SelectItem value={CostCategory.subcontract}>
+                    外注費
+                  </SelectItem>
+                  <SelectItem value={CostCategory.labor}>労務費</SelectItem>
+                  <SelectItem value={CostCategory.expense}>経費</SelectItem>
+                  <SelectItem value={CostCategory.other}>その他</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="iEntryDate">計上日</Label>
+              <Input
+                id="iEntryDate"
+                type="date"
+                value={importForm.entryDate}
+                onChange={(e) =>
+                  setImportForm({ ...importForm, entryDate: e.target.value })
+                }
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={importForm.replaceExisting}
+                onCheckedChange={(v) =>
+                  setImportForm({
+                    ...importForm,
+                    replaceExisting: v === true,
+                  })
+                }
+              />
+              既存の原価明細を全て削除してから取込む
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImportOpen(false)}>
+              キャンセル
+            </Button>
+            <Button onClick={handleImport} disabled={importMut.isPending}>
+              取込実行
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={askDelete} onOpenChange={setAskDelete}>
         <AlertDialogContent>

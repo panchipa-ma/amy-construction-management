@@ -1,6 +1,12 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, quotesTable, projectsTable } from "@workspace/db";
+import {
+  db,
+  quotesTable,
+  projectsTable,
+  invoicesTable,
+  costEntriesTable,
+} from "@workspace/db";
 import type { LineItemJson } from "@workspace/db";
 import {
   CreateQuoteBody,
@@ -13,8 +19,14 @@ import {
   CreateQuoteResponse,
   GetQuoteResponse,
   UpdateQuoteResponse,
+  ConvertQuoteToInvoiceParams,
+  ConvertQuoteToInvoiceBody,
+  ConvertQuoteToInvoiceResponse,
+  ImportQuoteToLedgerParams,
+  ImportQuoteToLedgerBody,
+  ImportQuoteToLedgerResponse,
 } from "@workspace/api-zod";
-import { isoDate, isoDateTime, computeTotals } from "../lib/serializers";
+import { isoDate, isoDateTime, computeTotals, n } from "../lib/serializers";
 
 const router: IRouter = Router();
 
@@ -124,6 +136,142 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
   }
   res.json(UpdateQuoteResponse.parse(await serialize(row)));
 });
+
+router.post(
+  "/quotes/:id/convert-to-invoice",
+  async (req, res): Promise<void> => {
+    const params = ConvertQuoteToInvoiceParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const parsed = ConvertQuoteToInvoiceBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const [quote] = await db
+      .select()
+      .from(quotesTable)
+      .where(eq(quotesTable.id, params.data.id));
+    if (!quote) {
+      res.status(404).json({ error: "Quote not found" });
+      return;
+    }
+    const [project] = await db
+      .select({ name: projectsTable.name })
+      .from(projectsTable)
+      .where(eq(projectsTable.id, quote.projectId));
+    const items = (quote.items ?? []) as LineItemJson[];
+    const [inv] = await db
+      .insert(invoicesTable)
+      .values({
+        projectId: quote.projectId,
+        invoiceNumber: parsed.data.invoiceNumber,
+        issueDate: parsed.data.issueDate as unknown as string,
+        dueDate: (parsed.data.dueDate as unknown as string | null) ?? null,
+        notes: quote.notes,
+        paid: false,
+        items,
+      })
+      .returning();
+    const { subtotal, tax, total } = computeTotals(items);
+    res.json(
+      ConvertQuoteToInvoiceResponse.parse({
+        id: inv.id,
+        projectId: inv.projectId,
+        projectName: project?.name ?? "",
+        invoiceNumber: inv.invoiceNumber,
+        issueDate: isoDate(inv.issueDate)!,
+        dueDate: isoDate(inv.dueDate),
+        notes: inv.notes,
+        items,
+        subtotal,
+        tax,
+        total,
+        paid: inv.paid,
+        createdAt: isoDateTime(inv.createdAt),
+      }),
+    );
+  },
+);
+
+router.post(
+  "/quotes/:id/import-to-ledger",
+  async (req, res): Promise<void> => {
+    const params = ImportQuoteToLedgerParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const parsed = ImportQuoteToLedgerBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const [quote] = await db
+      .select()
+      .from(quotesTable)
+      .where(eq(quotesTable.id, params.data.id));
+    if (!quote) {
+      res.status(404).json({ error: "Quote not found" });
+      return;
+    }
+    const [project] = await db
+      .select({ name: projectsTable.name })
+      .from(projectsTable)
+      .where(eq(projectsTable.id, quote.projectId));
+    const items = (quote.items ?? []) as LineItemJson[];
+    if (items.length === 0) {
+      if (parsed.data.replaceExisting) {
+        await db
+          .delete(costEntriesTable)
+          .where(eq(costEntriesTable.projectId, quote.projectId));
+      }
+      res.json(ImportQuoteToLedgerResponse.parse([]));
+      return;
+    }
+    const inserted = await db.transaction(async (tx) => {
+      if (parsed.data.replaceExisting) {
+        await tx
+          .delete(costEntriesTable)
+          .where(eq(costEntriesTable.projectId, quote.projectId));
+      }
+      return tx
+        .insert(costEntriesTable)
+        .values(
+          items.map((it) => ({
+            projectId: quote.projectId,
+            category: parsed.data.category,
+            description: it.description,
+            vendor: null,
+            plannedAmount: String(n(it.quantity) * n(it.unitPrice)),
+            actualAmount: "0",
+            entryDate: parsed.data.entryDate as unknown as string,
+            notes: `見積 ${quote.quoteNumber} より取込`,
+          })),
+        )
+        .returning();
+    });
+    res.json(
+      ImportQuoteToLedgerResponse.parse(
+        inserted.map((e) => ({
+          id: e.id,
+          projectId: e.projectId,
+          projectName: project?.name ?? "",
+          category: e.category as never,
+          description: e.description,
+          vendor: e.vendor,
+          plannedAmount: n(e.plannedAmount),
+          actualAmount: n(e.actualAmount),
+          entryDate: isoDate(e.entryDate)!,
+          notes: e.notes,
+          createdAt: isoDateTime(e.createdAt),
+        })),
+      ),
+    );
+  },
+);
 
 router.delete("/quotes/:id", async (req, res): Promise<void> => {
   const params = DeleteQuoteParams.safeParse(req.params);

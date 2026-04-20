@@ -13,6 +13,7 @@ export interface UpdateProjectBody {
   status?: ProjectStatus;
   customerId?: string;
   siteAddress?: string | null;
+  unitNumber?: string | null;
   startDate?: Date | null;
   endDate?: Date | null;
   contractAmount?: number;
