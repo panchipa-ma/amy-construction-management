@@ -112,10 +112,10 @@ export function LedgerSpreadsheet({
   return (
     <div className="space-y-4 text-sm">
       {/* TOP ROW: 基本情報 (left) + 受注/予算/締め (right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {/* 基本情報 */}
-        <div className="border border-border overflow-hidden">
-          <div className="bg-sky-100 dark:bg-sky-900/40 text-center py-1.5 font-semibold text-xs border-b border-border">
+        <div className="border border-border overflow-hidden rounded-sm">
+          <div className="bg-primary text-primary-foreground text-center py-1.5 font-semibold text-xs border-b border-border">
             基本情報
           </div>
           <table className="w-full border-collapse">
@@ -167,61 +167,55 @@ export function LedgerSpreadsheet({
           </table>
         </div>
 
-        {/* 受注 / 予算 / 締め */}
-        <div className="border border-border overflow-hidden">
-          <table className="w-full border-collapse">
+        {/* 受注 / 予算 / 締め — 3 columns × 4 rows, compact */}
+        <div className="border border-border overflow-hidden rounded-sm">
+          <table className="w-full border-collapse table-fixed">
+            <colgroup>
+              <col className="w-[68px]" />
+              <col />
+              <col />
+              <col />
+            </colgroup>
             <thead>
               <tr className="text-xs">
-                <th className="border border-border bg-muted/50 px-2 py-1.5 w-24"></th>
-                <th className="border border-border bg-sky-100 dark:bg-sky-900/40 px-2 py-1.5 text-center" colSpan={2}>
-                  受注
+                <th className="border border-border bg-muted/50 px-1.5 py-1.5"></th>
+                <th className="border border-border bg-primary text-primary-foreground px-2 py-1.5 text-center font-semibold">
+                  受注 (計画)
                 </th>
-                <th className="border border-border bg-sky-100 dark:bg-sky-900/40 px-2 py-1.5 text-center" colSpan={2}>
+                <th className="border border-border bg-primary text-primary-foreground px-2 py-1.5 text-center font-semibold">
                   予算
                 </th>
-                <th className="border border-border bg-sky-100 dark:bg-sky-900/40 px-2 py-1.5 text-center" colSpan={2}>
-                  締め
+                <th className="border border-border bg-accent text-accent-foreground px-2 py-1.5 text-center font-semibold">
+                  締め (実績)
                 </th>
               </tr>
             </thead>
-            <tbody className="text-xs [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1.5 [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1.5 [&_th]:bg-muted/50 [&_th]:text-left [&_th]:font-medium tabular-nums">
+            <tbody className="text-xs [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1.5 [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1.5 [&_th]:bg-muted/50 [&_th]:text-left [&_th]:font-medium tabular-nums whitespace-nowrap">
               <tr>
-                <th>金額</th>
-                <th className="!font-medium !bg-muted/50">受注金額</th>
+                <th>売上</th>
                 <td className="text-right">{formatCurrency(orderAmount)}</td>
-                <th className="!font-medium !bg-muted/50">予算金額</th>
                 <td className="text-right">{formatCurrency(orderAmount)}</td>
-                <th className="!font-medium !bg-muted/50">売上金額</th>
-                <td className="text-right">{formatCurrency(orderAmount)}</td>
+                <td className="text-right font-medium">{formatCurrency(orderAmount)}</td>
               </tr>
               <tr>
                 <th>原価</th>
-                <th className="!font-medium !bg-muted/50">受注原価</th>
                 <td className="text-right">{formatCurrency(orderCost)}</td>
-                <th className="!font-medium !bg-muted/50">予算原価</th>
                 <td className="text-right">{formatCurrency(budgetCost)}</td>
-                <th className="!font-medium !bg-muted/50">実原価</th>
-                <td className="text-right">{formatCurrency(actualCost)}</td>
+                <td className="text-right font-medium">{formatCurrency(actualCost)}</td>
               </tr>
               <tr>
-                <th>粗利額</th>
-                <th className="!font-medium !bg-muted/50">受注粗利額</th>
+                <th>粗利</th>
                 <td className="text-right">{formatCurrency(orderProfit)}</td>
-                <th className="!font-medium !bg-muted/50">予算粗利額</th>
                 <td className="text-right">{formatCurrency(budgetProfit)}</td>
-                <th className="!font-medium !bg-muted/50">粗利額</th>
-                <td className={`text-right ${grossProfit < 0 ? "text-destructive" : ""}`}>
+                <td className={`text-right font-semibold ${grossProfit < 0 ? "text-destructive" : "text-accent"}`}>
                   {formatCurrency(grossProfit)}
                 </td>
               </tr>
               <tr>
                 <th>粗利率</th>
-                <th className="!font-medium !bg-muted/50">受注粗利率</th>
                 <td className="text-right">{pct(orderProfit, orderAmount)}</td>
-                <th className="!font-medium !bg-muted/50">予算粗利率</th>
                 <td className="text-right">{pct(budgetProfit, orderAmount)}</td>
-                <th className="!font-medium !bg-muted/50">粗利率</th>
-                <td className={`text-right ${grossProfit < 0 ? "text-destructive" : ""}`}>
+                <td className={`text-right font-semibold ${grossProfit < 0 ? "text-destructive" : "text-accent"}`}>
                   {pct(grossProfit, orderAmount)}
                 </td>
               </tr>
@@ -230,9 +224,21 @@ export function LedgerSpreadsheet({
         </div>
       </div>
 
+      {/* 月次サマリー */}
+      {ledger.entries.length > 0 && (
+        <div className="border border-border overflow-hidden rounded-sm">
+          <div className="bg-primary text-primary-foreground text-center py-1.5 font-semibold text-xs border-b border-border">
+            月次サマリー (進捗ベースで売上を案分)
+          </div>
+          <div className="overflow-x-auto">
+            <MonthlyBreakdown ledger={ledger} />
+          </div>
+        </div>
+      )}
+
       {/* 歩合・最終利益 */}
-      <div className="border border-border overflow-hidden">
-        <div className="bg-emerald-50 dark:bg-emerald-950/40 text-center py-1.5 font-semibold text-xs border-b border-border">
+      <div className="border border-border overflow-hidden rounded-sm">
+        <div className="bg-accent text-accent-foreground text-center py-1.5 font-semibold text-xs border-b border-border">
           歩合・最終利益 (規定利率 20% / 監督歩合 30%)
         </div>
         <div className="overflow-x-auto">
@@ -300,9 +306,9 @@ export function LedgerSpreadsheet({
                 <td className="text-right text-muted-foreground">{pct(supervisorCommission, orderAmount)}</td>
                 <td className="text-muted-foreground">規定超過粗利 × 30% ({project.siteSupervisor ?? "担当監督"})</td>
               </tr>
-              <tr className="bg-emerald-50 dark:bg-emerald-950/30">
+              <tr className="bg-accent/10">
                 <td className="font-bold">最終会社利益</td>
-                <td className={`text-right font-bold ${finalProfit < 0 ? "text-destructive" : "text-emerald-700"}`}>
+                <td className={`text-right font-bold ${finalProfit < 0 ? "text-destructive" : "text-accent"}`}>
                   {formatCurrency(finalProfit)}
                 </td>
                 <td className={`text-right font-bold ${finalProfit < 0 ? "text-destructive" : ""}`}>
@@ -316,8 +322,8 @@ export function LedgerSpreadsheet({
       </div>
 
       {/* 原価明細 */}
-      <div className="border border-border overflow-hidden">
-        <div className="bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 border-b border-border flex items-center justify-between">
+      <div className="border border-border overflow-hidden rounded-sm">
+        <div className="bg-secondary text-secondary-foreground px-3 py-1.5 border-b border-border flex items-center justify-between flex-wrap gap-2">
           <span className="text-xs font-semibold">原価明細</span>
           <div className="flex gap-4 text-xs tabular-nums">
             {CAT_KEYS.map((k) => (
@@ -390,7 +396,7 @@ export function LedgerSpreadsheet({
                   <td className="text-right">{formatCurrency(totalsByCat.labor)}</td>
                   <td className="text-right">{formatCurrency(totalsByCat.expense)}</td>
                   <td className="text-right">{formatCurrency(totalsByCat.other)}</td>
-                  <td className="text-right bg-amber-100/60 dark:bg-amber-900/40">
+                  <td className="text-right bg-accent/15 text-accent">
                     {formatCurrency(grandTotal)}
                   </td>
                 </tr>
@@ -400,5 +406,84 @@ export function LedgerSpreadsheet({
         </div>
       </div>
     </div>
+  );
+}
+
+function MonthlyBreakdown({ ledger }: { ledger: Ledger }) {
+  // Group entries by YYYY-MM, aggregate actual cost.
+  const buckets = new Map<string, number>();
+  for (const e of ledger.entries) {
+    const ym = (e.entryDate ?? "").slice(0, 7); // YYYY-MM
+    if (!ym) continue;
+    buckets.set(ym, (buckets.get(ym) ?? 0) + (e.actualAmount ?? 0));
+  }
+  const months = Array.from(buckets.keys()).sort();
+  if (months.length === 0) return null;
+
+  const totalActualCost = ledger.actualCost || months.reduce((a, m) => a + (buckets.get(m) ?? 0), 0);
+  // Use planned cost as denominator for revenue allocation; fallback to actual total.
+  const denomCost = ledger.plannedCost > 0 ? ledger.plannedCost : totalActualCost;
+
+  let cumCost = 0;
+  let cumRevenue = 0;
+  const rows = months.map((m) => {
+    const cost = buckets.get(m) ?? 0;
+    cumCost += cost;
+    const ratio = denomCost > 0 ? cost / denomCost : 0;
+    const revenue = Math.round(ledger.contractAmount * ratio);
+    cumRevenue += revenue;
+    const profit = revenue - cost;
+    return { m, cost, revenue, profit, cumCost, cumRevenue };
+  });
+  const sumCost = rows.reduce((a, r) => a + r.cost, 0);
+  const sumRevenue = rows.reduce((a, r) => a + r.revenue, 0);
+  const sumProfit = sumRevenue - sumCost;
+
+  return (
+    <table className="w-full border-collapse text-xs tabular-nums whitespace-nowrap">
+      <thead className="bg-muted/50">
+        <tr className="[&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1.5 [&_th]:font-medium">
+          <th className="text-left w-24">月</th>
+          <th className="text-right">当月売上 (案分)</th>
+          <th className="text-right">当月原価</th>
+          <th className="text-right">当月粗利</th>
+          <th className="text-right">粗利率</th>
+          <th className="text-right">累計売上</th>
+          <th className="text-right">累計原価</th>
+        </tr>
+      </thead>
+      <tbody className="[&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1.5">
+        {rows.map((r) => (
+          <tr key={r.m} className="hover:bg-muted/30">
+            <td className="font-medium">
+              {r.m.replace("-", "年")}月
+            </td>
+            <td className="text-right">{formatCurrency(r.revenue)}</td>
+            <td className="text-right text-destructive">−{formatCurrency(r.cost)}</td>
+            <td className={`text-right font-medium ${r.profit < 0 ? "text-destructive" : "text-accent"}`}>
+              {formatCurrency(r.profit)}
+            </td>
+            <td className="text-right text-muted-foreground">
+              {r.revenue > 0 ? `${((r.profit / r.revenue) * 100).toFixed(1)}%` : "-"}
+            </td>
+            <td className="text-right text-muted-foreground">{formatCurrency(r.cumRevenue)}</td>
+            <td className="text-right text-muted-foreground">{formatCurrency(r.cumCost)}</td>
+          </tr>
+        ))}
+        <tr className="bg-accent/10 font-semibold">
+          <td>合計</td>
+          <td className="text-right">{formatCurrency(sumRevenue)}</td>
+          <td className="text-right text-destructive">−{formatCurrency(sumCost)}</td>
+          <td className={`text-right ${sumProfit < 0 ? "text-destructive" : "text-accent"}`}>
+            {formatCurrency(sumProfit)}
+          </td>
+          <td className="text-right">
+            {sumRevenue > 0 ? `${((sumProfit / sumRevenue) * 100).toFixed(1)}%` : "-"}
+          </td>
+          <td className="text-right">{formatCurrency(sumRevenue)}</td>
+          <td className="text-right">{formatCurrency(sumCost)}</td>
+        </tr>
+      </tbody>
+    </table>
   );
 }

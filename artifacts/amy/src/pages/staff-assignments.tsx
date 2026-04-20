@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { useListStaffAssignments } from "@workspace/api-client-react";
+import {
+  useListStaffAssignments,
+  useListScheduleEntries,
+} from "@workspace/api-client-react";
 import {
   Card,
   CardContent,
@@ -12,10 +15,291 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, todayLocalISO, addDaysISO } from "@/lib/format";
-import { HardHat, MapPin, CalendarDays } from "lucide-react";
+import { HardHat, MapPin, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function StaffAssignmentsPage() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">職人 出面表</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          各職人がいつ・どの案件に入っているかを一覧で確認できます。
+        </p>
+      </div>
+
+      <Tabs defaultValue="matrix" className="w-full">
+        <TabsList>
+          <TabsTrigger value="matrix">出面表 (日別)</TabsTrigger>
+          <TabsTrigger value="list">案件一覧 (職人別)</TabsTrigger>
+        </TabsList>
+        <TabsContent value="matrix" className="mt-4">
+          <AttendanceMatrix />
+        </TabsContent>
+        <TabsContent value="list" className="mt-4">
+          <AssignmentList />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/* ---------------- Matrix view ---------------- */
+
+const PROJECT_COLORS = [
+  "bg-blue-100 text-blue-900 border-blue-300",
+  "bg-emerald-100 text-emerald-900 border-emerald-300",
+  "bg-amber-100 text-amber-900 border-amber-300",
+  "bg-purple-100 text-purple-900 border-purple-300",
+  "bg-pink-100 text-pink-900 border-pink-300",
+  "bg-cyan-100 text-cyan-900 border-cyan-300",
+  "bg-orange-100 text-orange-900 border-orange-300",
+  "bg-lime-100 text-lime-900 border-lime-300",
+];
+
+function AttendanceMatrix() {
+  const [anchor, setAnchor] = useState<string>(todayLocalISO());
+  const [days, setDays] = useState<number>(14);
+
+  const from = anchor;
+  const to = addDaysISO(anchor, days - 1);
+
+  const dateList = useMemo(() => {
+    const arr: string[] = [];
+    for (let i = 0; i < days; i++) arr.push(addDaysISO(anchor, i));
+    return arr;
+  }, [anchor, days]);
+
+  const staffQ = useListStaffAssignments({ from, to });
+  const scheduleQ = useListScheduleEntries({ from, to });
+
+  const staff = staffQ.data ?? [];
+  const entries = scheduleQ.data ?? [];
+
+  // staffId -> date -> entries[]
+  const grid = useMemo(() => {
+    const m = new Map<string, Map<string, typeof entries>>();
+    for (const e of entries) {
+      if (!m.has(e.staffId)) m.set(e.staffId, new Map());
+      const dm = m.get(e.staffId)!;
+      if (!dm.has(e.date)) dm.set(e.date, []);
+      dm.get(e.date)!.push(e);
+    }
+    return m;
+  }, [entries]);
+
+  // Color per projectId
+  const projectColor = useMemo(() => {
+    const ids = Array.from(new Set(entries.map((e) => e.projectId)));
+    const map = new Map<string, string>();
+    ids.forEach((id, i) => map.set(id, PROJECT_COLORS[i % PROJECT_COLORS.length]));
+    return map;
+  }, [entries]);
+
+  const projectLegend = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of entries) {
+      if (!map.has(e.projectId)) map.set(e.projectId, e.projectName);
+    }
+    return Array.from(map.entries());
+  }, [entries]);
+
+  // Per-staff days-on counts for selected range
+  const staffDayCount = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const e of entries) {
+      const dateSet = m.get(e.staffId);
+      if (dateSet === undefined) m.set(e.staffId, 1);
+      // count unique dates per staff
+    }
+    // recompute properly with unique dates
+    const unique = new Map<string, Set<string>>();
+    for (const e of entries) {
+      if (!unique.has(e.staffId)) unique.set(e.staffId, new Set());
+      unique.get(e.staffId)!.add(e.date);
+    }
+    return new Map(Array.from(unique.entries()).map(([k, v]) => [k, v.size]));
+  }, [entries]);
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <Label htmlFor="anchor" className="text-xs">開始日</Label>
+              <Input
+                id="anchor"
+                type="date"
+                value={anchor}
+                onChange={(e) => setAnchor(e.target.value)}
+                className="w-40"
+              />
+            </div>
+            <div>
+              <Label htmlFor="days" className="text-xs">表示日数</Label>
+              <select
+                id="days"
+                value={days}
+                onChange={(e) => setDays(parseInt(e.target.value))}
+                className="block h-9 w-24 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value={7}>7日</option>
+                <option value={14}>14日</option>
+                <option value={21}>21日</option>
+                <option value={30}>30日</option>
+              </select>
+            </div>
+            <div className="flex gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setAnchor(addDaysISO(anchor, -days))}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setAnchor(todayLocalISO())}
+              >
+                今日
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setAnchor(addDaysISO(anchor, days))}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {projectLegend.length > 0 && (
+        <Card>
+          <CardContent className="py-3">
+            <div className="flex flex-wrap gap-2 items-center text-xs">
+              <span className="text-muted-foreground font-medium">案件:</span>
+              {projectLegend.map(([id, name]) => (
+                <Link
+                  key={id}
+                  href={`/projects/${id}`}
+                  className={`px-2 py-0.5 rounded border ${projectColor.get(id)} hover:opacity-80`}
+                >
+                  {name}
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {staffQ.isLoading || scheduleQ.isLoading ? (
+        <Skeleton className="h-96 w-full" />
+      ) : staff.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            職人が登録されていません。
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="border border-border rounded-sm overflow-x-auto bg-card">
+          <table className="border-collapse text-xs tabular-nums">
+            <thead>
+              <tr>
+                <th className="sticky left-0 z-10 bg-primary text-primary-foreground border border-border px-2 py-2 text-left w-44 min-w-44">
+                  職人
+                </th>
+                <th className="bg-primary text-primary-foreground border border-border px-2 py-2 w-12 text-center">
+                  稼働日
+                </th>
+                {dateList.map((d) => {
+                  const dt = new Date(d + "T00:00:00");
+                  const dow = ["日", "月", "火", "水", "木", "金", "土"][dt.getDay()];
+                  const isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+                  const isToday = d === todayLocalISO();
+                  return (
+                    <th
+                      key={d}
+                      className={`border border-border px-1 py-1 w-20 min-w-20 text-center font-medium ${
+                        isToday
+                          ? "bg-accent text-accent-foreground"
+                          : isWeekend
+                          ? "bg-muted"
+                          : "bg-muted/40"
+                      }`}
+                    >
+                      <div className="text-[10px] leading-tight">
+                        {dt.getMonth() + 1}/{dt.getDate()}
+                      </div>
+                      <div className="text-[10px] leading-tight">({dow})</div>
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {staff.map((s) => (
+                <tr key={s.staffId} className="hover:bg-muted/20">
+                  <td className="sticky left-0 z-10 bg-card border border-border px-2 py-2">
+                    <div className="flex items-center gap-1.5 font-medium text-sm">
+                      <HardHat className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <span className="truncate">{s.staffName}</span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {s.role}
+                      {s.company ? ` · ${s.company}` : ""}
+                    </div>
+                  </td>
+                  <td className="border border-border text-center font-semibold">
+                    {staffDayCount.get(s.staffId) ?? 0}
+                  </td>
+                  {dateList.map((d) => {
+                    const cell = grid.get(s.staffId)?.get(d) ?? [];
+                    const isWeekend = (() => {
+                      const dt = new Date(d + "T00:00:00");
+                      return dt.getDay() === 0 || dt.getDay() === 6;
+                    })();
+                    return (
+                      <td
+                        key={d}
+                        className={`border border-border align-top p-0.5 ${
+                          isWeekend ? "bg-muted/30" : ""
+                        }`}
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          {cell.map((e) => (
+                            <Link
+                              key={e.id}
+                              href={`/projects/${e.projectId}`}
+                              className={`block text-[10px] px-1 py-0.5 rounded border truncate ${projectColor.get(
+                                e.projectId,
+                              )} hover:opacity-80`}
+                              title={`${e.projectName} — ${e.task}${e.startTime ? ` (${e.startTime})` : ""}`}
+                            >
+                              {e.projectName}
+                            </Link>
+                          ))}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- List view (previous card-based) ---------------- */
+
+function AssignmentList() {
   const [from, setFrom] = useState<string>(addDaysISO(todayLocalISO(), -7));
   const [to, setTo] = useState<string>(addDaysISO(todayLocalISO(), 30));
   const [filter, setFilter] = useState("");
@@ -34,14 +318,7 @@ export default function StaffAssignmentsPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">職人の案件一覧</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          指定期間で各職人がどの案件に入っているかを一覧で確認できます。スケジュール画面で配置すると反映されます。
-        </p>
-      </div>
-
+    <div className="space-y-4">
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">期間と検索</CardTitle>
@@ -111,9 +388,7 @@ export default function StaffAssignmentsPage() {
                         {s.company ? ` · ${s.company}` : ""}
                       </CardDescription>
                     </div>
-                    {active.length > 0 && (
-                      <Badge className="bg-emerald-600">稼働中</Badge>
-                    )}
+                    {active.length > 0 && <Badge>稼働中</Badge>}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -126,7 +401,7 @@ export default function StaffAssignmentsPage() {
                       {active.length > 0 && (
                         <ProjectSection
                           label="現在入っている案件"
-                          color="text-emerald-700"
+                          color="text-accent"
                           projects={active}
                         />
                       )}

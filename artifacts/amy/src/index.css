@@ -61,7 +61,7 @@
 }
 
 /* 
-  Theme: Warm wood & Controlled industrial
+  Theme: Deep Navy / Architectural Blueprint
   A competent back-office tool for Japanese interior contractors.
 */
 :root {
@@ -71,55 +71,55 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  /* Background: Off-white, slightly warm like architectural paper */
-  --background: 40 20% 97%;
-  /* Foreground: Dark ink, almost black but warmer */
-  --foreground: 20 14% 16%;
+  /* Background: Cool off-white */
+  --background: 220 25% 98%;
+  /* Foreground: Deep navy ink */
+  --foreground: 222 47% 14%;
 
-  /* Borders: Subtle, structural */
-  --border: 40 10% 85%;
-  --input: 40 10% 85%;
-  --ring: 24 30% 40%; /* wood accent */
+  /* Borders */
+  --border: 220 15% 86%;
+  --input: 220 15% 86%;
+  --ring: 222 65% 28%;
 
-  /* Cards: White for contrast */
+  /* Cards: White */
   --card: 0 0% 100%;
-  --card-foreground: 20 14% 16%;
-  --card-border: 40 10% 85%;
+  --card-foreground: 222 47% 14%;
+  --card-border: 220 15% 88%;
 
   /* Popovers */
   --popover: 0 0% 100%;
-  --popover-foreground: 20 14% 16%;
-  --popover-border: 40 10% 85%;
+  --popover-foreground: 222 47% 14%;
+  --popover-border: 220 15% 86%;
 
-  /* Primary: Industrial wood / Leather tone */
-  --primary: 24 30% 40%;
-  --primary-foreground: 40 20% 97%;
+  /* Primary: Deep navy */
+  --primary: 222 65% 24%;
+  --primary-foreground: 220 25% 98%;
 
-  /* Secondary: Concrete gray */
-  --secondary: 220 10% 40%;
+  /* Secondary: Slate */
+  --secondary: 220 15% 35%;
   --secondary-foreground: 0 0% 100%;
 
-  /* Muted: Soft background for unselected/empty */
-  --muted: 40 15% 92%;
-  --muted-foreground: 20 10% 45%;
+  /* Muted: cool gray */
+  --muted: 220 15% 94%;
+  --muted-foreground: 220 10% 42%;
 
-  /* Accent: Blueprint blue / Slate */
-  --accent: 210 20% 45%;
+  /* Accent: Brighter blueprint blue */
+  --accent: 215 75% 40%;
   --accent-foreground: 0 0% 100%;
 
   /* Destructive: Rust red */
   --destructive: 10 60% 45%;
   --destructive-foreground: 0 0% 100%;
 
-  /* Sidebar */
-  --sidebar: 20 14% 16%; /* Dark industrial sidebar */
-  --sidebar-foreground: 40 20% 90%;
-  --sidebar-border: 20 14% 22%;
-  --sidebar-primary: 24 30% 40%;
+  /* Sidebar — deepest navy */
+  --sidebar: 222 55% 14%;
+  --sidebar-foreground: 220 30% 90%;
+  --sidebar-border: 222 50% 20%;
+  --sidebar-primary: 215 75% 50%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 20 14% 24%;
-  --sidebar-accent-foreground: 40 20% 97%;
-  --sidebar-ring: 24 30% 40%;
+  --sidebar-accent: 222 50% 22%;
+  --sidebar-accent-foreground: 220 25% 98%;
+  --sidebar-ring: 215 75% 50%;
 
   --app-font-sans: "Plus Jakarta Sans", "Noto Sans JP", sans-serif;
   --app-font-serif: Georgia, serif;

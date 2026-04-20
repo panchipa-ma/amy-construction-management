@@ -45,12 +45,17 @@ async function serialize(s: typeof scheduleEntriesTable.$inferSelect) {
 }
 
 router.get("/schedule", async (req, res): Promise<void> => {
-  const parsedQuery = ListScheduleEntriesQueryParams.safeParse(req.query);
-  if (!parsedQuery.success) {
-    res.status(400).json({ error: parsedQuery.error.message });
+  // The auto-generated zod schema treats from/to as zod.date(), which rejects
+  // YYYY-MM-DD strings sent as query params. Parse manually instead.
+  const ISO = /^\d{4}-\d{2}-\d{2}$/;
+  const projectId =
+    typeof req.query.projectId === "string" ? req.query.projectId : undefined;
+  const from = typeof req.query.from === "string" ? req.query.from : undefined;
+  const to = typeof req.query.to === "string" ? req.query.to : undefined;
+  if ((from && !ISO.test(from)) || (to && !ISO.test(to))) {
+    res.status(400).json({ error: "from/to must be YYYY-MM-DD" });
     return;
   }
-  const { projectId, from, to } = parsedQuery.data;
   const filters = [];
   if (projectId) filters.push(eq(scheduleEntriesTable.projectId, projectId));
   if (from)
