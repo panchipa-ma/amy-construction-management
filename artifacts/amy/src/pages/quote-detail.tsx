@@ -55,7 +55,7 @@ import { formatCurrency } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { COMPANY_INFO, QUOTE_TERMS } from "@/lib/company-info";
 
-const MIN_ROWS = 16;
+const MIN_ROWS = 8;
 
 function formatJpDate(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -175,9 +175,9 @@ export default function QuoteDetailPage() {
   const displayCount = Math.max(items.length, MIN_ROWS);
 
   return (
-    <div className="space-y-6">
+    <div className="quote-workbench -m-8 min-h-[calc(100vh-0px)] py-6 px-6 print:p-0 print:m-0 print:min-h-0">
       {/* Action header — hidden in print */}
-      <div className="print:hidden flex items-center justify-between max-w-[820px]">
+      <div className="print:hidden max-w-[1040px] mx-auto flex items-center justify-between mb-4">
         <Link
           href="/quotes"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -233,50 +233,59 @@ export default function QuoteDetailPage() {
       </div>
 
       {/* Quote document */}
-      <div className="bg-white border border-border max-w-[820px] mx-auto px-10 py-10 text-[13px] text-foreground space-y-5 print:border-0 print:p-0 print:max-w-none print:mx-0 print:space-y-4">
-        <h1 className="text-center text-3xl font-bold tracking-[0.6em] pb-1">
-          御 見 積 書
+      <div className="quote-paper max-w-[1040px] mx-auto px-12 py-8 text-[14px] text-foreground print:border-0 print:p-0 print:max-w-none print:mx-0 print:shadow-none">
+        {/* Decorative top accent */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className="h-[3px] flex-1 bg-primary" />
+          <div className="text-[10px] tracking-[0.4em] text-primary font-semibold">
+            QUOTATION
+          </div>
+          <div className="h-[3px] flex-1 bg-primary" />
+        </div>
+
+        <h1 className="quote-title text-center text-[32px] text-foreground mb-5">
+          御&nbsp;&nbsp;見&nbsp;&nbsp;積&nbsp;&nbsp;書
         </h1>
 
-        {/* Top section: customer (left) + meta (right) */}
-        <div className="grid grid-cols-[1.4fr_1fr] gap-8 items-start">
-          <div className="space-y-3">
+        {/* Customer + Meta */}
+        <div className="grid grid-cols-[1.5fr_1fr] gap-8 mb-5">
+          <div className="space-y-3 min-w-0">
             <div className="flex items-end gap-3 border-b-2 border-foreground pb-1.5">
-              <span className="text-xl font-semibold flex-1 truncate">
+              <span className="quote-customer text-[22px] flex-1 truncate">
                 {customerName || "—"}
               </span>
-              <span className="text-lg font-medium pb-0.5">御中</span>
+              <span className="quote-customer text-[18px] pb-0.5 shrink-0">御中</span>
             </div>
-            <div className="flex items-center gap-3 pl-1 text-sm">
+            <div className="flex items-center gap-3 text-[13px]">
               <span className="text-muted-foreground w-14 shrink-0">ご担当</span>
-              <span className="flex-1 border-b border-border py-0.5">
+              <span className="flex-1 min-w-0 border-b border-border py-0.5 truncate">
                 {contactName || "\u00A0"}
               </span>
-              {contactName && <span className="text-sm">様</span>}
+              {contactName && <span className="text-sm shrink-0">様</span>}
             </div>
           </div>
-          <div className="text-xs space-y-0">
-            <div className="grid grid-cols-[80px_1fr] border border-foreground">
-              <div className="px-2 py-1.5 bg-muted/40 border-r border-foreground">
+          <div className="text-[12px] border border-foreground self-start">
+            <div className="grid grid-cols-[78px_1fr] border-b border-foreground">
+              <div className="px-2.5 py-1.5 bg-muted/50 border-r border-foreground">
                 見積No.
               </div>
-              <div className="px-2 py-1.5 text-right tabular-nums">
+              <div className="px-2.5 py-1.5 text-right tabular-nums truncate">
                 {quote.quoteNumber}
               </div>
             </div>
-            <div className="grid grid-cols-[80px_1fr] border border-foreground border-t-0">
-              <div className="px-2 py-1.5 bg-muted/40 border-r border-foreground">
+            <div className="grid grid-cols-[78px_1fr] border-b border-foreground">
+              <div className="px-2.5 py-1.5 bg-muted/50 border-r border-foreground">
                 見積日
               </div>
-              <div className="px-2 py-1.5 text-right tabular-nums">
+              <div className="px-2.5 py-1.5 text-right tabular-nums">
                 {formatJpDate(quote.issueDate)}
               </div>
             </div>
-            <div className="grid grid-cols-[80px_1fr] border border-foreground border-t-0">
-              <div className="px-2 py-1.5 bg-muted/40 border-r border-foreground">
+            <div className="grid grid-cols-[78px_1fr]">
+              <div className="px-2.5 py-1.5 bg-muted/50 border-r border-foreground">
                 有効期限
               </div>
-              <div className="px-2 py-1.5 text-right tabular-nums">
+              <div className="px-2.5 py-1.5 text-right tabular-nums">
                 {quote.validUntil
                   ? formatJpDate(quote.validUntil)
                   : QUOTE_TERMS.validity}
@@ -286,90 +295,85 @@ export default function QuoteDetailPage() {
         </div>
 
         {/* 件名 + 自社情報 */}
-        <div className="grid grid-cols-[1.4fr_1fr] gap-8 items-start">
-          <div className="space-y-3">
-            <div className="border-l-4 border-foreground pl-3 py-0.5">
-              <div className="text-[11px] text-muted-foreground tracking-widest">
-                件 名
+        <div className="grid grid-cols-[1.5fr_1fr] gap-8 mb-5">
+          <div className="space-y-3 min-w-0">
+            <div className="border-l-4 border-primary pl-3 py-0.5">
+              <div className="text-[10px] tracking-[0.3em] text-muted-foreground mb-0.5">
+                件名
               </div>
-              <div className="text-base font-semibold leading-snug">
+              <div className="text-[16px] font-semibold leading-snug">
                 {subjectName || "—"}
               </div>
             </div>
-            <p className="text-sm leading-relaxed pt-1 pl-1">
+            <p className="text-[12px] leading-relaxed text-muted-foreground">
               下記のとおり、御見積もり申し上げます。
             </p>
           </div>
-          <div className="flex items-start gap-3 border-l-2 border-foreground/80 pl-4">
-            <div className="text-xs leading-relaxed flex-1 min-w-0">
-              <div className="font-semibold text-sm mb-0.5">
-                {COMPANY_INFO.name}
-              </div>
-              <div className="text-muted-foreground">
-                {COMPANY_INFO.postalCode}
-              </div>
-              <div className="text-muted-foreground">
-                {COMPANY_INFO.address}
-              </div>
-              <div className="mt-1.5">TEL: {COMPANY_INFO.tel}</div>
-              <div>FAX: {COMPANY_INFO.fax}</div>
-              <div className="truncate">
-                E-Mail:{" "}
-                <a
-                  href={`mailto:${COMPANY_INFO.email}`}
-                  className="text-accent hover:underline print:text-foreground print:no-underline"
-                >
-                  {COMPANY_INFO.email}
-                </a>
-              </div>
-              <div className="mt-0.5">担当: {COMPANY_INFO.contact}</div>
+          <div className="bg-muted/30 border border-border px-4 py-3 text-[11.5px] leading-[1.6] min-w-0">
+            <div className="quote-customer text-[14px] mb-0.5">
+              {COMPANY_INFO.name}
             </div>
-            {/* 印 stamp box */}
-            <div className="w-14 h-14 border border-foreground/60 rounded-full flex items-center justify-center text-[10px] text-muted-foreground shrink-0 mt-1">
-              印
+            <div className="text-muted-foreground truncate">
+              {COMPANY_INFO.postalCode} {COMPANY_INFO.address}
             </div>
-          </div>
-        </div>
-
-        {/* Terms row */}
-        <div className="grid grid-cols-2 text-xs">
-          <div className="border border-foreground px-3 py-1.5">
-            <span className="text-muted-foreground mr-2">納期</span>
-            {QUOTE_TERMS.delivery}
-          </div>
-          <div className="border border-foreground border-l-0 px-3 py-1.5">
-            <span className="text-muted-foreground mr-2">支払条件</span>
-            {QUOTE_TERMS.payment}
+            <div className="mt-1 flex flex-wrap gap-x-3">
+              <span>
+                <span className="text-muted-foreground mr-1">TEL</span>
+                {COMPANY_INFO.tel}
+              </span>
+              <span>
+                <span className="text-muted-foreground mr-1">FAX</span>
+                {COMPANY_INFO.fax}
+              </span>
+            </div>
+            <div className="truncate">
+              <span className="text-muted-foreground mr-1">E</span>
+              {COMPANY_INFO.email}
+            </div>
+            <div className="mt-0.5 flex items-center justify-between gap-2">
+              <span className="truncate">
+                <span className="text-muted-foreground mr-1">担当</span>
+                {COMPANY_INFO.contact}
+              </span>
+              <span className="w-9 h-9 border-2 border-destructive/40 rounded-full flex items-center justify-center text-destructive/50 text-[10px] font-serif shrink-0">
+                印
+              </span>
+            </div>
           </div>
         </div>
 
         {/* 合計金額 prominent */}
-        <div className="flex items-stretch border-2 border-foreground">
-          <div className="w-36 px-4 py-3 bg-muted/40 font-semibold border-r-2 border-foreground flex items-center text-sm tracking-widest">
+        <div className="flex items-stretch border-2 border-primary mb-4 bg-primary/[0.02]">
+          <div className="w-36 px-4 py-2.5 bg-primary text-primary-foreground font-semibold border-r-2 border-primary flex items-center justify-center text-[13px] tracking-[0.25em]">
             合 計 金 額
           </div>
-          <div className="flex-1 px-5 py-3 flex items-center justify-end gap-3">
-            <span className="text-3xl font-bold tabular-nums">
-              {formatCurrency(quote.total)}
+          <div className="flex-1 px-5 py-2.5 flex items-baseline justify-end gap-2">
+            <span className="text-muted-foreground text-sm">¥</span>
+            <span className="text-[28px] font-bold tabular-nums leading-none">
+              {quote.total.toLocaleString()}
             </span>
-            <span className="text-xs text-muted-foreground">(税込)</span>
+            <span className="text-[11px] text-muted-foreground">
+              （税込）
+            </span>
           </div>
         </div>
 
         {/* Items table */}
-        <div className="border border-foreground">
-          <div className="grid grid-cols-[40px_1fr_60px_70px_110px_130px] bg-muted/40 text-xs font-semibold">
-            <div className="px-2 py-1.5 text-center border-r border-foreground">
+        <div className="border-2 border-foreground mb-4">
+          <div className="grid grid-cols-[36px_minmax(0,1fr)_60px_72px_104px_124px] bg-primary text-primary-foreground text-[11.5px] font-semibold tracking-wider">
+            <div className="px-1.5 py-1.5 text-center border-r border-primary-foreground/20">
               No.
             </div>
-            <div className="px-2 py-1.5 border-r border-foreground">摘要</div>
-            <div className="px-2 py-1.5 border-r border-foreground text-center">
+            <div className="px-3 py-1.5 border-r border-primary-foreground/20">
+              工事項目・摘要
+            </div>
+            <div className="px-1.5 py-1.5 border-r border-primary-foreground/20 text-center">
               単位
             </div>
-            <div className="px-2 py-1.5 border-r border-foreground text-right">
+            <div className="px-1.5 py-1.5 border-r border-primary-foreground/20 text-right">
               数量
             </div>
-            <div className="px-2 py-1.5 border-r border-foreground text-right">
+            <div className="px-2 py-1.5 border-r border-primary-foreground/20 text-right">
               単価
             </div>
             <div className="px-2 py-1.5 text-right">金額</div>
@@ -380,67 +384,93 @@ export default function QuoteDetailPage() {
             return (
               <div
                 key={i}
-                className="grid grid-cols-[40px_1fr_60px_70px_110px_130px] border-t border-foreground text-[13px] min-h-[28px]"
+                className="grid grid-cols-[36px_minmax(0,1fr)_60px_72px_104px_124px] border-t border-foreground/30 text-[13px] min-h-[34px]"
               >
-                <div className="px-2 py-1.5 text-center text-muted-foreground tabular-nums border-r border-foreground">
+                <div className="px-1.5 py-1.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[12px]">
                   {item ? i + 1 : ""}
                 </div>
-                <div className="px-3 py-1.5 border-r border-foreground whitespace-pre-wrap leading-snug">
+                <div className="px-3 py-1.5 border-r border-foreground/30 whitespace-pre-wrap leading-snug">
                   {item?.description ?? ""}
                 </div>
-                <div className="px-2 py-1.5 text-center border-r border-foreground">
+                <div className="px-1.5 py-1.5 text-center border-r border-foreground/30 text-[12px]">
                   {item?.unit ?? ""}
                 </div>
-                <div className="px-2 py-1.5 text-right tabular-nums border-r border-foreground">
+                <div className="px-1.5 py-1.5 text-right tabular-nums border-r border-foreground/30">
                   {item ? item.quantity : ""}
                 </div>
-                <div className="px-2 py-1.5 text-right tabular-nums border-r border-foreground">
+                <div className="px-2 py-1.5 text-right tabular-nums border-r border-foreground/30">
                   {item ? formatCurrency(item.unitPrice) : ""}
                 </div>
-                <div className="px-3 py-1.5 text-right tabular-nums">
+                <div className="px-2 py-1.5 text-right tabular-nums font-medium">
                   {item ? formatCurrency(amount) : ""}
                 </div>
               </div>
             );
           })}
           {/* totals rows */}
-          <div className="grid grid-cols-[40px_1fr_60px_70px_110px_130px] border-t border-foreground text-xs">
+          <div className="grid grid-cols-[36px_minmax(0,1fr)_60px_72px_104px_124px] border-t-2 border-foreground text-[12px] bg-muted/30">
             <div className="col-span-4"></div>
-            <div className="px-2 py-1.5 bg-muted/40 border-l border-foreground text-right font-semibold">
+            <div className="px-2 py-1.5 border-l border-foreground/30 text-right font-semibold">
               小計
             </div>
-            <div className="px-3 py-1.5 border-l border-foreground text-right tabular-nums">
+            <div className="px-2 py-1.5 border-l border-foreground/30 text-right tabular-nums">
               {formatCurrency(quote.subtotal)}
             </div>
           </div>
-          <div className="grid grid-cols-[40px_1fr_60px_70px_110px_130px] border-t border-foreground text-xs">
+          <div className="grid grid-cols-[36px_minmax(0,1fr)_60px_72px_104px_124px] border-t border-foreground/30 text-[12px] bg-muted/30">
             <div className="col-span-4"></div>
-            <div className="px-2 py-1.5 bg-muted/40 border-l border-foreground text-right font-semibold">
+            <div className="px-2 py-1.5 border-l border-foreground/30 text-right font-semibold">
               消費税
             </div>
-            <div className="px-3 py-1.5 border-l border-foreground text-right tabular-nums">
+            <div className="px-2 py-1.5 border-l border-foreground/30 text-right tabular-nums">
               {formatCurrency(quote.tax)}
             </div>
           </div>
-          <div className="grid grid-cols-[40px_1fr_60px_70px_110px_130px] border-t border-foreground text-xs">
+          <div className="grid grid-cols-[36px_minmax(0,1fr)_60px_72px_104px_124px] border-t border-foreground/30 text-[13px] bg-primary text-primary-foreground">
             <div className="col-span-4"></div>
-            <div className="px-2 py-2 bg-muted/40 border-l border-foreground text-right font-bold">
+            <div className="px-2 py-2 border-l border-primary-foreground/20 text-right font-bold">
               合計
             </div>
-            <div className="px-3 py-2 border-l border-foreground text-right tabular-nums font-bold text-sm">
+            <div className="px-2 py-2 border-l border-primary-foreground/20 text-right tabular-nums font-bold">
               {formatCurrency(quote.total)}
             </div>
           </div>
         </div>
 
-        {/* 備考 */}
-        <div className="grid grid-cols-[64px_1fr] border border-foreground">
-          <div className="px-2 py-2 bg-muted/40 border-r border-foreground text-xs">
-            備考
+        {/* Terms + Notes */}
+        <div className="grid grid-cols-2 gap-5 mb-2">
+          <div className="space-y-1.5">
+            <div className="text-[10px] tracking-[0.3em] text-muted-foreground">
+              取引条件
+            </div>
+            <div className="border border-foreground/40 divide-y divide-foreground/30 text-[11.5px]">
+              <div className="grid grid-cols-[72px_1fr]">
+                <div className="px-2.5 py-1.5 bg-muted/40 border-r border-foreground/30">
+                  納期
+                </div>
+                <div className="px-2.5 py-1.5">{QUOTE_TERMS.delivery}</div>
+              </div>
+              <div className="grid grid-cols-[72px_1fr]">
+                <div className="px-2.5 py-1.5 bg-muted/40 border-r border-foreground/30">
+                  支払条件
+                </div>
+                <div className="px-2.5 py-1.5">{QUOTE_TERMS.payment}</div>
+              </div>
+            </div>
           </div>
-          <div className="px-3 py-2 text-xs whitespace-pre-wrap min-h-[60px] leading-relaxed">
-            {quote.notes ?? ""}
+          <div className="space-y-1.5">
+            <div className="text-[10px] tracking-[0.3em] text-muted-foreground">
+              備考
+            </div>
+            <div className="w-full border border-foreground/40 px-2.5 py-1.5 text-[11.5px] leading-relaxed whitespace-pre-wrap min-h-[64px]">
+              {quote.notes ?? ""}
+            </div>
           </div>
+        </div>
+
+        {/* Footer credit line */}
+        <div className="mt-5 pt-2 border-t border-border text-center text-[10px] text-muted-foreground tracking-widest">
+          {COMPANY_INFO.name}　|　{COMPANY_INFO.tel}
         </div>
       </div>
 

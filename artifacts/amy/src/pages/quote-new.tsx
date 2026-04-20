@@ -9,7 +9,6 @@ import {
   type LineItem,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -19,14 +18,13 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
-import { ArrowLeft, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Plus } from "lucide-react";
 import { apiErrorMessage } from "@/lib/api-error";
 import { COMPANY_INFO, QUOTE_TERMS } from "@/lib/company-info";
 import { formatCurrency } from "@/lib/format";
-
 import { UNIT_OPTIONS } from "@/lib/units";
 
-const ROWS = 16;
+const ROWS = 8;
 
 function AutoGrowTextarea({
   value,
@@ -103,14 +101,12 @@ export default function QuoteNewPage() {
     [projectsQ.data, projectId],
   );
 
-  // Auto-fill subject when project selected (only if user hasn't typed manually)
   useEffect(() => {
     if (selectedProject && !subjectTouched.current) {
       setSubject(selectedProject.name);
     }
   }, [selectedProject]);
 
-  // Selecting a project always forces the customer to match that project
   useEffect(() => {
     if (selectedProject && selectedProject.customerId !== customerId) {
       setCustomerId(selectedProject.customerId);
@@ -118,7 +114,6 @@ export default function QuoteNewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProject?.id]);
 
-  // If user changes the customer to one that doesn't match the current project, clear the project
   useEffect(() => {
     if (
       selectedProject &&
@@ -146,11 +141,9 @@ export default function QuoteNewPage() {
   };
 
   const addRow = () => setRows([...rows, emptyItem()]);
-  const clearRow = (i: number) => updateRowAll(i, emptyItem());
-
-  const updateRowAll = (i: number, item: LineItem) => {
+  const clearRow = (i: number) => {
     const next = [...rows];
-    next[i] = item;
+    next[i] = emptyItem();
     setRows(next);
   };
 
@@ -195,20 +188,21 @@ export default function QuoteNewPage() {
     }
   };
 
-  const customerName = customerId
-    ? (customersQ.data ?? []).find((c) => c.id === customerId)?.name ?? ""
-    : "";
-
   const filteredProjects = (projectsQ.data ?? []).filter(
     (p) => !customerId || p.customerId === customerId,
   );
 
+  // Column template — description gets the widest space
+  const colTemplate =
+    "grid-cols-[36px_minmax(0,1fr)_60px_72px_104px_124px_28px]";
+
   return (
-    <div className="max-w-[1100px] mx-auto space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="quote-workbench -m-8 min-h-[calc(100vh-0px)] py-6 px-6">
+      {/* Top toolbar */}
+      <div className="max-w-[1040px] mx-auto flex items-center justify-between mb-4 print:hidden">
         <Link
           href="/quotes"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="w-4 h-4" />
           見積書一覧に戻る
@@ -227,28 +221,40 @@ export default function QuoteNewPage() {
             className="gap-2"
           >
             <Save className="w-4 h-4" />
-            作成する
+            作成して保存
           </Button>
         </div>
       </div>
 
+      {/* The paper */}
       <form
         id="quote-form"
         onSubmit={submit}
-        className="bg-white border border-border px-10 py-8 space-y-5 text-[13px] text-foreground rounded shadow-sm"
+        className="quote-paper max-w-[1040px] mx-auto px-12 py-8 text-[14px] text-foreground"
       >
-        <h1 className="text-center text-3xl font-bold tracking-[0.6em] pb-1 mb-2">
-          御 見 積 書
+        {/* Decorative top accent */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className="h-[3px] flex-1 bg-primary" />
+          <div className="text-[10px] tracking-[0.4em] text-primary font-semibold">
+            QUOTATION
+          </div>
+          <div className="h-[3px] flex-1 bg-primary" />
+        </div>
+
+        {/* Title */}
+        <h1 className="quote-title text-center text-[32px] text-foreground mb-5">
+          御&nbsp;&nbsp;見&nbsp;&nbsp;積&nbsp;&nbsp;書
         </h1>
 
-        {/* Top: customer (left) + meta (right) */}
-        <div className="grid grid-cols-[1.4fr_1fr] gap-8 items-start">
-          <div className="space-y-3">
+        {/* Customer + Meta */}
+        <div className="grid grid-cols-[1.5fr_1fr] gap-8 mb-5">
+          {/* LEFT: Customer */}
+          <div className="space-y-3 min-w-0">
             <div className="flex items-end gap-3 border-b-2 border-foreground pb-1.5">
               <div className="flex-1 min-w-0">
                 <Select value={customerId} onValueChange={setCustomerId}>
-                  <SelectTrigger className="border-0 shadow-none p-0 h-9 text-xl font-semibold focus:ring-0 [&>svg]:opacity-30 hover:[&>svg]:opacity-100">
-                    <SelectValue placeholder="お客様を選択" />
+                  <SelectTrigger className="border-0 shadow-none p-0 h-9 text-[22px] quote-customer focus:ring-0 [&>svg]:opacity-30 hover:[&>svg]:opacity-100 truncate">
+                    <SelectValue placeholder="お客様を選択してください" />
                   </SelectTrigger>
                   <SelectContent>
                     {(customersQ.data ?? []).map((c) => (
@@ -259,79 +265,79 @@ export default function QuoteNewPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <span className="text-lg font-medium pb-0.5">御中</span>
+              <span className="quote-customer text-[18px] pb-0.5 shrink-0">御中</span>
             </div>
-            <div className="flex items-center gap-3 pl-1 text-sm">
+            <div className="flex items-center gap-3 text-[13px]">
               <span className="text-muted-foreground w-14 shrink-0">ご担当</span>
               <input
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
-                placeholder="—"
-                className="flex-1 bg-transparent outline-none border-b border-border focus:border-foreground py-0.5 placeholder:text-muted-foreground/30"
+                placeholder="（任意）"
+                className="flex-1 min-w-0 bg-transparent outline-none border-b border-border focus:border-foreground py-0.5 placeholder:text-muted-foreground/30"
               />
-              <span className="text-sm">様</span>
+              <span className="text-sm shrink-0">様</span>
             </div>
           </div>
-          <div className="text-xs space-y-0">
-            <div className="grid grid-cols-[80px_1fr] border border-foreground">
-              <div className="px-2 py-1.5 bg-muted/40 border-r border-foreground">
+
+          {/* RIGHT: Quote meta */}
+          <div className="text-[12px] border border-foreground self-start">
+            <div className="grid grid-cols-[78px_1fr] border-b border-foreground">
+              <div className="px-2.5 py-1.5 bg-muted/50 border-r border-foreground">
                 見積No.
               </div>
               <input
                 value={quoteNumber}
                 onChange={(e) => setQuoteNumber(e.target.value)}
-                className="px-2 py-1.5 text-right tabular-nums bg-transparent outline-none focus:bg-accent/10"
+                className="px-2.5 py-1.5 text-right tabular-nums bg-transparent outline-none focus:bg-accent/10 min-w-0"
               />
             </div>
-            <div className="grid grid-cols-[80px_1fr] border border-foreground border-t-0">
-              <div className="px-2 py-1.5 bg-muted/40 border-r border-foreground">
+            <div className="grid grid-cols-[78px_1fr] border-b border-foreground">
+              <div className="px-2.5 py-1.5 bg-muted/50 border-r border-foreground">
                 見積日
               </div>
               <input
                 type="date"
                 value={issueDate}
                 onChange={(e) => setIssueDate(e.target.value)}
-                className="px-2 py-1.5 text-right tabular-nums bg-transparent outline-none focus:bg-accent/10"
+                className="px-2.5 py-1.5 text-right tabular-nums bg-transparent outline-none focus:bg-accent/10 min-w-0"
               />
             </div>
-            <div className="grid grid-cols-[80px_1fr] border border-foreground border-t-0">
-              <div className="px-2 py-1.5 bg-muted/40 border-r border-foreground">
+            <div className="grid grid-cols-[78px_1fr]">
+              <div className="px-2.5 py-1.5 bg-muted/50 border-r border-foreground">
                 有効期限
               </div>
               <input
                 type="date"
                 value={validUntil}
                 onChange={(e) => setValidUntil(e.target.value)}
-                className="px-2 py-1.5 text-right tabular-nums bg-transparent outline-none focus:bg-accent/10"
+                className="px-2.5 py-1.5 text-right tabular-nums bg-transparent outline-none focus:bg-accent/10 min-w-0"
               />
             </div>
           </div>
         </div>
 
-        {/* 案件 + 件名 + 自社情報 */}
-        <div className="grid grid-cols-[1.4fr_1fr] gap-8 items-start">
-          <div className="space-y-2">
-            <div className="grid grid-cols-[64px_1fr] text-sm border border-foreground">
-              <div className="px-2 py-1.5 bg-muted/40 border-r border-foreground flex items-center">
+        {/* 件名 + 自社情報 */}
+        <div className="grid grid-cols-[1.5fr_1fr] gap-8 mb-5">
+          <div className="space-y-3 min-w-0">
+            <div>
+              <div className="text-[10px] tracking-[0.3em] text-muted-foreground mb-1">
                 案件
               </div>
-              <div>
-                <Select value={projectId} onValueChange={setProjectId}>
-                  <SelectTrigger className="border-0 shadow-none h-9 focus:ring-0 px-2 rounded-none">
-                    <SelectValue placeholder="案件を選択" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredProjects.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select value={projectId} onValueChange={setProjectId}>
+                <SelectTrigger className="w-full border-0 border-b border-border shadow-none rounded-none px-1 py-1.5 h-auto text-[14px] focus:ring-0 [&>svg]:opacity-30 hover:[&>svg]:opacity-100 hover:border-foreground">
+                  <SelectValue placeholder="案件を選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredProjects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="grid grid-cols-[64px_1fr] text-sm border border-foreground">
-              <div className="px-2 py-1.5 bg-muted/40 border-r border-foreground font-semibold flex items-center">
+            <div className="border-l-4 border-primary pl-3 py-0.5">
+              <div className="text-[10px] tracking-[0.3em] text-muted-foreground mb-0.5">
                 件名
               </div>
               <input
@@ -340,69 +346,86 @@ export default function QuoteNewPage() {
                   subjectTouched.current = true;
                   setSubject(e.target.value);
                 }}
-                placeholder="—"
-                className="px-2 py-1.5 bg-transparent outline-none focus:bg-accent/10 placeholder:text-muted-foreground/30"
+                placeholder="工事名・件名を入力"
+                className="w-full text-[16px] font-semibold bg-transparent outline-none focus:bg-accent/10 placeholder:text-muted-foreground/30 placeholder:font-normal"
               />
             </div>
-            <p className="text-sm leading-relaxed pt-1 pl-1">
+            <p className="text-[12px] leading-relaxed text-muted-foreground">
               下記のとおり、御見積もり申し上げます。
             </p>
           </div>
-          <div className="text-xs leading-relaxed border-l-2 border-foreground/80 pl-4">
-            <div className="font-semibold text-sm mb-0.5">{COMPANY_INFO.name}</div>
-            <div className="text-muted-foreground">{COMPANY_INFO.postalCode}</div>
-            <div className="text-muted-foreground">{COMPANY_INFO.address}</div>
-            <div className="mt-1.5">TEL: {COMPANY_INFO.tel}</div>
-            <div>FAX: {COMPANY_INFO.fax}</div>
-            <div>E-Mail: {COMPANY_INFO.email}</div>
-            <div className="mt-0.5">担当: {COMPANY_INFO.contact}</div>
+
+          {/* Company info card */}
+          <div className="bg-muted/30 border border-border px-4 py-3 text-[11.5px] leading-[1.6] min-w-0">
+            <div className="quote-customer text-[14px] mb-0.5">
+              {COMPANY_INFO.name}
+            </div>
+            <div className="text-muted-foreground truncate">
+              {COMPANY_INFO.postalCode} {COMPANY_INFO.address}
+            </div>
+            <div className="mt-1 flex flex-wrap gap-x-3">
+              <span>
+                <span className="text-muted-foreground mr-1">TEL</span>
+                {COMPANY_INFO.tel}
+              </span>
+              <span>
+                <span className="text-muted-foreground mr-1">FAX</span>
+                {COMPANY_INFO.fax}
+              </span>
+            </div>
+            <div className="truncate">
+              <span className="text-muted-foreground mr-1">E</span>
+              {COMPANY_INFO.email}
+            </div>
+            <div className="mt-0.5 flex items-center justify-between gap-2">
+              <span className="truncate">
+                <span className="text-muted-foreground mr-1">担当</span>
+                {COMPANY_INFO.contact}
+              </span>
+              <span className="w-9 h-9 border-2 border-destructive/40 rounded-full flex items-center justify-center text-destructive/50 text-[10px] font-serif shrink-0">
+                印
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Terms row */}
-        <div className="grid grid-cols-2 text-xs">
-          <div className="border border-foreground px-3 py-1.5">
-            <span className="text-muted-foreground mr-2">納期</span>
-            {QUOTE_TERMS.delivery}
-          </div>
-          <div className="border border-foreground border-l-0 px-3 py-1.5">
-            <span className="text-muted-foreground mr-2">支払条件</span>
-            {QUOTE_TERMS.payment}
-          </div>
-        </div>
-
-        {/* 合計金額 */}
-        <div className="flex items-stretch border-2 border-foreground">
-          <div className="w-36 px-4 py-3 bg-muted/40 font-semibold border-r-2 border-foreground flex items-center text-sm tracking-widest">
+        {/* 合計金額 — hero */}
+        <div className="flex items-stretch border-2 border-primary mb-4 bg-primary/[0.02]">
+          <div className="w-36 px-4 py-2.5 bg-primary text-primary-foreground font-semibold border-r-2 border-primary flex items-center justify-center text-[13px] tracking-[0.25em]">
             合 計 金 額
           </div>
-          <div className="flex-1 px-5 py-3 flex items-center justify-end gap-3">
-            <span className="text-3xl font-bold tabular-nums">
-              {formatCurrency(totals.total)}
+          <div className="flex-1 px-5 py-2.5 flex items-baseline justify-end gap-2">
+            <span className="text-muted-foreground text-sm">¥</span>
+            <span className="text-[28px] font-bold tabular-nums leading-none">
+              {totals.total.toLocaleString()}
             </span>
-            <span className="text-xs text-muted-foreground">(税込)</span>
+            <span className="text-[11px] text-muted-foreground">
+              （税込）
+            </span>
           </div>
         </div>
 
         {/* Items table */}
-        <div className="border border-foreground">
-          <div className="grid grid-cols-[36px_1fr_56px_70px_100px_120px_28px] bg-muted/40 text-xs font-semibold">
-            <div className="px-2 py-1.5 text-center border-r border-foreground">
+        <div className="border-2 border-foreground mb-2">
+          <div
+            className={`grid ${colTemplate} bg-primary text-primary-foreground text-[11.5px] font-semibold tracking-wider`}
+          >
+            <div className="px-1.5 py-1.5 text-center border-r border-primary-foreground/20">
               No.
             </div>
-            <div className="px-2 py-1.5 border-r border-foreground">
-              摘要 (工事内容)
+            <div className="px-3 py-1.5 border-r border-primary-foreground/20">
+              工事項目・摘要
             </div>
-            <div className="px-2 py-1.5 border-r border-foreground text-center">
+            <div className="px-1.5 py-1.5 border-r border-primary-foreground/20 text-center">
               単位
             </div>
-            <div className="px-2 py-1.5 border-r border-foreground text-right">
+            <div className="px-1.5 py-1.5 border-r border-primary-foreground/20 text-right">
               数量
             </div>
-            <div className="px-2 py-1.5 border-r border-foreground text-right">
+            <div className="px-2 py-1.5 border-r border-primary-foreground/20 text-right">
               単価
             </div>
-            <div className="px-2 py-1.5 text-right border-r border-foreground">
+            <div className="px-2 py-1.5 text-right border-r border-primary-foreground/20">
               金額
             </div>
             <div></div>
@@ -418,9 +441,9 @@ export default function QuoteNewPage() {
             return (
               <div
                 key={i}
-                className="grid grid-cols-[36px_1fr_64px_70px_100px_120px_28px] border-t border-foreground text-[13px] hover:bg-accent/5 items-stretch"
+                className={`grid ${colTemplate} border-t border-foreground/30 text-[13px] hover:bg-accent/5 items-stretch`}
               >
-                <div className="px-2 py-2 text-center text-muted-foreground tabular-nums border-r border-foreground">
+                <div className="px-1.5 py-1.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[12px] flex items-start justify-center min-h-[34px]">
                   {i + 1}
                 </div>
                 <AutoGrowTextarea
@@ -436,15 +459,19 @@ export default function QuoteNewPage() {
                       updateRow(i, "description", row.description + "\n");
                     }
                   }}
-                  placeholder={isFirstEmpty ? "ここに工事内容を入力" : ""}
-                  className="block w-full px-3 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground resize-none leading-snug placeholder:text-muted-foreground/40 overflow-hidden"
+                  placeholder={
+                    isFirstEmpty
+                      ? "例: クロス貼り工事 (リビング・寝室)"
+                      : ""
+                  }
+                  className="block w-full px-3 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground/30 resize-none leading-snug placeholder:text-muted-foreground/30 overflow-hidden min-h-[34px]"
                 />
                 <Select
                   value={row.unit ?? ""}
                   onValueChange={(v) => updateRow(i, "unit", v)}
                 >
-                  <SelectTrigger className="border-0 border-r border-foreground rounded-none shadow-none h-auto py-2 px-2 text-center justify-center focus:ring-0 focus:bg-accent/10 [&>svg]:opacity-30 hover:[&>svg]:opacity-70 self-start min-h-[36px]">
-                    <SelectValue placeholder="" />
+                  <SelectTrigger className="border-0 border-r border-foreground/30 rounded-none shadow-none h-auto py-1.5 px-1 text-center justify-center focus:ring-0 focus:bg-accent/10 [&>svg]:hidden self-start min-h-[34px] text-[12px]">
+                    <SelectValue placeholder="—" />
                   </SelectTrigger>
                   <SelectContent>
                     {UNIT_OPTIONS.map((u) => (
@@ -463,7 +490,7 @@ export default function QuoteNewPage() {
                     const n = e.target.valueAsNumber;
                     updateRow(i, "quantity", Number.isFinite(n) ? n : 0);
                   }}
-                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-right tabular-nums min-w-0 self-start min-h-[36px]"
+                  className="px-1.5 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground/30 text-right tabular-nums min-w-0 self-start min-h-[34px] text-[13px]"
                 />
                 <input
                   type="number"
@@ -474,15 +501,15 @@ export default function QuoteNewPage() {
                     const n = e.target.valueAsNumber;
                     updateRow(i, "unitPrice", Number.isFinite(n) ? n : 0);
                   }}
-                  className="px-2 py-2 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground text-right tabular-nums min-w-0 self-start min-h-[36px]"
+                  className="px-2 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground/30 text-right tabular-nums min-w-0 self-start min-h-[34px] text-[13px]"
                 />
-                <div className="px-3 py-2 text-right tabular-nums border-r border-foreground self-start min-h-[36px]">
+                <div className="px-2 py-1.5 text-right tabular-nums border-r border-foreground/30 self-start min-h-[34px] font-medium">
                   {amount > 0 ? formatCurrency(amount) : ""}
                 </div>
                 <button
                   type="button"
                   onClick={() => clearRow(i)}
-                  className="text-muted-foreground/40 hover:text-destructive flex items-start justify-center pt-2.5"
+                  className="text-muted-foreground/20 hover:text-destructive flex items-start justify-center pt-2"
                   aria-label="行をクリア"
                   title="行をクリア"
                 >
@@ -491,71 +518,103 @@ export default function QuoteNewPage() {
               </div>
             );
           })}
-          {/* 小計 / 消費税 / 合計 footer rows */}
-          <div className="grid grid-cols-[36px_1fr_56px_70px_100px_120px_28px] border-t border-foreground text-xs">
+
+          {/* Totals footer */}
+          <div
+            className={`grid ${colTemplate} border-t-2 border-foreground text-[12px] bg-muted/30`}
+          >
             <div className="col-span-4"></div>
-            <div className="px-2 py-1 bg-muted/40 border-l border-foreground text-right font-semibold">
+            <div className="px-2 py-1.5 border-l border-foreground/30 text-right font-semibold">
               小計
             </div>
-            <div className="px-2 py-1 border-l border-foreground text-right tabular-nums">
+            <div className="px-2 py-1.5 border-l border-foreground/30 text-right tabular-nums">
               {formatCurrency(totals.subtotal)}
             </div>
             <div></div>
           </div>
-          <div className="grid grid-cols-[36px_1fr_56px_70px_100px_120px_28px] border-t border-foreground text-xs">
+          <div
+            className={`grid ${colTemplate} border-t border-foreground/30 text-[12px] bg-muted/30`}
+          >
             <div className="col-span-4"></div>
-            <div className="px-2 py-1 bg-muted/40 border-l border-foreground text-right font-semibold">
+            <div className="px-2 py-1.5 border-l border-foreground/30 text-right font-semibold">
               消費税
             </div>
-            <div className="px-2 py-1 border-l border-foreground text-right tabular-nums">
+            <div className="px-2 py-1.5 border-l border-foreground/30 text-right tabular-nums">
               {formatCurrency(totals.tax)}
             </div>
             <div></div>
           </div>
-          <div className="grid grid-cols-[36px_1fr_56px_70px_100px_120px_28px] border-t border-foreground text-xs">
+          <div
+            className={`grid ${colTemplate} border-t border-foreground/30 text-[13px] bg-primary text-primary-foreground`}
+          >
             <div className="col-span-4"></div>
-            <div className="px-2 py-1 bg-muted/40 border-l border-foreground text-right font-bold">
+            <div className="px-2 py-2 border-l border-primary-foreground/20 text-right font-bold">
               合計
             </div>
-            <div className="px-2 py-1 border-l border-foreground text-right tabular-nums font-bold">
+            <div className="px-2 py-2 border-l border-primary-foreground/20 text-right tabular-nums font-bold">
               {formatCurrency(totals.total)}
             </div>
             <div></div>
           </div>
         </div>
 
-        <div className="flex items-center justify-between print:hidden">
+        <div className="flex items-center justify-between mb-5 print:hidden">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={addRow}
-            className="gap-2 text-muted-foreground"
+            className="gap-1.5 text-muted-foreground hover:text-foreground"
           >
-            + 行を追加
+            <Plus className="w-3.5 h-3.5" />
+            行を追加
           </Button>
-          <span className="text-xs text-muted-foreground">
-            {rows.length} 行
-            {customerName && <span className="ml-3">{customerName} 御中</span>}
-          </span>
+          <span className="text-xs text-muted-foreground">{rows.length} 行</span>
         </div>
 
-        {/* 備考 */}
-        <div className="grid grid-cols-[64px_1fr] border border-foreground">
-          <div className="px-2 py-2 bg-muted/40 border-r border-foreground text-xs flex items-start">
-            備考
+        {/* Terms + Notes */}
+        <div className="grid grid-cols-2 gap-5 mb-2">
+          <div className="space-y-1.5">
+            <div className="text-[10px] tracking-[0.3em] text-muted-foreground">
+              取引条件
+            </div>
+            <div className="border border-foreground/40 divide-y divide-foreground/30 text-[11.5px]">
+              <div className="grid grid-cols-[72px_1fr]">
+                <div className="px-2.5 py-1.5 bg-muted/40 border-r border-foreground/30">
+                  納期
+                </div>
+                <div className="px-2.5 py-1.5">{QUOTE_TERMS.delivery}</div>
+              </div>
+              <div className="grid grid-cols-[72px_1fr]">
+                <div className="px-2.5 py-1.5 bg-muted/40 border-r border-foreground/30">
+                  支払条件
+                </div>
+                <div className="px-2.5 py-1.5">{QUOTE_TERMS.payment}</div>
+              </div>
+            </div>
           </div>
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            placeholder=""
-            className="border-0 rounded-none focus-visible:ring-0 text-xs resize-none"
-          />
+          <div className="space-y-1.5">
+            <div className="text-[10px] tracking-[0.3em] text-muted-foreground">
+              備考
+            </div>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              placeholder="お客様への補足事項などを記入"
+              className="w-full border border-foreground/40 px-2.5 py-1.5 text-[11.5px] resize-none focus:outline-none focus:bg-accent/10 placeholder:text-muted-foreground/30 leading-relaxed"
+            />
+          </div>
+        </div>
+
+        {/* Footer credit line */}
+        <div className="mt-5 pt-2 border-t border-border text-center text-[10px] text-muted-foreground tracking-widest">
+          {COMPANY_INFO.name}　|　{COMPANY_INFO.tel}
         </div>
       </form>
 
-      <div className="flex justify-end gap-2 pb-8">
+      {/* Bottom action bar */}
+      <div className="max-w-[1040px] mx-auto flex justify-end gap-2 mt-4 pb-4 print:hidden">
         <Link href="/quotes">
           <Button type="button" variant="outline">
             キャンセル
@@ -568,7 +627,7 @@ export default function QuoteNewPage() {
           className="gap-2"
         >
           <Save className="w-4 h-4" />
-          作成する
+          作成して保存
         </Button>
       </div>
     </div>
