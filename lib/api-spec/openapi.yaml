@@ -19,6 +19,7 @@ tags:
   - name: progress
   - name: vendorInvoices
   - name: Storage
+  - name: ocr
 paths:
   /healthz:
     get:
@@ -880,6 +881,23 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Receipt" }
 
+  /ocr/extract:
+    post:
+      operationId: extractOcr
+      tags: [ocr]
+      summary: Extract structured fields from an uploaded receipt or vendor invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExtractOcrBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExtractOcrResponse" }
+
   /storage/uploads/request-url:
     post:
       operationId: requestUploadUrl
@@ -1121,6 +1139,29 @@ components:
       properties:
         projectId: { type: string }
 
+    ExtractOcrBody:
+      type: object
+      required: [objectPath, kind]
+      properties:
+        objectPath: { type: string, description: "/objects/uploads/uuid path" }
+        contentType: { type: string, nullable: true }
+        kind:
+          type: string
+          enum: [receipt, vendor_invoice]
+
+    ExtractOcrResponse:
+      type: object
+      required: [vendor, amount, date, confidence]
+      properties:
+        vendor: { type: string, description: "店舗名 / 取引先 / 職人名" }
+        amount: { type: number, description: "合計金額（税込）" }
+        date: { type: string, description: "領収日 / 請求日 (YYYY-MM-DD)" }
+        unitNumber: { type: string, nullable: true, description: "号室（記載があれば）" }
+        notes: { type: string, nullable: true, description: "摘要・補足" }
+        confidence:
+          type: string
+          enum: [high, medium, low]
+
     RequestUploadUrlBody:
       type: object
       required: [name, size, contentType]
@@ -1204,6 +1245,7 @@ components:
         unit: { type: string, nullable: true }
         quantity: { type: number }
         unitPrice: { type: number }
+        notes: { type: string, nullable: true, description: "備考" }
 
     Quote:
       type: object

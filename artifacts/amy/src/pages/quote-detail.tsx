@@ -360,7 +360,7 @@ export default function QuoteDetailPage() {
 
         {/* Items table */}
         <div className="border-2 border-foreground mb-4">
-          <div className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px] bg-primary text-primary-foreground text-[11.5px] font-semibold tracking-wider">
+          <div className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px_minmax(0,1fr)] bg-primary text-primary-foreground text-[11.5px] font-semibold tracking-wider">
             <div className="px-1.5 py-1.5 text-center border-r border-primary-foreground/20">
               No.
             </div>
@@ -376,7 +376,10 @@ export default function QuoteDetailPage() {
             <div className="px-2 py-1.5 border-r border-primary-foreground/20 text-right">
               単価
             </div>
-            <div className="px-2 py-1.5 text-right">金額</div>
+            <div className="px-2 py-1.5 text-right border-r border-primary-foreground/20">
+              金額
+            </div>
+            <div className="px-3 py-1.5">備考</div>
           </div>
           {Array.from({ length: displayCount }).map((_, i) => {
             const item = items[i];
@@ -384,7 +387,7 @@ export default function QuoteDetailPage() {
             return (
               <div
                 key={i}
-                className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px] border-t border-foreground/30 text-[13px] min-h-[34px]"
+                className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px_minmax(0,1fr)] border-t border-foreground/30 text-[13px] min-h-[34px]"
               >
                 <div className="px-1.5 py-1.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[12px]">
                   {item ? i + 1 : ""}
@@ -401,14 +404,17 @@ export default function QuoteDetailPage() {
                 <div className="px-2 py-1.5 text-right tabular-nums border-r border-foreground/30">
                   {item ? formatCurrency(item.unitPrice) : ""}
                 </div>
-                <div className="px-2 py-1.5 text-right tabular-nums font-medium">
+                <div className="px-2 py-1.5 text-right tabular-nums font-medium border-r border-foreground/30">
                   {item ? formatCurrency(amount) : ""}
+                </div>
+                <div className="px-3 py-1.5 whitespace-pre-wrap leading-snug text-[12.5px] text-muted-foreground">
+                  {item?.notes ?? ""}
                 </div>
               </div>
             );
           })}
           {/* totals rows */}
-          <div className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px] border-t-2 border-foreground text-[12px] bg-muted/30">
+          <div className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px_minmax(0,1fr)] border-t-2 border-foreground text-[12px] bg-muted/30">
             <div className="col-span-4"></div>
             <div className="px-2 py-1.5 border-l border-foreground/30 text-right font-semibold">
               小計
@@ -416,8 +422,9 @@ export default function QuoteDetailPage() {
             <div className="px-2 py-1.5 border-l border-foreground/30 text-right tabular-nums">
               {formatCurrency(quote.subtotal)}
             </div>
+            <div className="border-l border-foreground/30"></div>
           </div>
-          <div className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px] border-t border-foreground/30 text-[12px] bg-muted/30">
+          <div className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px_minmax(0,1fr)] border-t border-foreground/30 text-[12px] bg-muted/30">
             <div className="col-span-4"></div>
             <div className="px-2 py-1.5 border-l border-foreground/30 text-right font-semibold">
               消費税
@@ -425,8 +432,9 @@ export default function QuoteDetailPage() {
             <div className="px-2 py-1.5 border-l border-foreground/30 text-right tabular-nums">
               {formatCurrency(quote.tax)}
             </div>
+            <div className="border-l border-foreground/30"></div>
           </div>
-          <div className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px] border-t border-foreground/30 text-[13px] bg-primary text-primary-foreground">
+          <div className="grid grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px_minmax(0,1fr)] border-t border-foreground/30 text-[13px] bg-primary text-primary-foreground">
             <div className="col-span-4"></div>
             <div className="px-2 py-2 border-l border-primary-foreground/20 text-right font-bold">
               合計
@@ -434,6 +442,7 @@ export default function QuoteDetailPage() {
             <div className="px-2 py-2 border-l border-primary-foreground/20 text-right tabular-nums font-bold">
               {formatCurrency(quote.total)}
             </div>
+            <div className="border-l border-primary-foreground/20"></div>
           </div>
         </div>
 

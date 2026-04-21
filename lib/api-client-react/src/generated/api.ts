@@ -34,6 +34,8 @@ import type {
   CreateVendorInvoiceBody,
   Customer,
   DashboardSummary,
+  ExtractOcrBody,
+  ExtractOcrResponse,
   HealthStatus,
   ImportQuoteToLedgerBody,
   Invoice,
@@ -4382,6 +4384,92 @@ export const useMatchReceipt = <
   TContext
 > => {
   return useMutation(getMatchReceiptMutationOptions(options));
+};
+
+/**
+ * @summary Extract structured fields from an uploaded receipt or vendor invoice
+ */
+export const getExtractOcrUrl = () => {
+  return `/api/ocr/extract`;
+};
+
+export const extractOcr = async (
+  extractOcrBody: ExtractOcrBody,
+  options?: RequestInit,
+): Promise<ExtractOcrResponse> => {
+  return customFetch<ExtractOcrResponse>(getExtractOcrUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(extractOcrBody),
+  });
+};
+
+export const getExtractOcrMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof extractOcr>>,
+    TError,
+    { data: BodyType<ExtractOcrBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof extractOcr>>,
+  TError,
+  { data: BodyType<ExtractOcrBody> },
+  TContext
+> => {
+  const mutationKey = ["extractOcr"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof extractOcr>>,
+    { data: BodyType<ExtractOcrBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return extractOcr(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ExtractOcrMutationResult = NonNullable<
+  Awaited<ReturnType<typeof extractOcr>>
+>;
+export type ExtractOcrMutationBody = BodyType<ExtractOcrBody>;
+export type ExtractOcrMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Extract structured fields from an uploaded receipt or vendor invoice
+ */
+export const useExtractOcr = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof extractOcr>>,
+    TError,
+    { data: BodyType<ExtractOcrBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof extractOcr>>,
+  TError,
+  { data: BodyType<ExtractOcrBody> },
+  TContext
+> => {
+  return useMutation(getExtractOcrMutationOptions(options));
 };
 
 /**

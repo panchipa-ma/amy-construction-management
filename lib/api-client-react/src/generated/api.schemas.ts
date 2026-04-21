@@ -223,6 +223,44 @@ export interface MatchReceiptBody {
   projectId: string;
 }
 
+export type ExtractOcrBodyKind =
+  (typeof ExtractOcrBodyKind)[keyof typeof ExtractOcrBodyKind];
+
+export const ExtractOcrBodyKind = {
+  receipt: "receipt",
+  vendor_invoice: "vendor_invoice",
+} as const;
+
+export interface ExtractOcrBody {
+  /** /objects/uploads/uuid path */
+  objectPath: string;
+  contentType?: string | null;
+  kind: ExtractOcrBodyKind;
+}
+
+export type ExtractOcrResponseConfidence =
+  (typeof ExtractOcrResponseConfidence)[keyof typeof ExtractOcrResponseConfidence];
+
+export const ExtractOcrResponseConfidence = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+} as const;
+
+export interface ExtractOcrResponse {
+  /** 店舗名 / 取引先 / 職人名 */
+  vendor: string;
+  /** 合計金額（税込） */
+  amount: number;
+  /** 領収日 / 請求日 (YYYY-MM-DD) */
+  date: string;
+  /** 号室（記載があれば） */
+  unitNumber?: string | null;
+  /** 摘要・補足 */
+  notes?: string | null;
+  confidence: ExtractOcrResponseConfidence;
+}
+
 export interface RequestUploadUrlBody {
   /** @minLength 1 */
   name: string;
@@ -320,6 +358,8 @@ export interface LineItem {
   unit?: string | null;
   quantity: number;
   unitPrice: number;
+  /** 備考 */
+  notes?: string | null;
 }
 
 export interface Quote {

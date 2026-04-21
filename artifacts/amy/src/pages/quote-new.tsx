@@ -72,7 +72,7 @@ function searchParamProjectId(): string {
 }
 
 function emptyItem(): LineItem {
-  return { description: "", unit: "", quantity: 0, unitPrice: 0 };
+  return { description: "", unit: "", quantity: 0, unitPrice: 0, notes: "" };
 }
 
 export default function QuoteNewPage() {
@@ -205,7 +205,10 @@ export default function QuoteNewPage() {
     }
     const items = rows.filter(
       (it) =>
-        it.description.trim() !== "" || it.quantity > 0 || it.unitPrice > 0,
+        it.description.trim() !== "" ||
+        it.quantity > 0 ||
+        it.unitPrice > 0 ||
+        (it.notes ?? "").trim() !== "",
     );
     if (items.length === 0) {
       toast({ title: "明細を1行以上入力してください", variant: "destructive" });
@@ -241,7 +244,7 @@ export default function QuoteNewPage() {
 
   // Column template — description gets the widest space
   const colTemplate =
-    "grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px_24px]";
+    "grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px_minmax(0,1fr)_24px]";
 
   return (
     <div className="quote-workbench -m-8 min-h-[calc(100vh-0px)] py-6 px-6">
@@ -475,6 +478,9 @@ export default function QuoteNewPage() {
             <div className="px-2 py-1.5 text-right border-r border-primary-foreground/20">
               金額
             </div>
+            <div className="px-3 py-1.5 border-r border-primary-foreground/20">
+              備考
+            </div>
             <div></div>
           </div>
           {rows.map((row, i) => {
@@ -550,6 +556,14 @@ export default function QuoteNewPage() {
                 <div className="px-2 py-1.5 text-right tabular-nums border-r border-foreground/30 self-start min-h-[34px] font-medium">
                   {amount > 0 ? formatCurrency(amount) : ""}
                 </div>
+                <AutoGrowTextarea
+                  value={row.notes ?? ""}
+                  onChange={(v) => updateRow(i, "notes", v)}
+                  onKeyDown={(e) => handleEnterDown(e, i, "notes")}
+                  className="block w-full px-3 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground/30 resize-none leading-snug placeholder:text-muted-foreground/30 overflow-hidden min-h-[34px] text-[12.5px]"
+                  dataCell={`r${i}-cnotes`}
+                  ariaLabel={`備考 ${i + 1}行目`}
+                />
                 <button
                   type="button"
                   onClick={() => clearRow(i)}
@@ -574,6 +588,7 @@ export default function QuoteNewPage() {
             <div className="px-2 py-1.5 border-l border-foreground/30 text-right tabular-nums">
               {formatCurrency(totals.subtotal)}
             </div>
+            <div className="border-l border-foreground/30"></div>
             <div></div>
           </div>
           <div
@@ -586,6 +601,7 @@ export default function QuoteNewPage() {
             <div className="px-2 py-1.5 border-l border-foreground/30 text-right tabular-nums">
               {formatCurrency(totals.tax)}
             </div>
+            <div className="border-l border-foreground/30"></div>
             <div></div>
           </div>
           <div
@@ -598,6 +614,7 @@ export default function QuoteNewPage() {
             <div className="px-2 py-2 border-l border-primary-foreground/20 text-right tabular-nums font-bold">
               {formatCurrency(totals.total)}
             </div>
+            <div className="border-l border-primary-foreground/20"></div>
             <div></div>
           </div>
         </div>

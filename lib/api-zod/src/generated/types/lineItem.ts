@@ -11,4 +11,6 @@ export interface LineItem {
   unit?: string | null;
   quantity: number;
   unitPrice: number;
+  /** 備考 */
+  notes?: string | null;
 }

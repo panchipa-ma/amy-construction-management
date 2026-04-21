@@ -460,6 +460,7 @@ export const ListQuotesResponseItem = zod.object({
       unit: zod.string().nullish(),
       quantity: zod.number(),
       unitPrice: zod.number(),
+      notes: zod.string().nullish().describe("備考"),
     }),
   ),
   subtotal: zod.number(),
@@ -483,6 +484,7 @@ export const CreateQuoteBody = zod.object({
       unit: zod.string().nullish(),
       quantity: zod.number(),
       unitPrice: zod.number(),
+      notes: zod.string().nullish().describe("備考"),
     }),
   ),
 });
@@ -505,6 +507,7 @@ export const CreateQuoteResponse = zod.object({
       unit: zod.string().nullish(),
       quantity: zod.number(),
       unitPrice: zod.number(),
+      notes: zod.string().nullish().describe("備考"),
     }),
   ),
   subtotal: zod.number(),
@@ -535,6 +538,7 @@ export const GetQuoteResponse = zod.object({
       unit: zod.string().nullish(),
       quantity: zod.number(),
       unitPrice: zod.number(),
+      notes: zod.string().nullish().describe("備考"),
     }),
   ),
   subtotal: zod.number(),
@@ -561,6 +565,7 @@ export const UpdateQuoteBody = zod.object({
       unit: zod.string().nullish(),
       quantity: zod.number(),
       unitPrice: zod.number(),
+      notes: zod.string().nullish().describe("備考"),
     }),
   ),
 });
@@ -583,6 +588,7 @@ export const UpdateQuoteResponse = zod.object({
       unit: zod.string().nullish(),
       quantity: zod.number(),
       unitPrice: zod.number(),
+      notes: zod.string().nullish().describe("備考"),
     }),
   ),
   subtotal: zod.number(),
@@ -613,6 +619,7 @@ export const ListInvoicesResponseItem = zod.object({
       unit: zod.string().nullish(),
       quantity: zod.number(),
       unitPrice: zod.number(),
+      notes: zod.string().nullish().describe("備考"),
     }),
   ),
   subtotal: zod.number(),
@@ -636,6 +643,7 @@ export const CreateInvoiceBody = zod.object({
       unit: zod.string().nullish(),
       quantity: zod.number(),
       unitPrice: zod.number(),
+      notes: zod.string().nullish().describe("備考"),
     }),
   ),
 });
@@ -654,6 +662,7 @@ export const CreateInvoiceResponse = zod.object({
       unit: zod.string().nullish(),
       quantity: zod.number(),
       unitPrice: zod.number(),
+      notes: zod.string().nullish().describe("備考"),
     }),
   ),
   subtotal: zod.number(),
@@ -681,6 +690,7 @@ export const GetInvoiceResponse = zod.object({
       unit: zod.string().nullish(),
       quantity: zod.number(),
       unitPrice: zod.number(),
+      notes: zod.string().nullish().describe("備考"),
     }),
   ),
   subtotal: zod.number(),
@@ -707,6 +717,7 @@ export const UpdateInvoiceBody = zod.object({
       unit: zod.string().nullish(),
       quantity: zod.number(),
       unitPrice: zod.number(),
+      notes: zod.string().nullish().describe("備考"),
     }),
   ),
 });
@@ -725,6 +736,7 @@ export const UpdateInvoiceResponse = zod.object({
       unit: zod.string().nullish(),
       quantity: zod.number(),
       unitPrice: zod.number(),
+      notes: zod.string().nullish().describe("備考"),
     }),
   ),
   subtotal: zod.number(),
@@ -1062,6 +1074,7 @@ export const ConvertQuoteToInvoiceResponse = zod.object({
       unit: zod.string().nullish(),
       quantity: zod.number(),
       unitPrice: zod.number(),
+      notes: zod.string().nullish().describe("備考"),
     }),
   ),
   subtotal: zod.number(),
@@ -1278,6 +1291,24 @@ export const MatchReceiptResponse = zod.object({
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
   uploadedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Extract structured fields from an uploaded receipt or vendor invoice
+ */
+export const ExtractOcrBody = zod.object({
+  objectPath: zod.string().describe("\/objects\/uploads\/uuid path"),
+  contentType: zod.string().nullish(),
+  kind: zod.enum(["receipt", "vendor_invoice"]),
+});
+
+export const ExtractOcrResponse = zod.object({
+  vendor: zod.string().describe("店舗名 \/ 取引先 \/ 職人名"),
+  amount: zod.number().describe("合計金額（税込）"),
+  date: zod.string().describe("領収日 \/ 請求日 (YYYY-MM-DD)"),
+  unitNumber: zod.string().nullish().describe("号室（記載があれば）"),
+  notes: zod.string().nullish().describe("摘要・補足"),
+  confidence: zod.enum(["high", "medium", "low"]),
 });
 
 /**
