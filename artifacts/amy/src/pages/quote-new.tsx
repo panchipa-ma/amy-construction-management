@@ -32,12 +32,16 @@ function AutoGrowTextarea({
   onKeyDown,
   placeholder,
   className,
+  dataCell,
+  ariaLabel,
 }: {
   value: string;
   onChange: (v: string) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   placeholder?: string;
   className?: string;
+  dataCell?: string;
+  ariaLabel?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
@@ -54,6 +58,8 @@ function AutoGrowTextarea({
       onKeyDown={onKeyDown}
       rows={1}
       placeholder={placeholder}
+      data-cell={dataCell}
+      aria-label={ariaLabel}
       className={className}
     />
   );
@@ -134,10 +140,20 @@ export default function QuoteNewPage() {
     return { subtotal, tax, total: subtotal + tax };
   }, [rows]);
 
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  const isCellEmpty = (v: any) => v === "" || v === 0 || v === null || v === undefined;
+
   const updateRow = (i: number, field: keyof LineItem, value: any) => {
-    const next = [...rows];
-    next[i] = { ...next[i], [field]: value };
-    setRows(next);
+    setRows((prev) => {
+      const next = [...prev];
+      next[i] = { ...next[i], [field]: value };
+      // Auto-append empty row when typing into the last row
+      if (i === prev.length - 1 && !isCellEmpty(value)) {
+        next.push(emptyItem());
+      }
+      return next;
+    });
   };
 
   const addRow = () => setRows([...rows, emptyItem()]);
@@ -145,6 +161,37 @@ export default function QuoteNewPage() {
     const next = [...rows];
     next[i] = emptyItem();
     setRows(next);
+  };
+
+  const focusCell = (row: number, col: string) => {
+    const el = tableRef.current?.querySelector<HTMLElement>(
+      `[data-cell="r${row}-c${col}"]`,
+    );
+    el?.focus();
+    if (el && (el as HTMLInputElement).select) {
+      (el as HTMLInputElement).select?.();
+    }
+  };
+
+  const handleEnterDown = (
+    e: React.KeyboardEvent,
+    currentRow: number,
+    col: string,
+  ) => {
+    if (
+      e.key !== "Enter" ||
+      e.shiftKey ||
+      e.altKey ||
+      (e.nativeEvent as any).isComposing
+    )
+      return;
+    e.preventDefault();
+    if (currentRow >= rows.length - 1) {
+      setRows((prev) => [...prev, emptyItem()]);
+      setTimeout(() => focusCell(currentRow + 1, col), 0);
+    } else {
+      focusCell(currentRow + 1, col);
+    }
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -406,7 +453,7 @@ export default function QuoteNewPage() {
         </div>
 
         {/* Items table */}
-        <div className="border-2 border-foreground mb-2">
+        <div ref={tableRef} className="border-2 border-foreground mb-2">
           <div
             className={`grid ${colTemplate} bg-primary text-primary-foreground text-[11.5px] font-semibold tracking-wider`}
           >
@@ -449,22 +496,15 @@ export default function QuoteNewPage() {
                 <AutoGrowTextarea
                   value={row.description}
                   onChange={(v) => updateRow(i, "description", v)}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" &&
-                      !e.shiftKey &&
-                      !e.nativeEvent.isComposing
-                    ) {
-                      e.preventDefault();
-                      updateRow(i, "description", row.description + "\n");
-                    }
-                  }}
+                  onKeyDown={(e) => handleEnterDown(e, i, "desc")}
                   placeholder={
                     isFirstEmpty
                       ? "例: クロス貼り工事 (リビング・寝室)"
                       : ""
                   }
                   className="block w-full px-3 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground/30 resize-none leading-snug placeholder:text-muted-foreground/30 overflow-hidden min-h-[34px]"
+                  dataCell={`r${i}-cdesc`}
+                  ariaLabel={`摘要 ${i + 1}行目`}
                 />
                 <Select
                   value={row.unit ?? ""}
@@ -490,7 +530,9 @@ export default function QuoteNewPage() {
                     const n = e.target.valueAsNumber;
                     updateRow(i, "quantity", Number.isFinite(n) ? n : 0);
                   }}
+                  onKeyDown={(e) => handleEnterDown(e, i, "qty")}
                   className="px-1.5 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground/30 text-right tabular-nums min-w-0 self-start min-h-[34px] text-[13px]"
+                  data-cell={`r${i}-cqty`}
                 />
                 <input
                   type="number"
@@ -501,7 +543,9 @@ export default function QuoteNewPage() {
                     const n = e.target.valueAsNumber;
                     updateRow(i, "unitPrice", Number.isFinite(n) ? n : 0);
                   }}
+                  onKeyDown={(e) => handleEnterDown(e, i, "price")}
                   className="px-2 py-1.5 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground/30 text-right tabular-nums min-w-0 self-start min-h-[34px] text-[13px]"
+                  data-cell={`r${i}-cprice`}
                 />
                 <div className="px-2 py-1.5 text-right tabular-nums border-r border-foreground/30 self-start min-h-[34px] font-medium">
                   {amount > 0 ? formatCurrency(amount) : ""}
