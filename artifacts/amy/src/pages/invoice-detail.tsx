@@ -177,12 +177,15 @@ export default function InvoiceDetailPage() {
                 <TableHead className="text-right w-20">数量</TableHead>
                 <TableHead className="text-right w-28">単価</TableHead>
                 <TableHead className="text-right w-32">金額</TableHead>
+                <TableHead>備考</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {inv.items.map((item, i) => (
                 <TableRow key={i}>
-                  <TableCell>{item.description}</TableCell>
+                  <TableCell className="whitespace-pre-wrap">
+                    {item.description}
+                  </TableCell>
                   <TableCell>{item.unit ?? ""}</TableCell>
                   <TableCell className="text-right tabular-nums">
                     {item.quantity}
@@ -192,6 +195,9 @@ export default function InvoiceDetailPage() {
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {formatCurrency(item.quantity * item.unitPrice)}
+                  </TableCell>
+                  <TableCell className="whitespace-pre-wrap text-sm text-muted-foreground">
+                    {item.notes ?? ""}
                   </TableCell>
                 </TableRow>
               ))}

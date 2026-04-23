@@ -7,6 +7,7 @@ import {
   useDeleteReceipt,
   useMatchReceipt,
   useRequestUploadUrl,
+  useExtractOcr,
   useListProjects,
   getListReceiptsQueryKey,
   getGetProjectLedgerQueryKey,
@@ -21,8 +22,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -56,33 +55,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Upload, Trash2, Link2 } from "lucide-react";
+import { Upload, Trash2, Link2, Sparkles, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { CostCategoryBadge } from "@/components/cost-category-badge";
-
-const CATEGORIES = [
-  { value: "material", label: "材料費" },
-  { value: "subcontract", label: "外注費" },
-  { value: "labor", label: "労務費" },
-  { value: "expense", label: "経費" },
-  { value: "other", label: "その他" },
-] as const;
-
-type Category = (typeof CATEGORIES)[number]["value"];
-
-const emptyForm = {
-  vendor: "",
-  unitNumber: "",
-  amount: "0",
-  receiptDate: new Date().toISOString().slice(0, 10),
-  category: "expense" as Category,
-  notes: "",
-  fileUrl: "",
-  fileName: "",
-};
 
 export default function ReceiptsPage() {
   const queryClient = useQueryClient();
@@ -93,15 +71,16 @@ export default function ReceiptsPage() {
   const deleteMut = useDeleteReceipt();
   const matchMut = useMatchReceipt();
   const requestUrlMut = useRequestUploadUrl();
+  const ocrMut = useExtractOcr();
 
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [form, setForm] = useState(emptyForm);
   const [askDelete, setAskDelete] = useState<string | null>(null);
   const [matchTarget, setMatchTarget] = useState<{
     id: string;
     projectId: string;
   } | null>(null);
+  const [processing, setProcessing] = useState(0);
   const lastObjectPathRef = useRef<string>("");
+  const lastContentTypeRef = useRef<string>("");
 
   const refresh = async (projectId?: string | null) => {
     await queryClient.invalidateQueries({
@@ -121,38 +100,60 @@ export default function ReceiptsPage() {
     await invalidateDashboard(queryClient);
   };
 
-  const submit = async () => {
-    if (!form.vendor || !form.fileUrl) {
-      toast({
-        title: "店舗名・ファイルは必須です",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleProcessFile = async (fileName: string) => {
+    const objectPath = lastObjectPathRef.current;
+    const contentType = lastContentTypeRef.current;
+    if (!objectPath) return;
+
+    const servePath = objectPath.startsWith("/objects/")
+      ? `/api/storage${objectPath}`
+      : objectPath;
+
+    setProcessing((n) => n + 1);
     try {
+      // Run OCR
+      let extracted: Awaited<ReturnType<typeof ocrMut.mutateAsync>> | null = null;
+      try {
+        extracted = await ocrMut.mutateAsync({
+          data: { objectPath, contentType, kind: "receipt" },
+        });
+      } catch (err) {
+        // OCR failed: still create with minimal info so file isn't lost
+        toast({
+          title: "自動読み取りに失敗しました。手動編集してください",
+          description: apiErrorMessage(err),
+          variant: "destructive",
+        });
+      }
+
       const created = await createMut.mutateAsync({
         data: {
-          vendor: form.vendor,
-          unitNumber: form.unitNumber || null,
-          amount: Number(form.amount) || 0,
-          receiptDate: form.receiptDate,
-          category: form.category,
-          fileUrl: form.fileUrl,
-          fileName: form.fileName,
-          notes: form.notes || null,
+          vendor: extracted?.vendor || fileName,
+          unitNumber: extracted?.unitNumber ?? null,
+          amount: extracted?.amount ?? 0,
+          receiptDate: extracted?.date ?? new Date().toISOString().slice(0, 10),
+          category: "expense",
+          fileUrl: servePath,
+          fileName,
+          notes: extracted?.notes ?? null,
         },
       });
       await refresh(created.projectId);
+
+      const summary = extracted
+        ? `${extracted.vendor || "(店舗不明)"} / ${formatCurrency(extracted.amount)} / ${extracted.date}`
+        : "ファイルを登録しました";
       toast({
         title:
           created.status === "matched"
-            ? `案件「${created.projectName}」に自動振分けしました`
+            ? `案件「${created.projectName}」に振分けました`
             : "領収書を登録しました（要手動振分け）",
+        description: summary,
       });
-      setForm(emptyForm);
-      setUploadOpen(false);
     } catch (err) {
       toast({ title: apiErrorMessage(err), variant: "destructive" });
+    } finally {
+      setProcessing((n) => n - 1);
     }
   };
 
@@ -189,14 +190,53 @@ export default function ReceiptsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">領収書</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            アップロードした領収書は号室を入力すると案件に自動振分けされ、施工台帳の実績原価に計上されます。
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            アップロードするだけで店舗・金額・日付・号室を自動読み取りし、案件に振分けます。
           </p>
         </div>
-        <Button onClick={() => setUploadOpen(true)} className="gap-2">
-          <Upload className="w-4 h-4" />
-          領収書をアップロード
-        </Button>
+        <div className="flex items-center gap-2">
+          {processing > 0 && (
+            <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              読み取り中 ({processing})
+            </span>
+          )}
+          <ObjectUploader
+            maxNumberOfFiles={1}
+            maxFileSize={20 * 1024 * 1024}
+            buttonClassName="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+            onGetUploadParameters={async (file) => {
+              const contentType =
+                (file.type as string) ?? "application/octet-stream";
+              const res = await requestUrlMut.mutateAsync({
+                data: {
+                  name: (file.name as string) ?? "receipt.jpg",
+                  size: (file.size as number) ?? 0,
+                  contentType,
+                },
+              });
+              lastObjectPathRef.current = res.objectPath;
+              lastContentTypeRef.current = contentType;
+              return {
+                method: "PUT",
+                url: res.uploadURL,
+                headers: { "Content-Type": contentType },
+              };
+            }}
+            onComplete={(result) => {
+              const ok = result.successful?.[0];
+              if (ok && lastObjectPathRef.current) {
+                void handleProcessFile(
+                  (ok.name as string) ?? "receipt",
+                );
+              }
+            }}
+          >
+            <Upload className="w-4 h-4" />
+            領収書をアップロード
+          </ObjectUploader>
+        </div>
       </div>
 
       <Card>
@@ -208,7 +248,7 @@ export default function ReceiptsPage() {
             <Skeleton className="h-40 w-full" />
           ) : (listQ.data ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
-              領収書はまだありません。
+              領収書はまだありません。右上のボタンからファイルを選んでください。
             </p>
           ) : (
             <Table>
@@ -296,144 +336,6 @@ export default function ReceiptsPage() {
           )}
         </CardContent>
       </Card>
-
-      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>領収書をアップロード</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="rVendor">店舗・支払先 *</Label>
-              <Input
-                id="rVendor"
-                value={form.vendor}
-                onChange={(e) => setForm({ ...form, vendor: e.target.value })}
-                placeholder="例: コーナン 東池袋店"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>カテゴリ *</Label>
-                <Select
-                  value={form.category}
-                  onValueChange={(v) =>
-                    setForm({ ...form, category: v as Category })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>
-                        {c.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="rAmount">金額 (円) *</Label>
-                <Input
-                  id="rAmount"
-                  type="number"
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="rUnit">号室（任意・自動振分け用）</Label>
-                <Input
-                  id="rUnit"
-                  value={form.unitNumber}
-                  onChange={(e) =>
-                    setForm({ ...form, unitNumber: e.target.value })
-                  }
-                  placeholder="例: 305号室"
-                />
-              </div>
-              <div>
-                <Label htmlFor="rDate">領収日</Label>
-                <Input
-                  id="rDate"
-                  type="date"
-                  value={form.receiptDate}
-                  onChange={(e) =>
-                    setForm({ ...form, receiptDate: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-            <div>
-              <Label>領収書ファイル *</Label>
-              <div className="flex items-center gap-2 mt-1">
-                <ObjectUploader
-                  maxNumberOfFiles={1}
-                  maxFileSize={20 * 1024 * 1024}
-                  buttonClassName="inline-flex items-center gap-2 px-3 py-2 border rounded-md text-sm hover:bg-accent"
-                  onGetUploadParameters={async (file) => {
-                    const contentType =
-                      (file.type as string) ?? "application/octet-stream";
-                    const res = await requestUrlMut.mutateAsync({
-                      data: {
-                        name: (file.name as string) ?? "receipt.jpg",
-                        size: (file.size as number) ?? 0,
-                        contentType,
-                      },
-                    });
-                    lastObjectPathRef.current = res.objectPath;
-                    return {
-                      method: "PUT",
-                      url: res.uploadURL,
-                      headers: { "Content-Type": contentType },
-                    };
-                  }}
-                  onComplete={(result) => {
-                    const ok = result.successful?.[0];
-                    if (ok && lastObjectPathRef.current) {
-                      const path = lastObjectPathRef.current;
-                      const servePath = path.startsWith("/objects/")
-                        ? `/api/storage${path}`
-                        : path;
-                      setForm((f) => ({
-                        ...f,
-                        fileUrl: servePath,
-                        fileName: (ok.name as string) ?? f.fileName,
-                      }));
-                      toast({ title: "アップロード完了" });
-                    }
-                  }}
-                >
-                  <Upload className="w-4 h-4" />
-                  ファイルを選択
-                </ObjectUploader>
-                {form.fileName && (
-                  <span className="text-sm text-muted-foreground truncate">
-                    {form.fileName}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="rNotes">備考</Label>
-              <Input
-                id="rNotes"
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setUploadOpen(false)}>
-              キャンセル
-            </Button>
-            <Button onClick={submit} disabled={createMut.isPending}>
-              登録
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={!!matchTarget}

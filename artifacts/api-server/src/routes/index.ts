@@ -13,6 +13,7 @@ import vendorInvoicesRouter from "./vendor-invoices";
 import receiptsRouter from "./receipts";
 import phasesRouter from "./phases";
 import storageRouter from "./storage";
+import ocrRouter from "./ocr";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(vendorInvoicesRouter);
 router.use(receiptsRouter);
 router.use(phasesRouter);
 router.use(storageRouter);
+router.use(ocrRouter);
 
 export default router;

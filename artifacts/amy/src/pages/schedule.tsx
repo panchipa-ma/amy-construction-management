@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListScheduleEntries,
@@ -12,12 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -34,11 +28,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
-import { Plus, CalendarDays, Trash2 } from "lucide-react";
-import { formatDate } from "@/lib/format";
+import { Plus, Trash2 } from "lucide-react";
 import { apiErrorMessage } from "@/lib/api-error";
 
 function startOfWeek(d: Date): Date {
@@ -67,6 +59,8 @@ const empty = {
   notes: "",
 };
 
+const DAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"];
+
 export default function SchedulePage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -83,10 +77,47 @@ export default function SchedulePage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(empty);
 
+  const days = useMemo(
+    () => Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i)),
+    [weekStart],
+  );
+  const entries = data ?? [];
+  const allStaff = staffQ.data ?? [];
+
+  // Group entries by staffId × date
+  const cellMap = useMemo(() => {
+    const m = new Map<string, typeof entries>();
+    entries.forEach((e) => {
+      const k = `${e.staffId}|${e.date}`;
+      const arr = m.get(k);
+      if (arr) arr.push(e);
+      else m.set(k, [e]);
+    });
+    return m;
+  }, [entries]);
+
+  // Show all staff; sort by role+name. If staff list is large, this gives a full
+  // overview of who is/isn't booked.
+  const visibleStaff = useMemo(
+    () =>
+      [...allStaff].sort((a, b) =>
+        (a.role + a.name).localeCompare(b.role + b.name, "ja"),
+      ),
+    [allStaff],
+  );
+
+  const openAddFor = (staffId: string, date: string) => {
+    setForm({ ...empty, staffId, date });
+    setOpen(true);
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.projectId || !form.staffId || !form.date || !form.task) {
-      toast({ title: "案件・職人・日付・作業内容は必須です", variant: "destructive" });
+      toast({
+        title: "案件・職人・日付・作業内容は必須です",
+        variant: "destructive",
+      });
       return;
     }
     try {
@@ -104,6 +135,7 @@ export default function SchedulePage() {
       await queryClient.invalidateQueries({
         queryKey: getListScheduleEntriesQueryKey({ from, to }),
       });
+      await invalidateDashboard(queryClient);
       toast({ title: "予定を追加しました" });
       setOpen(false);
       setForm(empty);
@@ -123,16 +155,15 @@ export default function SchedulePage() {
     }
   };
 
-  const days = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
-  const entries = data ?? [];
+  const todayISO = toISO(new Date());
 
   return (
-    <div className="space-y-6 max-w-[1400px]">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">スケジュール</h1>
+          <h1 className="text-2xl font-bold">工程表</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            職人と現場の割り当てを週単位で確認します。
+            職人ごとに横並びで週単位の現場割当を確認できます。
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -156,7 +187,7 @@ export default function SchedulePage() {
           </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
+              <Button className="gap-2" onClick={() => setForm(empty)}>
                 <Plus className="w-4 h-4" />
                 予定を追加
               </Button>
@@ -194,7 +225,7 @@ export default function SchedulePage() {
                       <SelectValue placeholder="職人を選択" />
                     </SelectTrigger>
                     <SelectContent>
-                      {(staffQ.data ?? []).map((s) => (
+                      {allStaff.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.name} ({s.role})
                         </SelectItem>
@@ -270,82 +301,115 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            {formatDate(from)} 〜 {formatDate(to)}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <Skeleton className="h-64 w-full" />
-          ) : (
-            <div className="grid grid-cols-7 gap-3">
+      {isLoading || staffQ.isLoading ? (
+        <Skeleton className="h-96 w-full" />
+      ) : visibleStaff.length === 0 ? (
+        <div className="border rounded-md py-16 text-center text-sm text-muted-foreground">
+          職人を登録すると工程表に表示されます。
+        </div>
+      ) : (
+        <div className="border rounded-md overflow-x-auto">
+          <div className="min-w-[1200px]">
+            {/* Header: day columns */}
+            <div className="grid grid-cols-[180px_repeat(7,minmax(140px,1fr))] bg-muted/40 border-b sticky top-0 z-10">
+              <div className="px-3 py-2 text-xs font-semibold text-muted-foreground border-r">
+                職人 / 業種
+              </div>
               {days.map((d) => {
                 const iso = toISO(d);
-                const dayEntries = entries.filter((e) => e.date === iso);
-                const isToday = iso === toISO(new Date());
+                const isToday = iso === todayISO;
+                const dow = (d.getDay() + 6) % 7;
                 return (
                   <div
                     key={iso}
-                    className={`border rounded-md p-3 min-h-[200px] ${isToday ? "border-primary bg-primary/5" : ""}`}
+                    className={`px-3 py-2 text-xs font-semibold text-center border-r last:border-r-0 ${
+                      isToday ? "bg-primary/10 text-primary" : ""
+                    } ${dow === 5 ? "text-blue-600" : ""} ${dow === 6 ? "text-red-600" : ""}`}
                   >
-                    <div className="text-xs font-semibold text-muted-foreground mb-2">
-                      {["月", "火", "水", "木", "金", "土", "日"][
-                        (d.getDay() + 6) % 7
-                      ]}{" "}
+                    <div>{DAY_LABELS[dow]}</div>
+                    <div className="tabular-nums">
                       {d.getMonth() + 1}/{d.getDate()}
-                    </div>
-                    <div className="space-y-2">
-                      {dayEntries.length === 0 ? (
-                        <div className="text-xs text-muted-foreground py-2">-</div>
-                      ) : (
-                        dayEntries.map((e) => (
-                          <div
-                            key={e.id}
-                            className="border rounded p-2 bg-card text-xs space-y-1 group"
-                          >
-                            <div className="flex items-start justify-between">
-                              <Badge variant="outline" className="text-xs">
-                                {e.staffName}
-                              </Badge>
-                              <button
-                                onClick={() => handleDelete(e.id)}
-                                className="opacity-0 group-hover:opacity-100 text-destructive"
-                                aria-label="削除"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            </div>
-                            <div className="font-medium">{e.task}</div>
-                            <div className="text-muted-foreground truncate">
-                              {e.projectName}
-                            </div>
-                            {(e.startTime || e.endTime) && (
-                              <div className="text-muted-foreground">
-                                {e.startTime ?? ""}
-                                {e.endTime ? `-${e.endTime}` : ""}
-                              </div>
-                            )}
-                          </div>
-                        ))
-                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
-          )}
-          {entries.length === 0 && !isLoading && (
-            <div className="py-8 flex flex-col items-center text-center gap-2">
-              <CalendarDays className="w-8 h-8 text-muted-foreground" />
-              <div className="text-sm text-muted-foreground">
-                この週の予定はありません
+
+            {/* Body: one row per staff */}
+            {visibleStaff.map((s) => (
+              <div
+                key={s.id}
+                className="grid grid-cols-[180px_repeat(7,minmax(140px,1fr))] border-b last:border-b-0 hover:bg-accent/5"
+              >
+                <div className="px-3 py-3 border-r bg-muted/20 sticky left-0 z-[1]">
+                  <div className="font-semibold text-sm leading-tight">
+                    {s.name}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    {s.role}
+                  </div>
+                </div>
+                {days.map((d) => {
+                  const iso = toISO(d);
+                  const isToday = iso === todayISO;
+                  const dow = (d.getDay() + 6) % 7;
+                  const isWeekend = dow === 5 || dow === 6;
+                  const cellEntries = cellMap.get(`${s.id}|${iso}`) ?? [];
+                  return (
+                    <div
+                      key={iso}
+                      className={`min-h-[110px] p-1.5 border-r last:border-r-0 group relative ${
+                        isToday
+                          ? "bg-primary/5"
+                          : isWeekend
+                            ? "bg-muted/10"
+                            : ""
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        {cellEntries.map((e) => (
+                          <div
+                            key={e.id}
+                            className="rounded border bg-card px-2 py-1.5 text-[11px] leading-snug shadow-sm relative group/entry"
+                          >
+                            <button
+                              onClick={() => handleDelete(e.id)}
+                              className="absolute top-0.5 right-0.5 opacity-0 group-hover/entry:opacity-100 text-destructive hover:bg-destructive/10 rounded p-0.5"
+                              aria-label="削除"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                            <div className="font-semibold pr-4 truncate">
+                              {e.task}
+                            </div>
+                            <div className="text-muted-foreground truncate">
+                              {e.projectName}
+                            </div>
+                            {(e.startTime || e.endTime) && (
+                              <div className="text-muted-foreground tabular-nums">
+                                {e.startTime ?? ""}
+                                {e.endTime ? `-${e.endTime}` : ""}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openAddFor(s.id, iso)}
+                        className="absolute inset-x-1 bottom-1 opacity-0 group-hover:opacity-100 text-[10px] text-muted-foreground hover:text-primary border border-dashed border-muted-foreground/30 rounded py-0.5 flex items-center justify-center gap-1 bg-background/80"
+                      >
+                        <Plus className="w-3 h-3" />
+                        追加
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
