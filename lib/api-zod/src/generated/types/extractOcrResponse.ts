@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ExtractOcrResponseConfidence } from "./extractOcrResponseConfidence";
+import type { ExtractOcrResponseItemsItem } from "./extractOcrResponseItemsItem";
 
 export interface ExtractOcrResponse {
   /** 店舗名 / 取引先 / 職人名 */
@@ -14,9 +15,11 @@ export interface ExtractOcrResponse {
   amount: number;
   /** 領収日 / 請求日 (YYYY-MM-DD) */
   date: string;
-  /** 号室（記載があれば） */
+  /** 号室（記載があれば、単一物件の場合） */
   unitNumber?: string | null;
   /** 摘要・補足 */
   notes?: string | null;
   confidence: ExtractOcrResponseConfidence;
+  /** 請求書が複数物件をまとめている場合の内訳行。1物件のみなら1件。領収書では空配列でも可 */
+  items: ExtractOcrResponseItemsItem[];
 }

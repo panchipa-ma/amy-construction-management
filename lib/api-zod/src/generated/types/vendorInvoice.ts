@@ -9,8 +9,10 @@ import type { VendorInvoiceStatus } from "./vendorInvoiceStatus";
 
 export interface VendorInvoice {
   id: string;
-  staffId: string;
-  staffName: string;
+  staffId?: string | null;
+  staffName?: string | null;
+  /** OCR抽出の取引先名。staffに紐付けば一致 */
+  vendorName: string;
   projectId?: string | null;
   projectName?: string | null;
   costEntryId?: string | null;

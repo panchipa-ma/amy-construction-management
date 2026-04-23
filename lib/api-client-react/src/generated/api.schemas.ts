@@ -153,8 +153,10 @@ export const VendorInvoiceStatus = {
 
 export interface VendorInvoice {
   id: string;
-  staffId: string;
-  staffName: string;
+  staffId?: string | null;
+  staffName?: string | null;
+  /** OCR抽出の取引先名。staffに紐付けば一致 */
+  vendorName: string;
   projectId?: string | null;
   projectName?: string | null;
   costEntryId?: string | null;
@@ -171,7 +173,8 @@ export interface VendorInvoice {
 }
 
 export interface CreateVendorInvoiceBody {
-  staffId: string;
+  vendorName: string;
+  staffId?: string | null;
   unitNumber: string;
   amount: number;
   invoiceDate: string;
@@ -182,6 +185,11 @@ export interface CreateVendorInvoiceBody {
 
 export interface MatchVendorInvoiceBody {
   projectId: string;
+}
+
+export interface AssignVendorInvoiceStaffBody {
+  /** nullで未割当に戻す */
+  staffId: string | null;
 }
 
 export type ReceiptStatus = (typeof ReceiptStatus)[keyof typeof ReceiptStatus];
@@ -247,6 +255,17 @@ export const ExtractOcrResponseConfidence = {
   low: "low",
 } as const;
 
+export type ExtractOcrResponseItemsItem = {
+  /** 号室 */
+  unitNumber: string;
+  /** この物件の金額 */
+  amount: number;
+  /** 作業内容や摘要 */
+  description?: string | null;
+  /** 個別の作業日 (YYYY-MM-DD) */
+  date?: string | null;
+};
+
 export interface ExtractOcrResponse {
   /** 店舗名 / 取引先 / 職人名 */
   vendor: string;
@@ -254,11 +273,13 @@ export interface ExtractOcrResponse {
   amount: number;
   /** 領収日 / 請求日 (YYYY-MM-DD) */
   date: string;
-  /** 号室（記載があれば） */
+  /** 号室（記載があれば、単一物件の場合） */
   unitNumber?: string | null;
   /** 摘要・補足 */
   notes?: string | null;
   confidence: ExtractOcrResponseConfidence;
+  /** 請求書が複数物件をまとめている場合の内訳行。1物件のみなら1件。領収書では空配列でも可 */
+  items: ExtractOcrResponseItemsItem[];
 }
 
 export interface RequestUploadUrlBody {

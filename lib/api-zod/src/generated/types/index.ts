@@ -8,6 +8,7 @@
 
 export * from "./activityItem";
 export * from "./activityItemKind";
+export * from "./assignVendorInvoiceStaffBody";
 export * from "./convertQuoteToInvoiceBody";
 export * from "./costCategory";
 export * from "./costEntry";
@@ -31,6 +32,7 @@ export * from "./extractOcrBody";
 export * from "./extractOcrBodyKind";
 export * from "./extractOcrResponse";
 export * from "./extractOcrResponseConfidence";
+export * from "./extractOcrResponseItemsItem";
 export * from "./healthStatus";
 export * from "./importQuoteToLedgerBody";
 export * from "./invoice";

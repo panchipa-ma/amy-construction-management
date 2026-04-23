@@ -789,6 +789,28 @@ paths:
         "204":
           description: Deleted
 
+  /vendor-invoices/{id}/assign-staff:
+    post:
+      operationId: assignVendorInvoiceStaff
+      tags: [vendorInvoices]
+      summary: Assign or change the staff for an invoice (used when OCR vendor name didn't match a staff)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssignVendorInvoiceStaffBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VendorInvoice" }
+
   /vendor-invoices/{id}/match:
     post:
       operationId: matchVendorInvoice
@@ -1066,11 +1088,12 @@ components:
 
     VendorInvoice:
       type: object
-      required: [id, staffId, staffName, unitNumber, amount, invoiceDate, fileUrl, fileName, status, uploadedAt]
+      required: [id, vendorName, unitNumber, amount, invoiceDate, fileUrl, fileName, status, uploadedAt]
       properties:
         id: { type: string }
-        staffId: { type: string }
-        staffName: { type: string }
+        staffId: { type: string, nullable: true }
+        staffName: { type: string, nullable: true }
+        vendorName: { type: string, description: "OCR抽出の取引先名。staffに紐付けば一致" }
         projectId: { type: string, nullable: true }
         projectName: { type: string, nullable: true }
         costEntryId: { type: string, nullable: true }
@@ -1085,9 +1108,10 @@ components:
 
     CreateVendorInvoiceBody:
       type: object
-      required: [staffId, unitNumber, amount, invoiceDate, fileUrl, fileName]
+      required: [vendorName, unitNumber, amount, invoiceDate, fileUrl, fileName]
       properties:
-        staffId: { type: string }
+        vendorName: { type: string }
+        staffId: { type: string, nullable: true }
         unitNumber: { type: string }
         amount: { type: number }
         invoiceDate: { type: string, format: date }
@@ -1100,6 +1124,12 @@ components:
       required: [projectId]
       properties:
         projectId: { type: string }
+
+    AssignVendorInvoiceStaffBody:
+      type: object
+      required: [staffId]
+      properties:
+        staffId: { type: string, nullable: true, description: "nullで未割当に戻す" }
 
     Receipt:
       type: object
@@ -1151,16 +1181,27 @@ components:
 
     ExtractOcrResponse:
       type: object
-      required: [vendor, amount, date, confidence]
+      required: [vendor, amount, date, confidence, items]
       properties:
         vendor: { type: string, description: "店舗名 / 取引先 / 職人名" }
         amount: { type: number, description: "合計金額（税込）" }
         date: { type: string, description: "領収日 / 請求日 (YYYY-MM-DD)" }
-        unitNumber: { type: string, nullable: true, description: "号室（記載があれば）" }
+        unitNumber: { type: string, nullable: true, description: "号室（記載があれば、単一物件の場合）" }
         notes: { type: string, nullable: true, description: "摘要・補足" }
         confidence:
           type: string
           enum: [high, medium, low]
+        items:
+          type: array
+          description: "請求書が複数物件をまとめている場合の内訳行。1物件のみなら1件。領収書では空配列でも可"
+          items:
+            type: object
+            required: [unitNumber, amount]
+            properties:
+              unitNumber: { type: string, description: "号室" }
+              amount: { type: number, description: "この物件の金額" }
+              description: { type: string, nullable: true, description: "作業内容や摘要" }
+              date: { type: string, nullable: true, description: "個別の作業日 (YYYY-MM-DD)" }
 
     RequestUploadUrlBody:
       type: object

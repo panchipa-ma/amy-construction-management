@@ -358,31 +358,39 @@ export default function SchedulePage() {
                   return (
                     <div
                       key={iso}
-                      className={`min-h-[110px] p-1.5 border-r last:border-r-0 group relative ${
+                      onClick={(e) => {
+                        // Click empty area to add (ignore clicks on entries)
+                        if (e.target === e.currentTarget) openAddFor(s.id, iso);
+                      }}
+                      className={`min-h-[110px] p-1.5 border-r last:border-r-0 group relative cursor-pointer ${
                         isToday
                           ? "bg-primary/5"
                           : isWeekend
                             ? "bg-muted/10"
                             : ""
-                      }`}
+                      } hover:bg-accent/10`}
                     >
-                      <div className="space-y-1">
+                      <div className="space-y-1 pointer-events-none">
                         {cellEntries.map((e) => (
                           <div
                             key={e.id}
-                            className="rounded border bg-card px-2 py-1.5 text-[11px] leading-snug shadow-sm relative group/entry"
+                            className="rounded border bg-card px-2 py-1.5 text-[11px] leading-snug shadow-sm relative pointer-events-auto"
                           >
                             <button
-                              onClick={() => handleDelete(e.id)}
-                              className="absolute top-0.5 right-0.5 opacity-0 group-hover/entry:opacity-100 text-destructive hover:bg-destructive/10 rounded p-0.5"
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                handleDelete(e.id);
+                              }}
+                              className="absolute top-0.5 right-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded p-1"
                               aria-label="削除"
+                              title="削除"
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
-                            <div className="font-semibold pr-4 truncate">
+                            <div className="font-semibold pr-5 truncate">
                               {e.task}
                             </div>
-                            <div className="text-muted-foreground truncate">
+                            <div className="text-muted-foreground truncate pr-5">
                               {e.projectName}
                             </div>
                             {(e.startTime || e.endTime) && (
@@ -394,14 +402,28 @@ export default function SchedulePage() {
                           </div>
                         ))}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => openAddFor(s.id, iso)}
-                        className="absolute inset-x-1 bottom-1 opacity-0 group-hover:opacity-100 text-[10px] text-muted-foreground hover:text-primary border border-dashed border-muted-foreground/30 rounded py-0.5 flex items-center justify-center gap-1 bg-background/80"
-                      >
-                        <Plus className="w-3 h-3" />
-                        追加
-                      </button>
+                      {cellEntries.length === 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
+                          <div className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Plus className="w-4 h-4" />
+                            追加
+                          </div>
+                        </div>
+                      )}
+                      {cellEntries.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            openAddFor(s.id, iso);
+                          }}
+                          className="mt-1 w-full text-[10px] text-muted-foreground hover:text-primary border border-dashed border-muted-foreground/30 rounded py-0.5 flex items-center justify-center gap-1 hover:bg-accent/20"
+                          aria-label="この日にもう一件追加"
+                        >
+                          <Plus className="w-3 h-3" />
+                          もう一件
+                        </button>
+                      )}
                     </div>
                   );
                 })}

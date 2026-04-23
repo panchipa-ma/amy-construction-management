@@ -58,9 +58,10 @@ export const projectsTable = pgTable("projects", {
 
 export const vendorInvoicesTable = pgTable("vendor_invoices", {
   id: uuid("id").primaryKey().defaultRandom(),
-  staffId: uuid("staff_id")
-    .notNull()
-    .references(() => staffTable.id, { onDelete: "restrict" }),
+  staffId: uuid("staff_id").references(() => staffTable.id, {
+    onDelete: "restrict",
+  }),
+  vendorName: text("vendor_name").notNull().default(""),
   projectId: uuid("project_id").references(() => projectsTable.id, {
     onDelete: "set null",
   }),

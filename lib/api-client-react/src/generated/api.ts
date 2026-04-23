@@ -18,6 +18,7 @@ import type {
 
 import type {
   ActivityItem,
+  AssignVendorInvoiceStaffBody,
   ConvertQuoteToInvoiceBody,
   CostEntry,
   CostPipelineItem,
@@ -3959,6 +3960,94 @@ export const useDeleteVendorInvoice = <
   TContext
 > => {
   return useMutation(getDeleteVendorInvoiceMutationOptions(options));
+};
+
+/**
+ * @summary Assign or change the staff for an invoice (used when OCR vendor name didn't match a staff)
+ */
+export const getAssignVendorInvoiceStaffUrl = (id: string) => {
+  return `/api/vendor-invoices/${id}/assign-staff`;
+};
+
+export const assignVendorInvoiceStaff = async (
+  id: string,
+  assignVendorInvoiceStaffBody: AssignVendorInvoiceStaffBody,
+  options?: RequestInit,
+): Promise<VendorInvoice> => {
+  return customFetch<VendorInvoice>(getAssignVendorInvoiceStaffUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(assignVendorInvoiceStaffBody),
+  });
+};
+
+export const getAssignVendorInvoiceStaffMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof assignVendorInvoiceStaff>>,
+    TError,
+    { id: string; data: BodyType<AssignVendorInvoiceStaffBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof assignVendorInvoiceStaff>>,
+  TError,
+  { id: string; data: BodyType<AssignVendorInvoiceStaffBody> },
+  TContext
+> => {
+  const mutationKey = ["assignVendorInvoiceStaff"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof assignVendorInvoiceStaff>>,
+    { id: string; data: BodyType<AssignVendorInvoiceStaffBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return assignVendorInvoiceStaff(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AssignVendorInvoiceStaffMutationResult = NonNullable<
+  Awaited<ReturnType<typeof assignVendorInvoiceStaff>>
+>;
+export type AssignVendorInvoiceStaffMutationBody =
+  BodyType<AssignVendorInvoiceStaffBody>;
+export type AssignVendorInvoiceStaffMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Assign or change the staff for an invoice (used when OCR vendor name didn't match a staff)
+ */
+export const useAssignVendorInvoiceStaff = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof assignVendorInvoiceStaff>>,
+    TError,
+    { id: string; data: BodyType<AssignVendorInvoiceStaffBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof assignVendorInvoiceStaff>>,
+  TError,
+  { id: string; data: BodyType<AssignVendorInvoiceStaffBody> },
+  TContext
+> => {
+  return useMutation(getAssignVendorInvoiceStaffMutationOptions(options));
 };
 
 /**

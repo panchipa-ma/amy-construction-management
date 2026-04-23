@@ -1127,8 +1127,9 @@ export const ListVendorInvoicesQueryParams = zod.object({
 
 export const ListVendorInvoicesResponseItem = zod.object({
   id: zod.string(),
-  staffId: zod.string(),
-  staffName: zod.string(),
+  staffId: zod.string().nullish(),
+  staffName: zod.string().nullish(),
+  vendorName: zod.string().describe("OCR抽出の取引先名。staffに紐付けば一致"),
   projectId: zod.string().nullish(),
   projectName: zod.string().nullish(),
   costEntryId: zod.string().nullish(),
@@ -1149,7 +1150,8 @@ export const ListVendorInvoicesResponse = zod.array(
  * @summary Submit a craftsman invoice; auto-matched to a project by unit number
  */
 export const CreateVendorInvoiceBody = zod.object({
-  staffId: zod.string(),
+  vendorName: zod.string(),
+  staffId: zod.string().nullish(),
   unitNumber: zod.string(),
   amount: zod.number(),
   invoiceDate: zod.coerce.date(),
@@ -1160,8 +1162,9 @@ export const CreateVendorInvoiceBody = zod.object({
 
 export const CreateVendorInvoiceResponse = zod.object({
   id: zod.string(),
-  staffId: zod.string(),
-  staffName: zod.string(),
+  staffId: zod.string().nullish(),
+  staffName: zod.string().nullish(),
+  vendorName: zod.string().describe("OCR抽出の取引先名。staffに紐付けば一致"),
   projectId: zod.string().nullish(),
   projectName: zod.string().nullish(),
   costEntryId: zod.string().nullish(),
@@ -1180,6 +1183,35 @@ export const DeleteVendorInvoiceParams = zod.object({
 });
 
 /**
+ * @summary Assign or change the staff for an invoice (used when OCR vendor name didn't match a staff)
+ */
+export const AssignVendorInvoiceStaffParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const AssignVendorInvoiceStaffBody = zod.object({
+  staffId: zod.string().nullable().describe("nullで未割当に戻す"),
+});
+
+export const AssignVendorInvoiceStaffResponse = zod.object({
+  id: zod.string(),
+  staffId: zod.string().nullish(),
+  staffName: zod.string().nullish(),
+  vendorName: zod.string().describe("OCR抽出の取引先名。staffに紐付けば一致"),
+  projectId: zod.string().nullish(),
+  projectName: zod.string().nullish(),
+  costEntryId: zod.string().nullish(),
+  unitNumber: zod.string().describe("マンション号室"),
+  amount: zod.number(),
+  invoiceDate: zod.coerce.date(),
+  fileUrl: zod.string().describe("objectPath (e.g. \/objects\/uploads\/uuid)"),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["matched", "unmatched"]),
+  uploadedAt: zod.coerce.date(),
+});
+
+/**
  * @summary Manually attach an unmatched invoice to a project
  */
 export const MatchVendorInvoiceParams = zod.object({
@@ -1192,8 +1224,9 @@ export const MatchVendorInvoiceBody = zod.object({
 
 export const MatchVendorInvoiceResponse = zod.object({
   id: zod.string(),
-  staffId: zod.string(),
-  staffName: zod.string(),
+  staffId: zod.string().nullish(),
+  staffName: zod.string().nullish(),
+  vendorName: zod.string().describe("OCR抽出の取引先名。staffに紐付けば一致"),
   projectId: zod.string().nullish(),
   projectName: zod.string().nullish(),
   costEntryId: zod.string().nullish(),
@@ -1306,9 +1339,24 @@ export const ExtractOcrResponse = zod.object({
   vendor: zod.string().describe("店舗名 \/ 取引先 \/ 職人名"),
   amount: zod.number().describe("合計金額（税込）"),
   date: zod.string().describe("領収日 \/ 請求日 (YYYY-MM-DD)"),
-  unitNumber: zod.string().nullish().describe("号室（記載があれば）"),
+  unitNumber: zod
+    .string()
+    .nullish()
+    .describe("号室（記載があれば、単一物件の場合）"),
   notes: zod.string().nullish().describe("摘要・補足"),
   confidence: zod.enum(["high", "medium", "low"]),
+  items: zod
+    .array(
+      zod.object({
+        unitNumber: zod.string().describe("号室"),
+        amount: zod.number().describe("この物件の金額"),
+        description: zod.string().nullish().describe("作業内容や摘要"),
+        date: zod.string().nullish().describe("個別の作業日 (YYYY-MM-DD)"),
+      }),
+    )
+    .describe(
+      "請求書が複数物件をまとめている場合の内訳行。1物件のみなら1件。領収書では空配列でも可",
+    ),
 });
 
 /**

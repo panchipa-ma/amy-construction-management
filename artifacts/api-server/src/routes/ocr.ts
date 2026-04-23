@@ -6,19 +6,45 @@ import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage"
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
 
-const SYSTEM_PROMPT = `あなたは日本の領収書・請求書を読み取るOCRアシスタントです。
+const SYSTEM_PROMPT_RECEIPT = `あなたは日本の領収書を読み取るOCRアシスタントです。
 画像またはPDFから次の情報を抽出し、JSON形式のみで回答してください。説明文や前置きは不要です。
 
 抽出フィールド:
-- vendor: 店舗名・取引先名・職人名・会社名（最も主要な発行元）
+- vendor: 店舗名・取引先名（発行元）
 - amount: 合計金額（税込）。¥や,を除いた数値のみ
-- date: 領収日・請求日・発行日 (YYYY-MM-DD 形式)
+- date: 領収日 (YYYY-MM-DD 形式)
 - unitNumber: マンション号室の記載があれば（例: "305", "305号室"）。なければ null
 - notes: 摘要・但し書き・補足。短く要約。なければ null
-- confidence: 抽出の自信度 ("high" | "medium" | "low")
+- confidence: "high" | "medium" | "low"
+- items: 領収書では空配列 []
 
 出力例:
-{"vendor":"コーナン 東池袋店","amount":12480,"date":"2026-04-15","unitNumber":null,"notes":"クロス材料","confidence":"high"}`;
+{"vendor":"コーナン 東池袋店","amount":12480,"date":"2026-04-15","unitNumber":null,"notes":"クロス材料","confidence":"high","items":[]}`;
+
+const SYSTEM_PROMPT_INVOICE = `あなたは日本の職人・業者請求書を読み取るOCRアシスタントです。
+1枚の請求書に複数の物件（号室）の作業がまとめて記載されている場合があります。
+画像またはPDFから情報を抽出し、JSON形式のみで回答してください。説明文や前置きは不要です。
+
+抽出フィールド:
+- vendor: 請求元の職人名・会社名（発行元、自社ではなく相手）
+- amount: 請求書全体の合計金額（税込）
+- date: 請求日 / 発行日 (YYYY-MM-DD 形式)
+- unitNumber: 単一物件の場合の号室。複数物件なら null
+- notes: 全体の摘要・件名。なければ null
+- confidence: "high" | "medium" | "low"
+- items: 物件ごとの内訳（必須）。各要素 {unitNumber, amount, description?, date?}
+  - unitNumber: マンション号室（例: "305"）。号室記載がない行は除外
+  - amount: その物件の請求金額（税込）。複数行をまとめても可
+  - description: 作業内容（クロス張替、CF等）
+  - date: 作業日 (YYYY-MM-DD)。なければ請求日と同じで可
+  - 単一物件の場合も items は1要素入れる
+
+例（複数物件）:
+{"vendor":"山田内装","amount":285000,"date":"2026-04-20","unitNumber":null,"notes":null,"confidence":"high","items":[
+  {"unitNumber":"305","amount":120000,"description":"クロス張替 一式","date":"2026-04-15"},
+  {"unitNumber":"402","amount":85000,"description":"CF貼替","date":"2026-04-17"},
+  {"unitNumber":"501","amount":80000,"description":"クロス補修","date":"2026-04-18"}
+]}`;
 
 async function readFileBytes(objectPath: string): Promise<{ bytes: Buffer; contentType: string }> {
   const file = await objectStorageService.getObjectEntityFile(objectPath);
@@ -79,10 +105,11 @@ router.post("/ocr/extract", async (req: Request, res: Response) => {
           },
         };
 
+    const isInvoice = parsed.data.kind === "vendor_invoice";
     const msg = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      max_tokens: isInvoice ? 4096 : 1024,
+      system: isInvoice ? SYSTEM_PROMPT_INVOICE : SYSTEM_PROMPT_RECEIPT,
       messages: [
         {
           role: "user",
@@ -107,15 +134,29 @@ router.post("/ocr/extract", async (req: Request, res: Response) => {
     }
     const data = JSON.parse(jsonMatch[0]);
 
+    const fallbackDate = String(
+      data.date ?? new Date().toISOString().slice(0, 10),
+    );
+    const rawItems = Array.isArray(data.items) ? data.items : [];
+    const items = rawItems
+      .map((it: Record<string, unknown>) => ({
+        unitNumber: String(it.unitNumber ?? "").trim(),
+        amount: Number(it.amount ?? 0) || 0,
+        description: it.description ? String(it.description).trim() : null,
+        date: it.date ? String(it.date).trim() : null,
+      }))
+      .filter((it: { unitNumber: string }) => it.unitNumber !== "");
+
     const result = ExtractOcrResponse.parse({
       vendor: String(data.vendor ?? "").trim(),
       amount: Number(data.amount ?? 0) || 0,
-      date: String(data.date ?? new Date().toISOString().slice(0, 10)),
+      date: fallbackDate,
       unitNumber: data.unitNumber ? String(data.unitNumber).trim() : null,
       notes: data.notes ? String(data.notes).trim() : null,
       confidence: ["high", "medium", "low"].includes(data.confidence)
         ? data.confidence
         : "low",
+      items,
     });
 
     res.json(result);

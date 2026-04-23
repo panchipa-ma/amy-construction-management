@@ -7,7 +7,8 @@
  */
 
 export interface CreateVendorInvoiceBody {
-  staffId: string;
+  vendorName: string;
+  staffId?: string | null;
   unitNumber: string;
   amount: number;
   invoiceDate: Date;

@@ -6,10 +6,11 @@ import {
   useCreateVendorInvoice,
   useDeleteVendorInvoice,
   useMatchVendorInvoice,
+  useAssignVendorInvoiceStaff,
   useRequestUploadUrl,
   useExtractOcr,
-  useListStaff,
   useListProjects,
+  useListStaff,
   getListVendorInvoicesQueryKey,
   getGetProjectLedgerQueryKey,
   getGetProjectQueryKey,
@@ -66,38 +67,44 @@ export default function VendorInvoicesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const listQ = useListVendorInvoices();
-  const staffQ = useListStaff();
   const projectsQ = useListProjects();
+  const staffQ = useListStaff();
   const createMut = useCreateVendorInvoice();
   const deleteMut = useDeleteVendorInvoice();
   const matchMut = useMatchVendorInvoice();
+  const assignMut = useAssignVendorInvoiceStaff();
   const requestUrlMut = useRequestUploadUrl();
   const ocrMut = useExtractOcr();
 
-  const [staffId, setStaffId] = useState<string>("");
   const [askDelete, setAskDelete] = useState<string | null>(null);
   const [matchTarget, setMatchTarget] = useState<{
     id: string;
     projectId: string;
   } | null>(null);
+  const [assignTarget, setAssignTarget] = useState<{
+    id: string;
+    staffId: string;
+  } | null>(null);
   const [processing, setProcessing] = useState(0);
   const lastObjectPathRef = useRef<string>("");
   const lastContentTypeRef = useRef<string>("");
-  const lastStaffIdRef = useRef<string>("");
 
-  const refresh = async (projectId?: string | null) => {
+  const refresh = async (projectIds?: (string | null | undefined)[]) => {
     await queryClient.invalidateQueries({
       queryKey: getListVendorInvoicesQueryKey(),
     });
     await queryClient.invalidateQueries({
       queryKey: getListProjectsQueryKey(),
     });
-    if (projectId) {
+    const unique = new Set(
+      (projectIds ?? []).filter((p): p is string => !!p),
+    );
+    for (const pid of unique) {
       await queryClient.invalidateQueries({
-        queryKey: getGetProjectLedgerQueryKey(projectId),
+        queryKey: getGetProjectLedgerQueryKey(pid),
       });
       await queryClient.invalidateQueries({
-        queryKey: getGetProjectQueryKey(projectId),
+        queryKey: getGetProjectQueryKey(pid),
       });
     }
     await invalidateDashboard(queryClient);
@@ -106,8 +113,7 @@ export default function VendorInvoicesPage() {
   const handleProcessFile = async (fileName: string) => {
     const objectPath = lastObjectPathRef.current;
     const contentType = lastContentTypeRef.current;
-    const sId = lastStaffIdRef.current;
-    if (!objectPath || !sId) return;
+    if (!objectPath) return;
 
     const servePath = objectPath.startsWith("/objects/")
       ? `/api/storage${objectPath}`
@@ -115,51 +121,79 @@ export default function VendorInvoicesPage() {
 
     setProcessing((n) => n + 1);
     try {
-      let extracted: Awaited<ReturnType<typeof ocrMut.mutateAsync>> | null = null;
-      try {
-        extracted = await ocrMut.mutateAsync({
-          data: { objectPath, contentType, kind: "vendor_invoice" },
-        });
-      } catch (err) {
+      const extracted = await ocrMut.mutateAsync({
+        data: { objectPath, contentType, kind: "vendor_invoice" },
+      });
+
+      // Determine line items: prefer multi-item from OCR, fall back to single-row
+      // synthesised from the top-level fields if items array is empty
+      const lines =
+        extracted.items.length > 0
+          ? extracted.items
+          : [
+              {
+                unitNumber: extracted.unitNumber ?? "未抽出",
+                amount: extracted.amount,
+                description: extracted.notes ?? null,
+                date: extracted.date,
+              },
+            ];
+
+      const projectIds: (string | null)[] = [];
+      let matchedCount = 0;
+      let failedCount = 0;
+      const failures: string[] = [];
+      for (const line of lines) {
+        try {
+          const created = await createMut.mutateAsync({
+            data: {
+              vendorName: extracted.vendor || fileName,
+              unitNumber: line.unitNumber || "未抽出",
+              amount: line.amount,
+              invoiceDate: line.date ?? extracted.date,
+              fileUrl: servePath,
+              fileName,
+              notes: line.description ?? extracted.notes ?? null,
+            },
+          });
+          projectIds.push(created.projectId ?? null);
+          if (created.status === "matched") matchedCount += 1;
+        } catch (e) {
+          failedCount += 1;
+          failures.push(`${line.unitNumber}: ${apiErrorMessage(e)}`);
+        }
+      }
+      await refresh(projectIds);
+
+      const total = lines.length;
+      const okCount = total - failedCount;
+      if (failedCount > 0) {
         toast({
-          title: "自動読み取りに失敗しました。手動編集してください",
-          description: apiErrorMessage(err),
+          title: `${okCount}件登録、${failedCount}件失敗`,
+          description: failures.join(" / "),
           variant: "destructive",
         });
+      } else {
+        const summary =
+          total === 1
+            ? `${extracted.vendor || "(取引先不明)"} / ${formatCurrency(lines[0].amount)} / ${lines[0].unitNumber || "号室不明"}`
+            : `${extracted.vendor}：${total}物件中 ${matchedCount}件が案件に振分けされました`;
+        toast({
+          title:
+            total === 1 && matchedCount === 1
+              ? "案件に自動振分けしました"
+              : matchedCount === total
+                ? "全物件を自動振分けしました"
+                : "請求書を登録しました（一部未振分）",
+          description: summary,
+        });
       }
-
-      // unitNumber is required by the schema; if OCR didn't find one, leave a placeholder
-      // and mark for manual matching.
-      const unitNumber = extracted?.unitNumber?.trim() || "未抽出";
-
-      const created = await createMut.mutateAsync({
-        data: {
-          staffId: sId,
-          unitNumber,
-          amount: extracted?.amount ?? 0,
-          invoiceDate:
-            extracted?.date ?? new Date().toISOString().slice(0, 10),
-          fileUrl: servePath,
-          fileName,
-          notes: extracted?.notes ?? null,
-        },
-      });
-      await refresh(created.projectId);
-
-      const summary = extracted
-        ? `${formatCurrency(extracted.amount)} / ${extracted.date}${
-            extracted.unitNumber ? ` / ${extracted.unitNumber}` : ""
-          }`
-        : "ファイルを登録しました";
-      toast({
-        title:
-          created.status === "matched"
-            ? `案件「${created.projectName}」に振分けました`
-            : "請求書を登録しました（号室一致なし・要手動振分け）",
-        description: summary,
-      });
     } catch (err) {
-      toast({ title: apiErrorMessage(err), variant: "destructive" });
+      toast({
+        title: "自動読み取りに失敗しました",
+        description: apiErrorMessage(err),
+        variant: "destructive",
+      });
     } finally {
       setProcessing((n) => n - 1);
     }
@@ -170,7 +204,7 @@ export default function VendorInvoicesPage() {
     const target = (listQ.data ?? []).find((v) => v.id === askDelete);
     try {
       await deleteMut.mutateAsync({ id: askDelete });
-      await refresh(target?.projectId ?? null);
+      await refresh([target?.projectId]);
       toast({ title: "削除しました" });
       setAskDelete(null);
     } catch (err) {
@@ -185,7 +219,7 @@ export default function VendorInvoicesPage() {
         id: matchTarget.id,
         data: { projectId: matchTarget.projectId },
       });
-      await refresh(updated.projectId);
+      await refresh([updated.projectId]);
       toast({ title: "案件に紐付けました" });
       setMatchTarget(null);
     } catch (err) {
@@ -200,22 +234,10 @@ export default function VendorInvoicesPage() {
           <h1 className="text-2xl font-bold">職人請求書</h1>
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
-            職人を選んでアップロードするだけで、金額・日付・号室を自動読み取りし振分けます。
+            アップロードするだけで取引先・号室・金額を自動読み取り。複数物件が混在していても号室ごとに自動振分けします。
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={staffId} onValueChange={setStaffId}>
-            <SelectTrigger className="w-56">
-              <SelectValue placeholder="職人を選択" />
-            </SelectTrigger>
-            <SelectContent>
-              {(staffQ.data ?? []).map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name} ({s.role})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-3">
           {processing > 0 && (
             <span className="text-sm text-muted-foreground flex items-center gap-1.5">
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -227,13 +249,6 @@ export default function VendorInvoicesPage() {
             maxFileSize={20 * 1024 * 1024}
             buttonClassName="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
             onGetUploadParameters={async (file) => {
-              if (!staffId) {
-                toast({
-                  title: "先に職人を選択してください",
-                  variant: "destructive",
-                });
-                throw new Error("staff not selected");
-              }
               const contentType =
                 (file.type as string) ?? "application/octet-stream";
               const res = await requestUrlMut.mutateAsync({
@@ -245,7 +260,6 @@ export default function VendorInvoicesPage() {
               });
               lastObjectPathRef.current = res.objectPath;
               lastContentTypeRef.current = contentType;
-              lastStaffIdRef.current = staffId;
               return {
                 method: "PUT",
                 url: res.uploadURL,
@@ -255,9 +269,7 @@ export default function VendorInvoicesPage() {
             onComplete={(result) => {
               const ok = result.successful?.[0];
               if (ok && lastObjectPathRef.current) {
-                void handleProcessFile(
-                  (ok.name as string) ?? "invoice",
-                );
+                void handleProcessFile((ok.name as string) ?? "invoice");
               }
             }}
           >
@@ -276,14 +288,14 @@ export default function VendorInvoicesPage() {
             <Skeleton className="h-40 w-full" />
           ) : (listQ.data ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
-              請求書はまだありません。職人を選んでファイルをアップロードしてください。
+              請求書はまだありません。右上のボタンからファイルをアップロードしてください。
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>アップロード日</TableHead>
-                  <TableHead>職人</TableHead>
+                  <TableHead>取引先</TableHead>
                   <TableHead>号室</TableHead>
                   <TableHead>請求日</TableHead>
                   <TableHead className="text-right">金額</TableHead>
@@ -298,7 +310,25 @@ export default function VendorInvoicesPage() {
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(v.uploadedAt.slice(0, 10))}
                     </TableCell>
-                    <TableCell>{v.staffName}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">
+                        {v.vendorName || v.staffName || "(不明)"}
+                      </div>
+                      {v.staffName ? (
+                        <div className="text-[11px] text-emerald-600">
+                          ✓ 職人「{v.staffName}」に一致
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            setAssignTarget({ id: v.id, staffId: "" })
+                          }
+                          className="text-[11px] text-amber-700 hover:underline"
+                        >
+                          職人未一致 (割当)
+                        </button>
+                      )}
+                    </TableCell>
                     <TableCell>{v.unitNumber}</TableCell>
                     <TableCell>{formatDate(v.invoiceDate)}</TableCell>
                     <TableCell className="text-right tabular-nums">
@@ -401,6 +431,67 @@ export default function VendorInvoicesPage() {
               disabled={!matchTarget?.projectId || matchMut.isPending}
             >
               紐付ける
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!assignTarget}
+        onOpenChange={(o) => !o && setAssignTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>職人を割当</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              請求書の取引先と職人マスタを結びつけます。次回以降の自動マッチングはOCRが取引先名から判定します。
+            </p>
+            <Select
+              value={assignTarget?.staffId ?? ""}
+              onValueChange={(v) =>
+                setAssignTarget((t) => (t ? { ...t, staffId: v } : t))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="職人を選択" />
+              </SelectTrigger>
+              <SelectContent>
+                {(staffQ.data ?? []).map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                    {s.role ? ` (${s.role})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignTarget(null)}>
+              キャンセル
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!assignTarget?.staffId) return;
+                try {
+                  await assignMut.mutateAsync({
+                    id: assignTarget.id,
+                    data: { staffId: assignTarget.staffId },
+                  });
+                  await refresh();
+                  toast({ title: "職人を割当てました" });
+                  setAssignTarget(null);
+                } catch (e) {
+                  toast({
+                    title: apiErrorMessage(e),
+                    variant: "destructive",
+                  });
+                }
+              }}
+              disabled={!assignTarget?.staffId || assignMut.isPending}
+            >
+              割当てる
             </Button>
           </DialogFooter>
         </DialogContent>
