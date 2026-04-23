@@ -30,7 +30,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Printer } from "lucide-react";
 import { apiErrorMessage } from "@/lib/api-error";
 
 function startOfWeek(d: Date): Date {
@@ -60,6 +60,27 @@ const empty = {
 };
 
 const DAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"];
+
+const TASK_OPTIONS = [
+  "解体",
+  "搬出",
+  "大工",
+  "左官",
+  "塗装",
+  "電気",
+  "設備",
+  "ガス",
+  "UB",
+  "クロス",
+  "床",
+  "キッチン",
+  "仕上げ",
+  "雑工",
+  "美装",
+  "是正工事",
+  "リペア",
+  "その他",
+] as const;
 
 export default function SchedulePage() {
   const queryClient = useQueryClient();
@@ -135,6 +156,9 @@ export default function SchedulePage() {
       await queryClient.invalidateQueries({
         queryKey: getListScheduleEntriesQueryKey({ from, to }),
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/staff/assignments"],
+      });
       await invalidateDashboard(queryClient);
       toast({ title: "予定を追加しました" });
       setOpen(false);
@@ -150,6 +174,9 @@ export default function SchedulePage() {
       await queryClient.invalidateQueries({
         queryKey: getListScheduleEntriesQueryKey({ from, to }),
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/staff/assignments"],
+      });
     } catch (err) {
       toast({ title: apiErrorMessage(err), variant: "destructive" });
     }
@@ -158,8 +185,8 @@ export default function SchedulePage() {
   const todayISO = toISO(new Date());
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 schedule-print-root">
+      <div className="flex items-center justify-between print:hidden">
         <div>
           <h1 className="text-2xl font-bold">工程表</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -184,6 +211,31 @@ export default function SchedulePage() {
             onClick={() => setWeekStart(addDays(weekStart, 7))}
           >
             翌週
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => {
+              // Inject a landscape @page rule just for this print call,
+              // overriding the global portrait rule reliably across browsers.
+              const style = document.createElement("style");
+              style.setAttribute("data-print-landscape", "schedule");
+              style.media = "print";
+              style.textContent =
+                "@page { size: A4 landscape !important; margin: 8mm !important; }";
+              document.head.appendChild(style);
+              const cleanup = () => {
+                style.remove();
+                window.removeEventListener("afterprint", cleanup);
+              };
+              window.addEventListener("afterprint", cleanup);
+              window.print();
+              // Fallback cleanup in case afterprint never fires
+              setTimeout(cleanup, 60_000);
+            }}
+          >
+            <Printer className="w-4 h-4" />
+            印刷 / PDF
           </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -243,12 +295,22 @@ export default function SchedulePage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="task">作業内容 *</Label>
-                  <Input
-                    id="task"
+                  <Label>作業内容 *</Label>
+                  <Select
                     value={form.task}
-                    onChange={(e) => setForm({ ...form, task: e.target.value })}
-                  />
+                    onValueChange={(v) => setForm({ ...form, task: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="作業を選択" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TASK_OPTIONS.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>

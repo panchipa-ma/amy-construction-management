@@ -252,4 +252,46 @@
     box-shadow: none !important;
     background: white !important;
   }
+
+  /* Schedule (工程表) print layout: landscape, full width */
+  .schedule-print-root {
+    color: #000 !important;
+  }
+  body:has(.schedule-print-root) {
+    /* When printing the schedule, use landscape with narrow margins */
+  }
+  .schedule-print-root .border,
+  .schedule-print-root .border-b,
+  .schedule-print-root .border-r {
+    border-color: #999 !important;
+  }
+  .schedule-print-root .text-muted-foreground {
+    color: #555 !important;
+  }
+  .schedule-print-root .bg-muted\/40,
+  .schedule-print-root .bg-muted\/20,
+  .schedule-print-root .bg-muted\/10,
+  .schedule-print-root .bg-primary\/5,
+  .schedule-print-root .bg-primary\/10 {
+    background: #f5f5f5 !important;
+  }
+  .schedule-print-root .overflow-x-auto {
+    overflow: visible !important;
+  }
+  .schedule-print-root .min-w-\[1200px\] {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  /* Hide hover-only "もう一件" button while printing */
+  .schedule-print-root [aria-label="この日にもう一件追加"],
+  .schedule-print-root [aria-label="削除"] {
+    display: none !important;
+  }
+  /* Ensure entries don't get cut off */
+  .schedule-print-root .truncate {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
 }
+
