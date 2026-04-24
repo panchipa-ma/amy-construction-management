@@ -2,9 +2,19 @@ import {
   useGetDashboardSummary,
   useGetRecentActivity,
   useGetCostPipeline,
+  useListInvoices,
   ProjectStatus,
 } from "@workspace/api-client-react";
 import { Link } from "wouter";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -34,6 +44,7 @@ import {
   Legend,
 } from "recharts";
 import { useMemo } from "react";
+import { ExternalLink } from "lucide-react";
 
 const STATUS_LABEL: Record<string, string> = {
   estimating: "見積中",
@@ -83,6 +94,41 @@ export default function DashboardPage() {
   const summaryQ = useGetDashboardSummary();
   const activityQ = useGetRecentActivity();
   const pipelineQ = useGetCostPipeline();
+  const [openMonth, setOpenMonth] = useState<string | null>(null);
+  // Lazy fetch only when the dialog is opened.
+  const invoicesQ = useListInvoices(undefined, {
+    query: {
+      enabled: openMonth !== null,
+      queryKey: ["/api/invoices"],
+    },
+  });
+  const monthInvoices = useMemo(() => {
+    if (!openMonth || !invoicesQ.data) return [];
+    return invoicesQ.data
+      .filter(
+        (inv) =>
+          typeof inv.dueDate === "string" &&
+          inv.dueDate.slice(0, 7) === openMonth,
+      )
+      .sort((a, b) =>
+        (a.dueDate ?? "").localeCompare(b.dueDate ?? "") ||
+        a.invoiceNumber.localeCompare(b.invoiceNumber),
+      );
+  }, [openMonth, invoicesQ.data]);
+  const monthLabel = openMonth
+    ? `${openMonth.slice(0, 4)}年${Number(openMonth.slice(5, 7))}月`
+    : "";
+  const monthSummary = useMemo(() => {
+    let total = 0;
+    let paid = 0;
+    let unpaid = 0;
+    for (const inv of monthInvoices) {
+      total += inv.total;
+      if (inv.paid) paid += inv.total;
+      else unpaid += inv.total;
+    }
+    return { total, paid, unpaid };
+  }, [monthInvoices]);
 
   const summary = summaryQ.data;
   const activity = activityQ.data ?? [];
@@ -248,8 +294,14 @@ export default function DashboardPage() {
                   {formatCurrency(monthlyTotalAll)}
                 </span>
               </div>
+              <div className="text-xs text-muted-foreground mb-2">
+                月をクリックすると、その月の請求書一覧が表示されます。
+              </div>
               <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={monthlyChart} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+                <BarChart
+                  data={monthlyChart}
+                  margin={{ top: 8, right: 8, left: 8, bottom: 0 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis dataKey="label" tick={{ fontSize: 12 }} />
                   <YAxis
@@ -260,6 +312,7 @@ export default function DashboardPage() {
                     width={56}
                   />
                   <Tooltip
+                    cursor={false}
                     formatter={(value: number, name: string) => [
                       formatCurrency(value),
                       name === "paidTotal"
@@ -268,7 +321,7 @@ export default function DashboardPage() {
                           ? "未入金"
                           : name,
                     ]}
-                    labelFormatter={(label: string) => `${label} 月`}
+                    labelFormatter={(label: string) => `${label} 月 (クリックで詳細)`}
                   />
                   <Legend
                     formatter={(value: string) =>
@@ -284,12 +337,22 @@ export default function DashboardPage() {
                     stackId="amt"
                     fill="hsl(var(--chart-2, 142 71% 45%))"
                     radius={[0, 0, 0, 0]}
+                    style={{ cursor: "pointer" }}
+                    onClick={(d) => {
+                      const p = (d as unknown as { payload?: { month?: string; count?: number } })?.payload;
+                      if (p?.month && (p.count ?? 0) > 0) setOpenMonth(p.month);
+                    }}
                   />
                   <Bar
                     dataKey="unpaidTotal"
                     stackId="amt"
                     fill="hsl(var(--chart-4, 38 92% 50%))"
                     radius={[4, 4, 0, 0]}
+                    style={{ cursor: "pointer" }}
+                    onClick={(d) => {
+                      const p = (d as unknown as { payload?: { month?: string; count?: number } })?.payload;
+                      if (p?.month && (p.count ?? 0) > 0) setOpenMonth(p.month);
+                    }}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -310,10 +373,11 @@ export default function DashboardPage() {
                       .map((m) => (
                         <TableRow
                           key={m.month}
-                          className={m.isCurrent ? "bg-muted/50" : ""}
+                          className={`cursor-pointer hover:bg-muted ${m.isCurrent ? "bg-muted/50" : ""}`}
+                          onClick={() => setOpenMonth(m.month)}
                         >
                           <TableCell className="font-medium">
-                            {m.label}
+                            <span className="hover:underline">{m.label}</span>
                             {m.isCurrent ? (
                               <span className="ml-1 text-[10px] text-muted-foreground">
                                 (今月)
@@ -449,6 +513,121 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={openMonth !== null} onOpenChange={(o) => !o && setOpenMonth(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{monthLabel}に支払期限の請求書</DialogTitle>
+            <DialogDescription>
+              支払期限がこの月に設定されている請求書の一覧です。
+            </DialogDescription>
+          </DialogHeader>
+          {invoicesQ.isLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : monthInvoices.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-8 text-center">
+              この月の請求書はありません
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-3 text-xs">
+                <div className="rounded border p-2">
+                  <div className="text-muted-foreground">件数</div>
+                  <div className="text-base font-semibold tabular-nums">
+                    {monthInvoices.length} 件
+                  </div>
+                </div>
+                <div className="rounded border p-2">
+                  <div className="text-muted-foreground">入金済</div>
+                  <div className="text-base font-semibold tabular-nums text-emerald-700">
+                    {formatCurrency(monthSummary.paid)}
+                  </div>
+                </div>
+                <div className="rounded border p-2">
+                  <div className="text-muted-foreground">未入金</div>
+                  <div className="text-base font-semibold tabular-nums text-amber-700">
+                    {formatCurrency(monthSummary.unpaid)}
+                  </div>
+                </div>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>請求番号</TableHead>
+                    <TableHead>案件</TableHead>
+                    <TableHead>支払期限</TableHead>
+                    <TableHead className="text-right">金額 (税込)</TableHead>
+                    <TableHead>状態</TableHead>
+                    <TableHead className="w-12"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {monthInvoices.map((inv) => (
+                    <TableRow key={inv.id}>
+                      <TableCell>
+                        <Link
+                          href={`/invoices/${inv.id}`}
+                          className="font-medium hover:underline"
+                          onClick={() => setOpenMonth(null)}
+                        >
+                          {inv.invoiceNumber}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="truncate max-w-[200px]">
+                        {inv.projectName ?? "-"}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {formatDate(inv.dueDate)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums font-medium">
+                        {formatCurrency(inv.total)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            inv.paid
+                              ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                              : "bg-amber-100 text-amber-800 border-amber-200"
+                          }
+                        >
+                          {inv.paid ? "入金済" : "未入金"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/invoices/${inv.id}`}
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={() => setOpenMonth(null)}
+                          title="開く"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground">
+                <span>
+                  合計:{" "}
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {formatCurrency(monthSummary.total)}
+                  </span>
+                </span>
+                <Link
+                  href="/invoices"
+                  className="text-primary hover:underline inline-flex items-center gap-1"
+                  onClick={() => setOpenMonth(null)}
+                >
+                  請求書一覧へ
+                  <ExternalLink className="w-3 h-3" />
+                </Link>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
