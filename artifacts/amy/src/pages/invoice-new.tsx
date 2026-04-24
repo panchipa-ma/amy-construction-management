@@ -109,6 +109,33 @@ export default function InvoiceNewPage() {
     if (selectedProject && selectedProject.customerId !== customerId) {
       setCustomerId(selectedProject.customerId);
     }
+    // Default the first work item to the project name (現場名).
+    // Only auto-fill when the first row is fully empty so we don't clobber
+    // anything the user has typed.
+    if (selectedProject) {
+      setRows((prev) => {
+        const first = prev[0];
+        const isEmpty =
+          !first ||
+          (!first.description &&
+            !first.unit &&
+            !first.quantity &&
+            !first.unitPrice &&
+            !(first.notes ?? ""));
+        if (!isEmpty) return prev;
+        const next = [...prev];
+        next[0] = {
+          description: selectedProject.unitNumber
+            ? `${selectedProject.name} (${selectedProject.unitNumber})`
+            : selectedProject.name,
+          unit: "式",
+          quantity: 1,
+          unitPrice: 0,
+          notes: "",
+        };
+        return next;
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProject?.id]);
 

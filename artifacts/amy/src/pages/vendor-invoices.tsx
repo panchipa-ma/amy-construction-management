@@ -176,14 +176,14 @@ export default function VendorInvoicesPage() {
       } else {
         const summary =
           total === 1
-            ? `${extracted.vendor || "(取引先不明)"} / ${formatCurrency(lines[0].amount)} / ${lines[0].unitNumber || "号室不明"}`
-            : `${extracted.vendor}：${total}物件中 ${matchedCount}件が案件に振分けされました`;
+            ? `${extracted.vendor || "(取引先不明)"} / ${formatCurrency(lines[0].amount)}`
+            : `${extracted.vendor}：${total}件中 ${matchedCount}件を案件に自動振分け`;
         toast({
           title:
             total === 1 && matchedCount === 1
               ? "案件に自動振分けしました"
               : matchedCount === total
-                ? "全物件を自動振分けしました"
+                ? "全件を自動振分けしました"
                 : "請求書を登録しました（一部未振分）",
           description: summary,
         });
@@ -234,7 +234,7 @@ export default function VendorInvoicesPage() {
           <h1 className="text-2xl font-bold">職人請求書</h1>
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
-            アップロードするだけで取引先・号室・金額を自動読み取り。複数物件が混在していても号室ごとに自動振分けします。
+            アップロードするだけで取引先・金額・日付を自動読み取りし、施工台帳に自動反映します。複数物件が混在していても明細ごとに自動振分けします。
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -296,7 +296,6 @@ export default function VendorInvoicesPage() {
                 <TableRow>
                   <TableHead>アップロード日</TableHead>
                   <TableHead>取引先</TableHead>
-                  <TableHead>号室</TableHead>
                   <TableHead>請求日</TableHead>
                   <TableHead className="text-right">金額</TableHead>
                   <TableHead>振分先案件</TableHead>
@@ -329,7 +328,6 @@ export default function VendorInvoicesPage() {
                         </button>
                       )}
                     </TableCell>
-                    <TableCell>{v.unitNumber}</TableCell>
                     <TableCell>{formatDate(v.invoiceDate)}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatCurrency(v.amount)}

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -13,6 +13,7 @@ import {
   getGetProjectLedgerQueryKey,
   getGetProjectQueryKey,
   getListProjectsQueryKey,
+  type Project,
 } from "@workspace/api-client-react";
 import { ObjectUploader } from "@workspace/object-storage-web";
 import { Button } from "@/components/ui/button";
@@ -23,19 +24,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Table,
   TableBody,
@@ -55,12 +55,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Upload, Trash2, Link2, Sparkles, Loader2 } from "lucide-react";
+import {
+  Upload,
+  Trash2,
+  Sparkles,
+  Loader2,
+  ChevronsUpDown,
+  Check,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { CostCategoryBadge } from "@/components/cost-category-badge";
+import { cn } from "@/lib/utils";
 
 export default function ReceiptsPage() {
   const queryClient = useQueryClient();
@@ -74,27 +82,28 @@ export default function ReceiptsPage() {
   const ocrMut = useExtractOcr();
 
   const [askDelete, setAskDelete] = useState<string | null>(null);
-  const [matchTarget, setMatchTarget] = useState<{
-    id: string;
-    projectId: string;
-  } | null>(null);
   const [processing, setProcessing] = useState(0);
   const lastObjectPathRef = useRef<string>("");
   const lastContentTypeRef = useRef<string>("");
 
-  const refresh = async (projectId?: string | null) => {
+  const projects = projectsQ.data ?? [];
+
+  const refresh = async (projectIds?: (string | null | undefined)[]) => {
     await queryClient.invalidateQueries({
       queryKey: getListReceiptsQueryKey(),
     });
     await queryClient.invalidateQueries({
       queryKey: getListProjectsQueryKey(),
     });
-    if (projectId) {
+    const unique = new Set(
+      (projectIds ?? []).filter((p): p is string => !!p),
+    );
+    for (const pid of unique) {
       await queryClient.invalidateQueries({
-        queryKey: getGetProjectLedgerQueryKey(projectId),
+        queryKey: getGetProjectLedgerQueryKey(pid),
       });
       await queryClient.invalidateQueries({
-        queryKey: getGetProjectQueryKey(projectId),
+        queryKey: getGetProjectQueryKey(pid),
       });
     }
     await invalidateDashboard(queryClient);
@@ -112,15 +121,15 @@ export default function ReceiptsPage() {
     setProcessing((n) => n + 1);
     try {
       // Run OCR
-      let extracted: Awaited<ReturnType<typeof ocrMut.mutateAsync>> | null = null;
+      let extracted: Awaited<ReturnType<typeof ocrMut.mutateAsync>> | null =
+        null;
       try {
         extracted = await ocrMut.mutateAsync({
           data: { objectPath, contentType, kind: "receipt" },
         });
       } catch (err) {
-        // OCR failed: still create with minimal info so file isn't lost
         toast({
-          title: "自動読み取りに失敗しました。手動編集してください",
+          title: "自動読み取りに失敗しました。手動で振分けてください",
           description: apiErrorMessage(err),
           variant: "destructive",
         });
@@ -138,16 +147,13 @@ export default function ReceiptsPage() {
           notes: extracted?.notes ?? null,
         },
       });
-      await refresh(created.projectId);
+      await refresh([created.projectId]);
 
       const summary = extracted
         ? `${extracted.vendor || "(店舗不明)"} / ${formatCurrency(extracted.amount)} / ${extracted.date}`
         : "ファイルを登録しました";
       toast({
-        title:
-          created.status === "matched"
-            ? `案件「${created.projectName}」に振分けました`
-            : "領収書を登録しました（要手動振分け）",
+        title: "領収書を登録しました。振分先案件を選んでください",
         description: summary,
       });
     } catch (err) {
@@ -162,7 +168,7 @@ export default function ReceiptsPage() {
     const target = (listQ.data ?? []).find((r) => r.id === askDelete);
     try {
       await deleteMut.mutateAsync({ id: askDelete });
-      await refresh(target?.projectId ?? null);
+      await refresh([target?.projectId]);
       toast({ title: "削除しました" });
       setAskDelete(null);
     } catch (err) {
@@ -170,16 +176,18 @@ export default function ReceiptsPage() {
     }
   };
 
-  const handleMatch = async () => {
-    if (!matchTarget) return;
+  const handleAssign = async (
+    receiptId: string,
+    nextProjectId: string,
+    prevProjectId: string | null,
+  ) => {
     try {
       const updated = await matchMut.mutateAsync({
-        id: matchTarget.id,
-        data: { projectId: matchTarget.projectId },
+        id: receiptId,
+        data: { projectId: nextProjectId },
       });
-      await refresh(updated.projectId);
-      toast({ title: "案件に紐付けました" });
-      setMatchTarget(null);
+      await refresh([prevProjectId, updated.projectId]);
+      toast({ title: `案件「${updated.projectName}」に振分けました` });
     } catch (err) {
       toast({ title: apiErrorMessage(err), variant: "destructive" });
     }
@@ -192,7 +200,7 @@ export default function ReceiptsPage() {
           <h1 className="text-2xl font-bold">領収書</h1>
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
-            アップロードするだけで店舗・金額・日付・号室を自動読み取りし、案件に振分けます。
+            アップロードするだけで店舗・金額・日付を自動読み取り。振分先の現場名・号室はプルダウンで検索して選択できます。
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -227,9 +235,7 @@ export default function ReceiptsPage() {
             onComplete={(result) => {
               const ok = result.successful?.[0];
               if (ok && lastObjectPathRef.current) {
-                void handleProcessFile(
-                  (ok.name as string) ?? "receipt",
-                );
+                void handleProcessFile((ok.name as string) ?? "receipt");
               }
             }}
           >
@@ -257,12 +263,11 @@ export default function ReceiptsPage() {
                   <TableHead>アップロード日</TableHead>
                   <TableHead>店舗・支払先</TableHead>
                   <TableHead>カテゴリ</TableHead>
-                  <TableHead>号室</TableHead>
                   <TableHead>領収日</TableHead>
                   <TableHead className="text-right">金額</TableHead>
-                  <TableHead>振分先案件</TableHead>
+                  <TableHead className="min-w-[260px]">振分先案件</TableHead>
                   <TableHead>ファイル</TableHead>
-                  <TableHead className="w-32"></TableHead>
+                  <TableHead className="w-16"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -275,24 +280,19 @@ export default function ReceiptsPage() {
                     <TableCell>
                       <CostCategoryBadge category={r.category} />
                     </TableCell>
-                    <TableCell>{r.unitNumber ?? "—"}</TableCell>
                     <TableCell>{formatDate(r.receiptDate)}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatCurrency(r.amount)}
                     </TableCell>
                     <TableCell>
-                      {r.status === "matched" && r.projectId ? (
-                        <Link
-                          href={`/projects/${r.projectId}`}
-                          className="text-primary hover:underline"
-                        >
-                          {r.projectName}
-                        </Link>
-                      ) : (
-                        <Badge variant="outline" className="text-amber-700">
-                          未振分
-                        </Badge>
-                      )}
+                      <ProjectPicker
+                        projects={projects}
+                        value={r.projectId ?? null}
+                        disabled={matchMut.isPending}
+                        onSelect={(pid) =>
+                          handleAssign(r.id, pid, r.projectId ?? null)
+                        }
+                      />
                     </TableCell>
                     <TableCell>
                       <a
@@ -305,29 +305,14 @@ export default function ReceiptsPage() {
                       </a>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1 justify-end">
-                        {r.status === "unmatched" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              setMatchTarget({ id: r.id, projectId: "" })
-                            }
-                            className="gap-1"
-                          >
-                            <Link2 className="w-3 h-3" />
-                            振分
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setAskDelete(r.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setAskDelete(r.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -336,51 +321,6 @@ export default function ReceiptsPage() {
           )}
         </CardContent>
       </Card>
-
-      <Dialog
-        open={!!matchTarget}
-        onOpenChange={(o) => !o && setMatchTarget(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>案件に紐付け</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              振分先の案件を選択してください。施工台帳に実績原価が登録されます。
-            </p>
-            <Select
-              value={matchTarget?.projectId ?? ""}
-              onValueChange={(v) =>
-                setMatchTarget((t) => (t ? { ...t, projectId: v } : t))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="案件を選択" />
-              </SelectTrigger>
-              <SelectContent>
-                {(projectsQ.data ?? []).map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                    {p.unitNumber ? ` (${p.unitNumber})` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMatchTarget(null)}>
-              キャンセル
-            </Button>
-            <Button
-              onClick={handleMatch}
-              disabled={!matchTarget?.projectId || matchMut.isPending}
-            >
-              紐付ける
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog
         open={!!askDelete}
@@ -401,6 +341,131 @@ export default function ReceiptsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+/* ---------------- Searchable project picker ---------------- */
+
+function ProjectPicker({
+  projects,
+  value,
+  disabled,
+  onSelect,
+}: {
+  projects: Project[];
+  value: string | null;
+  disabled?: boolean;
+  onSelect: (projectId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = useMemo(
+    () => projects.find((p) => p.id === value) ?? null,
+    [projects, value],
+  );
+
+  return (
+    <div className="flex items-center gap-2">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            disabled={disabled}
+            className={cn(
+              "h-8 w-full justify-between text-left font-normal min-w-[240px]",
+              !selected && "text-muted-foreground",
+            )}
+          >
+            <span className="truncate">
+              {selected ? (
+                <>
+                  <span className="font-medium">{selected.name}</span>
+                  {selected.unitNumber ? (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      ({selected.unitNumber})
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                "案件を選択..."
+              )}
+            </span>
+            <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[360px] p-0" align="start">
+          <Command
+            filter={(itemValue, search) => {
+              if (!search) return 1;
+              // Normalize half/full-width and case so e.g. "101" matches "１０１".
+              const norm = (s: string) =>
+                s.normalize("NFKC").toLowerCase();
+              return norm(itemValue).includes(norm(search)) ? 1 : 0;
+            }}
+          >
+            <CommandInput placeholder="現場名・号室で検索..." />
+            <CommandList>
+              <CommandEmpty>該当する案件がありません</CommandEmpty>
+              <CommandGroup>
+                {projects.map((p) => {
+                  const label = `${p.name} ${p.unitNumber ?? ""} ${p.siteAddress ?? ""}`;
+                  return (
+                    <CommandItem
+                      key={p.id}
+                      value={label}
+                      onSelect={() => {
+                        if (p.id !== value) onSelect(p.id);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === p.id ? "opacity-100" : "opacity-0",
+                        )}
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate font-medium">
+                          {p.name}
+                          {p.unitNumber ? (
+                            <span className="text-muted-foreground font-normal">
+                              {" "}
+                              ({p.unitNumber})
+                            </span>
+                          ) : null}
+                        </span>
+                        {p.siteAddress ? (
+                          <span className="truncate text-[11px] text-muted-foreground">
+                            {p.siteAddress}
+                          </span>
+                        ) : null}
+                      </div>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      {selected && (
+        <Link
+          href={`/projects/${selected.id}`}
+          className="text-[11px] text-primary hover:underline shrink-0"
+          title="案件を開く"
+        >
+          開く
+        </Link>
+      )}
+      {!selected && (
+        <Badge variant="outline" className="text-amber-700 shrink-0 text-[10px]">
+          未振分
+        </Badge>
+      )}
     </div>
   );
 }

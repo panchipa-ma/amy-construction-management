@@ -30,7 +30,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
-import { Plus, Trash2, Printer } from "lucide-react";
+import { Plus, Trash2, Printer, Users } from "lucide-react";
+import { Link } from "wouter";
 import { apiErrorMessage } from "@/lib/api-error";
 
 function startOfWeek(d: Date): Date {
@@ -190,7 +191,11 @@ export default function SchedulePage() {
         <div>
           <h1 className="text-2xl font-bold">工程表</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            職人ごとに横並びで週単位の現場割当を確認できます。
+            職人ごとに週単位で現場の割当を入力します。ここで登録した予定が
+            <Link href="/staff-assignments" className="text-primary hover:underline mx-1">
+              出面表
+            </Link>
+            に自動で反映されます。
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -212,6 +217,12 @@ export default function SchedulePage() {
           >
             翌週
           </Button>
+          <Link href="/staff-assignments">
+            <Button variant="outline" className="gap-2">
+              <Users className="w-4 h-4" />
+              出面表を見る
+            </Button>
+          </Link>
           <Button
             variant="outline"
             className="gap-2"

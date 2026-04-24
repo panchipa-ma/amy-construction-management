@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListStaff,
   useCreateStaff,
   useUpdateStaff,
   useDeleteStaff,
+  useListStaffAssignments,
   getListStaffQueryKey,
   type Staff,
 } from "@workspace/api-client-react";
@@ -45,16 +47,102 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
-import { Plus, Pencil, Trash2, HardHat } from "lucide-react";
-import { formatCurrency } from "@/lib/format";
+import { Plus, Pencil, Trash2, HardHat, MapPin, CalendarClock, Users } from "lucide-react";
+import { formatCurrency, formatDate, todayLocalISO, addDaysISO } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 
 const empty = { name: "", role: "", phone: "", dailyRate: "0", company: "" };
+
+type StaffStatusEntry = { name: string; firstDate: string; lastDate: string };
+type StaffStatus = {
+  active: StaffStatusEntry[];
+  upcoming: StaffStatusEntry | null;
+};
+
+function StaffStatusCell({ status }: { status?: StaffStatus }) {
+  if (!status || (status.active.length === 0 && !status.upcoming)) {
+    return (
+      <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+        <CalendarClock className="w-3 h-3" />
+        空き
+      </span>
+    );
+  }
+  return (
+    <div className="space-y-1 text-xs">
+      {status.active.map((p, i) => (
+        <div key={`a${i}`} className="flex items-start gap-1.5">
+          <Badge className="shrink-0 px-1.5 py-0 text-[10px] h-4">稼働中</Badge>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1 font-medium truncate">
+              <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
+              {p.name}
+            </div>
+            <div className="text-[11px] text-muted-foreground tabular-nums">
+              {formatDate(p.firstDate)} 〜 {formatDate(p.lastDate)}
+            </div>
+          </div>
+        </div>
+      ))}
+      {status.upcoming && (
+        <div className="flex items-start gap-1.5">
+          <Badge variant="outline" className="shrink-0 px-1.5 py-0 text-[10px] h-4">
+            次回
+          </Badge>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1 font-medium truncate">
+              <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
+              {status.upcoming.name}
+            </div>
+            <div className="text-[11px] text-muted-foreground tabular-nums">
+              {formatDate(status.upcoming.firstDate)}〜
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function StaffPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data, isLoading } = useListStaff();
+  const today = todayLocalISO();
+  // Pull each staff's bookings for the "現状況" column (today-7 .. today+45).
+  const assignmentsQ = useListStaffAssignments({
+    from: addDaysISO(today, -7),
+    to: addDaysISO(today, 45),
+  });
+  const statusByStaff = useMemo(() => {
+    const m = new Map<string, StaffStatus>();
+    for (const s of assignmentsQ.data ?? []) {
+      const active = s.projects.filter(
+        (p) => p.firstDate <= today && today <= p.lastDate,
+      );
+      const upcomingList = s.projects.filter((p) => p.firstDate > today);
+      const upcoming = [...upcomingList].sort((a, b) =>
+        a.firstDate.localeCompare(b.firstDate),
+      )[0];
+      m.set(s.staffId, {
+        active: active.map((p) => ({
+          name: p.unitNumber ? `${p.projectName} (${p.unitNumber})` : p.projectName,
+          firstDate: p.firstDate,
+          lastDate: p.lastDate,
+        })),
+        upcoming: upcoming
+          ? {
+              name: upcoming.unitNumber
+                ? `${upcoming.projectName} (${upcoming.unitNumber})`
+                : upcoming.projectName,
+              firstDate: upcoming.firstDate,
+              lastDate: upcoming.lastDate,
+            }
+          : null,
+      });
+    }
+    return m;
+  }, [assignmentsQ.data, today]);
   const createMut = useCreateStaff();
   const updateMut = useUpdateStaff();
   const deleteMut = useDeleteStaff();
@@ -130,13 +218,21 @@ export default function StaffPage() {
         <div>
           <h1 className="text-2xl font-bold">職人</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            社員と外注先の職人を管理します。
+            社員と外注先の職人を管理します。「現状況」欄で各職人の現在/次の現場をひと目で確認できます。
           </p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
-          <Plus className="w-4 h-4" />
-          職人を追加
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href="/staff-assignments">
+            <Button variant="outline" className="gap-2">
+              <Users className="w-4 h-4" />
+              出面表
+            </Button>
+          </Link>
+          <Button onClick={openCreate} className="gap-2">
+            <Plus className="w-4 h-4" />
+            職人を追加
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -168,44 +264,51 @@ export default function StaffPage() {
                   <TableHead>氏名</TableHead>
                   <TableHead>職種</TableHead>
                   <TableHead>会社</TableHead>
+                  <TableHead className="min-w-[260px]">現状況 (発注の参考)</TableHead>
                   <TableHead>電話</TableHead>
                   <TableHead className="text-right">日当</TableHead>
                   <TableHead className="w-24"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{s.role}</Badge>
-                    </TableCell>
-                    <TableCell>{s.company || "-"}</TableCell>
-                    <TableCell>{s.phone || "-"}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatCurrency(s.dailyRate)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 justify-end">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEdit(s)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteId(s.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {rows.map((s) => {
+                  const status = statusByStaff.get(s.id);
+                  return (
+                    <TableRow key={s.id}>
+                      <TableCell className="font-medium">{s.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{s.role}</Badge>
+                      </TableCell>
+                      <TableCell>{s.company || "-"}</TableCell>
+                      <TableCell>
+                        <StaffStatusCell status={status ?? undefined} />
+                      </TableCell>
+                      <TableCell>{s.phone || "-"}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatCurrency(s.dailyRate)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEdit(s)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleteId(s.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
