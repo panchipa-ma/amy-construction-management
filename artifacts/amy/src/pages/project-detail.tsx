@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -9,6 +9,7 @@ import {
   useListInvoices,
   useListScheduleEntries,
   useListProgressLogs,
+  useUpdateProject,
   useCreateCostEntry,
   useUpdateCostEntry,
   useDeleteCostEntry,
@@ -90,7 +91,12 @@ import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { LedgerSummary } from "@/components/ledger-summary";
-import { LedgerSpreadsheet } from "@/components/ledger-spreadsheet";
+import {
+  LedgerSpreadsheet,
+  type ProjectPatch,
+  type CostEntryPatch,
+  type CreateCostEntryDraft,
+} from "@/components/ledger-spreadsheet";
 import { ProjectGantt } from "@/components/project-gantt";
 
 const COST_CATEGORY_LABEL: Record<string, string> = {
@@ -136,12 +142,24 @@ export default function ProjectDetailPage() {
   const schedulesQ = useListScheduleEntries({ projectId: id });
   const logsQ = useListProgressLogs({ projectId: id });
 
+  const updateProjectMut = useUpdateProject();
   const createCostMut = useCreateCostEntry();
   const updateCostMut = useUpdateCostEntry();
   const deleteCostMut = useDeleteCostEntry();
   const createLogMut = useCreateProgressLog();
   const deleteLogMut = useDeleteProgressLog();
   const deleteProjectMut = useDeleteProject();
+
+  // Cache of the latest known state for each cost entry. Used as the base when
+  // composing PATCH bodies so that rapid sequential edits on the same row do
+  // not lose intermediate changes (lost-update race). We resync from the server
+  // whenever the ledger query returns fresh data, but skip ids with a pending
+  // writer to avoid clobbering in-flight optimistic state.
+  const latestCostRef = useRef<Map<string, CostEntry>>(new Map());
+  // One serialized writer chain per cost entry id. Subsequent edits during a
+  // pending mutation simply update latestCostRef; the active writer loops and
+  // re-sends the latest merged state until it matches what was last persisted.
+  const writersRef = useRef<Map<string, Promise<void>>>(new Map());
 
   const [costOpen, setCostOpen] = useState(false);
   const [editingCost, setEditingCost] = useState<CostEntry | null>(null);
@@ -150,6 +168,24 @@ export default function ProjectDetailPage() {
   const [askDeleteProject, setAskDeleteProject] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [logForm, setLogForm] = useState(emptyLog);
+
+  // Resync cache from server when the ledger refetches — but only for rows
+  // without a pending writer (else we'd clobber optimistic state mid-flight).
+  useEffect(() => {
+    if (!ledgerQ.data) return;
+    const ids = new Set<string>();
+    for (const e of ledgerQ.data.entries) {
+      ids.add(e.id);
+      if (!writersRef.current.has(e.id)) {
+        latestCostRef.current.set(e.id, e as CostEntry);
+      }
+    }
+    for (const id of Array.from(latestCostRef.current.keys())) {
+      if (!ids.has(id) && !writersRef.current.has(id)) {
+        latestCostRef.current.delete(id);
+      }
+    }
+  }, [ledgerQ.data]);
 
   if (projectQ.isLoading || !projectQ.data) {
     return <Skeleton className="h-96 w-full max-w-5xl" />;
@@ -383,7 +419,159 @@ export default function ProjectDetailPage() {
                   <TabsTrigger value="summary">サマリー</TabsTrigger>
                 </TabsList>
                 <TabsContent value="sheet" className="mt-3">
-                  <LedgerSpreadsheet ledger={ledger} project={project} />
+                  <LedgerSpreadsheet
+                    ledger={ledger}
+                    project={project}
+                    onProjectUpdate={async (patch: ProjectPatch) => {
+                      try {
+                        await updateProjectMut.mutateAsync({ id, data: patch });
+                        await queryClient.invalidateQueries({
+                          queryKey: getGetProjectQueryKey(id),
+                        });
+                        await queryClient.invalidateQueries({
+                          queryKey: getGetProjectLedgerQueryKey(id),
+                        });
+                        await queryClient.invalidateQueries({
+                          queryKey: getListProjectsQueryKey(),
+                        });
+                        await invalidateDashboard(queryClient);
+                      } catch (err) {
+                        toast({
+                          title: apiErrorMessage(err),
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    onCostEntryUpdate={(
+                      entryId: string,
+                      patch: CostEntryPatch,
+                    ) => {
+                      // 1. Optimistically merge the patch into the latest cache.
+                      const base =
+                        latestCostRef.current.get(entryId) ??
+                        (ledger.entries.find((e) => e.id === entryId) as
+                          | CostEntry
+                          | undefined);
+                      if (!base) return;
+                      const merged: CostEntry = {
+                        ...base,
+                        category: patch.category ?? base.category,
+                        description: patch.description ?? base.description,
+                        vendor:
+                          patch.vendor !== undefined
+                            ? patch.vendor
+                            : (base.vendor ?? null),
+                        plannedAmount:
+                          patch.plannedAmount ?? base.plannedAmount,
+                        actualAmount: patch.actualAmount ?? base.actualAmount,
+                        entryDate: patch.entryDate ?? base.entryDate,
+                        notes:
+                          patch.notes !== undefined
+                            ? patch.notes
+                            : (base.notes ?? null),
+                      };
+                      latestCostRef.current.set(entryId, merged);
+
+                      // 2. If a writer is already running for this id, just
+                      //    let it pick up the new state on its next loop.
+                      if (writersRef.current.has(entryId)) return;
+
+                      // 3. Spawn a writer that loops until what's in the
+                      //    cache matches what was last sent (no concurrent
+                      //    mutations for the same row → preserves order).
+                      const writer = (async () => {
+                        try {
+                          let lastSent: string | null = null;
+                          while (true) {
+                            const current =
+                              latestCostRef.current.get(entryId);
+                            if (!current) break;
+                            const body = {
+                              projectId: id,
+                              category: current.category as CostCategory,
+                              description: current.description,
+                              vendor: current.vendor ?? null,
+                              plannedAmount: current.plannedAmount,
+                              actualAmount: current.actualAmount,
+                              entryDate: current.entryDate,
+                              notes: current.notes ?? null,
+                            };
+                            const fingerprint = JSON.stringify(body);
+                            if (fingerprint === lastSent) break;
+                            lastSent = fingerprint;
+                            await updateCostMut.mutateAsync({
+                              id: entryId,
+                              data: body,
+                            });
+                          }
+                        } catch (err) {
+                          toast({
+                            title: apiErrorMessage(err),
+                            variant: "destructive",
+                          });
+                        } finally {
+                          writersRef.current.delete(entryId);
+                          try {
+                            await queryClient.invalidateQueries({
+                              queryKey: getGetProjectLedgerQueryKey(id),
+                            });
+                            await queryClient.invalidateQueries({
+                              queryKey: getGetProjectQueryKey(id),
+                            });
+                            await invalidateDashboard(queryClient);
+                          } catch {
+                            // Swallow refetch errors so the writer promise
+                            // never rejects unobserved.
+                          }
+                        }
+                      })();
+                      writersRef.current.set(entryId, writer);
+                    }}
+                    onCostEntryCreate={async (draft: CreateCostEntryDraft) => {
+                      try {
+                        await createCostMut.mutateAsync({
+                          data: {
+                            projectId: id,
+                            category: draft.category as CostCategory,
+                            description: draft.description || "新規",
+                            vendor: draft.vendor,
+                            plannedAmount: draft.plannedAmount,
+                            actualAmount: draft.actualAmount,
+                            entryDate: draft.entryDate,
+                          },
+                        });
+                        await queryClient.invalidateQueries({
+                          queryKey: getGetProjectLedgerQueryKey(id),
+                        });
+                        await queryClient.invalidateQueries({
+                          queryKey: getGetProjectQueryKey(id),
+                        });
+                        await invalidateDashboard(queryClient);
+                      } catch (err) {
+                        toast({
+                          title: apiErrorMessage(err),
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    onCostEntryDelete={async (entryId: string) => {
+                      try {
+                        await deleteCostMut.mutateAsync({ id: entryId });
+                        await queryClient.invalidateQueries({
+                          queryKey: getGetProjectLedgerQueryKey(id),
+                        });
+                        await queryClient.invalidateQueries({
+                          queryKey: getGetProjectQueryKey(id),
+                        });
+                        await invalidateDashboard(queryClient);
+                      } catch (err) {
+                        toast({
+                          title: apiErrorMessage(err),
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  />
                 </TabsContent>
                 <TabsContent value="summary" className="mt-3">
                   <LedgerSummary ledger={ledger} />
