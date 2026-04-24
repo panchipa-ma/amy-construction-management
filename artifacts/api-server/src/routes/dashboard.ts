@@ -62,6 +62,41 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       return s + computeTotals(items).total;
     }, 0);
 
+  // Monthly invoice totals grouped by the month of dueDate (支払期限).
+  // Uses computeTotals over invoice line items so the figure exactly matches
+  // the "金額 (税込)" column shown on /invoices.
+  const monthlyMap = new Map<
+    string,
+    { total: number; paidTotal: number; unpaidTotal: number; count: number }
+  >();
+  let withoutDueDateCount = 0;
+  let withoutDueDateTotal = 0;
+  for (const inv of invoices) {
+    const items = (inv.items ?? []) as LineItemJson[];
+    const total = computeTotals(items).total;
+    const due = inv.dueDate ? String(inv.dueDate) : null;
+    if (!due || !/^\d{4}-\d{2}-\d{2}/.test(due)) {
+      withoutDueDateCount += 1;
+      withoutDueDateTotal += total;
+      continue;
+    }
+    const month = due.slice(0, 7); // YYYY-MM
+    const cur = monthlyMap.get(month) ?? {
+      total: 0,
+      paidTotal: 0,
+      unpaidTotal: 0,
+      count: 0,
+    };
+    cur.total += total;
+    if (inv.paid) cur.paidTotal += total;
+    else cur.unpaidTotal += total;
+    cur.count += 1;
+    monthlyMap.set(month, cur);
+  }
+  const monthlyInvoiceTotals = Array.from(monthlyMap.entries())
+    .map(([month, v]) => ({ month, ...v }))
+    .sort((a, b) => a.month.localeCompare(b.month));
+
   const allStatuses = [
     "estimating",
     "contracted",
@@ -84,6 +119,11 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       grossProfitActive,
       unpaidInvoiceTotal,
       statusBreakdown,
+      monthlyInvoiceTotals,
+      invoicesWithoutDueDate: {
+        count: withoutDueDateCount,
+        total: withoutDueDateTotal,
+      },
     }),
   );
 });

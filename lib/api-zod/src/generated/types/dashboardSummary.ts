@@ -5,6 +5,8 @@
  * AMY 施工管理 API
  * OpenAPI spec version: 0.1.0
  */
+import type { DashboardSummaryInvoicesWithoutDueDate } from "./dashboardSummaryInvoicesWithoutDueDate";
+import type { DashboardSummaryMonthlyInvoiceTotalsItem } from "./dashboardSummaryMonthlyInvoiceTotalsItem";
 import type { DashboardSummaryStatusBreakdownItem } from "./dashboardSummaryStatusBreakdownItem";
 
 export interface DashboardSummary {
@@ -16,4 +18,7 @@ export interface DashboardSummary {
   grossProfitActive: number;
   unpaidInvoiceTotal: number;
   statusBreakdown: DashboardSummaryStatusBreakdownItem[];
+  /** Invoice totals grouped by the month of the payment due date (支払期限). */
+  monthlyInvoiceTotals: DashboardSummaryMonthlyInvoiceTotalsItem[];
+  invoicesWithoutDueDate: DashboardSummaryInvoicesWithoutDueDate;
 }

@@ -1468,7 +1468,7 @@ components:
 
     DashboardSummary:
       type: object
-      required: [activeProjects, completedThisMonth, contractValueActive, plannedCostActive, actualCostActive, grossProfitActive, unpaidInvoiceTotal, statusBreakdown]
+      required: [activeProjects, completedThisMonth, contractValueActive, plannedCostActive, actualCostActive, grossProfitActive, unpaidInvoiceTotal, statusBreakdown, monthlyInvoiceTotals, invoicesWithoutDueDate]
       properties:
         activeProjects: { type: integer }
         completedThisMonth: { type: integer }
@@ -1485,6 +1485,24 @@ components:
             properties:
               status: { $ref: "#/components/schemas/ProjectStatus" }
               count: { type: integer }
+        monthlyInvoiceTotals:
+          type: array
+          description: Invoice totals grouped by the month of the payment due date (支払期限).
+          items:
+            type: object
+            required: [month, total, paidTotal, unpaidTotal, count]
+            properties:
+              month: { type: string, description: "YYYY-MM" }
+              total: { type: number }
+              paidTotal: { type: number }
+              unpaidTotal: { type: number }
+              count: { type: integer }
+        invoicesWithoutDueDate:
+          type: object
+          required: [count, total]
+          properties:
+            count: { type: integer }
+            total: { type: number }
 
     ActivityItem:
       type: object

@@ -37,6 +37,23 @@ export const GetDashboardSummaryResponse = zod.object({
       count: zod.number(),
     }),
   ),
+  monthlyInvoiceTotals: zod
+    .array(
+      zod.object({
+        month: zod.string().describe("YYYY-MM"),
+        total: zod.number(),
+        paidTotal: zod.number(),
+        unpaidTotal: zod.number(),
+        count: zod.number(),
+      }),
+    )
+    .describe(
+      "Invoice totals grouped by the month of the payment due date (支払期限).",
+    ),
+  invoicesWithoutDueDate: zod.object({
+    count: zod.number(),
+    total: zod.number(),
+  }),
 });
 
 /**

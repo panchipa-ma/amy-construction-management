@@ -539,6 +539,20 @@ export type DashboardSummaryStatusBreakdownItem = {
   count: number;
 };
 
+export type DashboardSummaryMonthlyInvoiceTotalsItem = {
+  /** YYYY-MM */
+  month: string;
+  total: number;
+  paidTotal: number;
+  unpaidTotal: number;
+  count: number;
+};
+
+export type DashboardSummaryInvoicesWithoutDueDate = {
+  count: number;
+  total: number;
+};
+
 export interface DashboardSummary {
   activeProjects: number;
   completedThisMonth: number;
@@ -548,6 +562,9 @@ export interface DashboardSummary {
   grossProfitActive: number;
   unpaidInvoiceTotal: number;
   statusBreakdown: DashboardSummaryStatusBreakdownItem[];
+  /** Invoice totals grouped by the month of the payment due date (支払期限). */
+  monthlyInvoiceTotals: DashboardSummaryMonthlyInvoiceTotalsItem[];
+  invoicesWithoutDueDate: DashboardSummaryInvoicesWithoutDueDate;
 }
 
 export type ActivityItemKind =

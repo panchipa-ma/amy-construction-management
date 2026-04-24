@@ -27,6 +27,8 @@ export * from "./createStaffBody";
 export * from "./createVendorInvoiceBody";
 export * from "./customer";
 export * from "./dashboardSummary";
+export * from "./dashboardSummaryInvoicesWithoutDueDate";
+export * from "./dashboardSummaryMonthlyInvoiceTotalsItem";
 export * from "./dashboardSummaryStatusBreakdownItem";
 export * from "./extractOcrBody";
 export * from "./extractOcrBodyKind";

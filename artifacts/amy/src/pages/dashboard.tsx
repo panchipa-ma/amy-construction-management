@@ -33,6 +33,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
+import { useMemo } from "react";
 
 const STATUS_LABEL: Record<string, string> = {
   estimating: "見積中",
@@ -86,6 +87,53 @@ export default function DashboardPage() {
   const summary = summaryQ.data;
   const activity = activityQ.data ?? [];
   const pipeline = pipelineQ.data ?? [];
+
+  // Build a continuous 12-month window (current month +/- range) so empty
+  // months still show as 0 — easier to read trends.
+  const monthlyChart = useMemo(() => {
+    const raw = summary?.monthlyInvoiceTotals ?? [];
+    if (raw.length === 0) return [];
+    const byMonth = new Map(raw.map((m) => [m.month, m]));
+    // Range: from min(earliest, 5 months before today) to max(latest, 1 month after today)
+    const today = new Date();
+    const ymToday = today.getFullYear() * 12 + today.getMonth();
+    const ymsRaw = raw.map((m) => {
+      const [y, mo] = m.month.split("-").map(Number);
+      return y * 12 + (mo - 1);
+    });
+    const ymMin = Math.min(ymToday - 5, ...ymsRaw);
+    const ymMax = Math.max(ymToday + 1, ...ymsRaw);
+    const result: {
+      month: string;
+      label: string;
+      paidTotal: number;
+      unpaidTotal: number;
+      total: number;
+      count: number;
+      isCurrent: boolean;
+    }[] = [];
+    for (let ym = ymMin; ym <= ymMax; ym += 1) {
+      const y = Math.floor(ym / 12);
+      const m = (ym % 12) + 1;
+      const key = `${y}-${String(m).padStart(2, "0")}`;
+      const r = byMonth.get(key);
+      result.push({
+        month: key,
+        label: `${y}/${String(m).padStart(2, "0")}`,
+        paidTotal: r?.paidTotal ?? 0,
+        unpaidTotal: r?.unpaidTotal ?? 0,
+        total: r?.total ?? 0,
+        count: r?.count ?? 0,
+        isCurrent: ym === ymToday,
+      });
+    }
+    return result;
+  }, [summary?.monthlyInvoiceTotals]);
+
+  const monthlyTotalAll = (summary?.monthlyInvoiceTotals ?? []).reduce(
+    (s, m) => s + m.total,
+    0,
+  );
 
   return (
     <div className="space-y-6 max-w-[1400px]">
@@ -170,6 +218,129 @@ export default function DashboardPage() {
           </div>
         </>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">月別 請求金額 (支払期限ベース)</CardTitle>
+          <CardDescription>
+            請求書一覧の「金額 (税込)」を、各請求書の支払期限が属する月に集計しています。
+            {summary?.invoicesWithoutDueDate?.count ? (
+              <span className="text-amber-700">
+                {" "}
+                ※支払期限未設定 {summary.invoicesWithoutDueDate.count} 件 (
+                {formatCurrency(summary.invoicesWithoutDueDate.total)}) は集計対象外です。
+              </span>
+            ) : null}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {summaryQ.isLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : monthlyChart.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-6 text-center">
+              支払期限が設定された請求書がまだありません
+            </div>
+          ) : (
+            <>
+              <div className="text-xs text-muted-foreground mb-2 tabular-nums">
+                合計請求額 (集計分):{" "}
+                <span className="font-semibold text-foreground">
+                  {formatCurrency(monthlyTotalAll)}
+                </span>
+              </div>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={monthlyChart} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v: number) =>
+                      v >= 10000 ? `${Math.round(v / 10000)}万` : String(v)
+                    }
+                    width={56}
+                  />
+                  <Tooltip
+                    formatter={(value: number, name: string) => [
+                      formatCurrency(value),
+                      name === "paidTotal"
+                        ? "入金済"
+                        : name === "unpaidTotal"
+                          ? "未入金"
+                          : name,
+                    ]}
+                    labelFormatter={(label: string) => `${label} 月`}
+                  />
+                  <Legend
+                    formatter={(value: string) =>
+                      value === "paidTotal"
+                        ? "入金済"
+                        : value === "unpaidTotal"
+                          ? "未入金"
+                          : value
+                    }
+                  />
+                  <Bar
+                    dataKey="paidTotal"
+                    stackId="amt"
+                    fill="hsl(var(--chart-2, 142 71% 45%))"
+                    radius={[0, 0, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="unpaidTotal"
+                    stackId="amt"
+                    fill="hsl(var(--chart-4, 38 92% 50%))"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="overflow-x-auto mt-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>月</TableHead>
+                      <TableHead className="text-right">件数</TableHead>
+                      <TableHead className="text-right">入金済</TableHead>
+                      <TableHead className="text-right">未入金</TableHead>
+                      <TableHead className="text-right">合計</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {monthlyChart
+                      .filter((m) => m.count > 0)
+                      .map((m) => (
+                        <TableRow
+                          key={m.month}
+                          className={m.isCurrent ? "bg-muted/50" : ""}
+                        >
+                          <TableCell className="font-medium">
+                            {m.label}
+                            {m.isCurrent ? (
+                              <span className="ml-1 text-[10px] text-muted-foreground">
+                                (今月)
+                              </span>
+                            ) : null}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {m.count}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-emerald-700">
+                            {formatCurrency(m.paidTotal)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-amber-700">
+                            {formatCurrency(m.unpaidTotal)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums font-semibold">
+                            {formatCurrency(m.total)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
