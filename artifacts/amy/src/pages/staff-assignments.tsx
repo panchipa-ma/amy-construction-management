@@ -86,6 +86,19 @@ function AttendanceMatrix() {
     return s.slice(0, 10);
   };
 
+  const staffAssignedProjects = useMemo(() => {
+    const m = new Map<string, { projectId: string; projectName: string }[]>();
+    for (const p of allPhases) {
+      if (!p.staffId) continue;
+      if (!m.has(p.staffId)) m.set(p.staffId, []);
+      const arr = m.get(p.staffId)!;
+      if (!arr.some((x) => x.projectId === p.projectId)) {
+        arr.push({ projectId: p.projectId, projectName: p.projectName });
+      }
+    }
+    return m;
+  }, [allPhases]);
+
   // staffId -> date -> entries[]
   const grid = useMemo(() => {
     const m = new Map<string, Map<string, typeof entries>>();
@@ -96,8 +109,35 @@ function AttendanceMatrix() {
       if (!dm.has(dk)) dm.set(dk, []);
       dm.get(dk)!.push(e);
     }
+
+    for (const [staffId, projects] of staffAssignedProjects) {
+      if (!m.has(staffId)) m.set(staffId, new Map());
+      const dm = m.get(staffId)!;
+      for (const d of dateList) {
+        if (!dm.has(d)) dm.set(d, []);
+        const existing = dm.get(d)!;
+        for (const proj of projects) {
+          if (!existing.some((e) => e.projectId === proj.projectId)) {
+            existing.push({
+              id: `phase-assign-${staffId}-${proj.projectId}-${d}`,
+              projectId: proj.projectId,
+              projectName: proj.projectName,
+              staffId,
+              staffName: "",
+              date: d,
+              task: "",
+              startTime: null,
+              endTime: null,
+              notes: null,
+              createdAt: "",
+            });
+          }
+        }
+      }
+    }
+
     return m;
-  }, [entries]);
+  }, [entries, staffAssignedProjects, dateList]);
 
   const projectColor = useMemo(() => {
     const ids = new Set<string>();
