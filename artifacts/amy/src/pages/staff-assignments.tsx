@@ -168,13 +168,16 @@ function AttendanceMatrix() {
   }, [entries, allPhases]);
 
   const staffDayCount = useMemo(() => {
-    const unique = new Map<string, Set<string>>();
-    for (const e of entries) {
-      if (!unique.has(e.staffId)) unique.set(e.staffId, new Set());
-      unique.get(e.staffId)!.add(toDateKey(e.date));
+    const counts = new Map<string, number>();
+    for (const [staffId, dateMap] of grid) {
+      let days = 0;
+      for (const [, cellEntries] of dateMap) {
+        if (cellEntries.length > 0) days++;
+      }
+      counts.set(staffId, days);
     }
-    return new Map(Array.from(unique.entries()).map(([k, v]) => [k, v.size]));
-  }, [entries]);
+    return counts;
+  }, [grid]);
 
   const staffProjects = useMemo(() => {
     const m = new Map<string, Map<string, { projectId: string; projectName: string; minStart: string; maxEnd: string }>>();
