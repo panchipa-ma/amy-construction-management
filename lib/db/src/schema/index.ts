@@ -178,6 +178,9 @@ export const projectPhasesTable = pgTable("project_phases", {
   projectId: uuid("project_id")
     .notNull()
     .references(() => projectsTable.id, { onDelete: "cascade" }),
+  staffId: uuid("staff_id").references(() => staffTable.id, {
+    onDelete: "set null",
+  }),
   name: text("name").notNull(),
   startDate: date("start_date").notNull(),
   endDate: date("end_date").notNull(),

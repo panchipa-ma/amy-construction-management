@@ -5,6 +5,7 @@ import {
   useCreateProjectPhase,
   useUpdateProjectPhase,
   useDeleteProjectPhase,
+  useListStaff,
   getListProjectPhasesQueryKey,
   type ProjectPhase,
 } from "@workspace/api-client-react";
@@ -86,6 +87,8 @@ function fmtMonthDay(d: Date): string {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
+const NO_STAFF = "__none__";
+
 function makeEmptyForm() {
   const today = todayLocalISO();
   return {
@@ -95,6 +98,7 @@ function makeEmptyForm() {
     startDate: today,
     endDate: today,
     status: "planned" as "planned" | "in_progress" | "done",
+    staffId: NO_STAFF,
     notes: "",
   };
 }
@@ -114,6 +118,8 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
   const createMut = useCreateProjectPhase();
   const updateMut = useUpdateProjectPhase();
   const deleteMut = useDeleteProjectPhase();
+  const staffQ = useListStaff();
+  const allStaff = staffQ.data ?? [];
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectPhase | null>(null);
@@ -274,6 +280,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
       startDate: p.startDate,
       endDate: p.endDate,
       status: p.status,
+      staffId: p.staffId ?? NO_STAFF,
       notes: p.notes ?? "",
     });
     setOpen(true);
@@ -293,6 +300,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
       toast({ title: "終了日は開始日以降にしてください", variant: "destructive" });
       return;
     }
+    const staffIdVal = form.staffId === NO_STAFF ? null : form.staffId;
     try {
       if (editing) {
         await updateMut.mutateAsync({
@@ -302,6 +310,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
             startDate: form.startDate,
             endDate: form.endDate,
             status: form.status,
+            staffId: staffIdVal,
             notes: form.notes || null,
           },
         });
@@ -313,6 +322,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
             startDate: form.startDate,
             endDate: form.endDate,
             status: form.status,
+            staffId: staffIdVal,
             notes: form.notes || null,
           },
         });
@@ -396,6 +406,11 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm truncate">
                         {p.name}
+                        {p.staffName && (
+                          <span className="ml-1 text-xs text-muted-foreground font-normal">
+                            ({p.staffName})
+                          </span>
+                        )}
                       </span>
                       <Badge variant="outline" className="text-[10px] py-0">
                         {STATUS_LABEL[p.status]}
@@ -635,6 +650,25 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                   <SelectItem value="planned">予定</SelectItem>
                   <SelectItem value="in_progress">進行中</SelectItem>
                   <SelectItem value="done">完了</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>担当職人</Label>
+              <Select
+                value={form.staffId}
+                onValueChange={(v) => setForm({ ...form, staffId: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="未割当" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_STAFF}>未割当</SelectItem>
+                  {allStaff.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

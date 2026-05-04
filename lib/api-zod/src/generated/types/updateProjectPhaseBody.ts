@@ -12,6 +12,7 @@ export interface UpdateProjectPhaseBody {
   startDate?: Date;
   endDate?: Date;
   status?: UpdateProjectPhaseBodyStatus;
+  staffId?: string | null;
   color?: string | null;
   sortOrder?: number;
   notes?: string | null;

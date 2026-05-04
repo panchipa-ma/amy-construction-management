@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, asc } from "drizzle-orm";
-import { db, projectPhasesTable } from "@workspace/db";
+import { db, projectPhasesTable, staffTable } from "@workspace/db";
 import {
   ListProjectPhasesParams,
   ListProjectPhasesResponse,
@@ -31,10 +31,12 @@ function isValidISODate(s: string): boolean {
   );
 }
 
-function serialize(p: Row) {
+function serialize(p: Row, staffName?: string | null) {
   return {
     id: p.id,
     projectId: p.projectId,
+    staffId: p.staffId ?? null,
+    staffName: staffName ?? null,
     name: p.name,
     startDate: isoDate(p.startDate)!,
     endDate: isoDate(p.endDate)!,
@@ -55,14 +57,22 @@ router.get(
       return;
     }
     const rows = await db
-      .select()
+      .select({
+        phase: projectPhasesTable,
+        staffName: staffTable.name,
+      })
       .from(projectPhasesTable)
+      .leftJoin(staffTable, eq(projectPhasesTable.staffId, staffTable.id))
       .where(eq(projectPhasesTable.projectId, params.data.projectId))
       .orderBy(
         asc(projectPhasesTable.sortOrder),
         asc(projectPhasesTable.startDate),
       );
-    res.json(ListProjectPhasesResponse.parse(rows.map(serialize)));
+    res.json(
+      ListProjectPhasesResponse.parse(
+        rows.map((r) => serialize(r.phase, r.staffName)),
+      ),
+    );
   },
 );
 
@@ -99,12 +109,21 @@ router.post(
         startDate: sd,
         endDate: ed,
         status: body.data.status ?? "planned",
+        staffId: body.data.staffId ?? null,
         color: body.data.color ?? null,
         sortOrder: String(body.data.sortOrder ?? 0),
         notes: body.data.notes ?? null,
       })
       .returning();
-    res.json(CreateProjectPhaseResponse.parse(serialize(row)));
+    let staffName: string | null = null;
+    if (row.staffId) {
+      const [s] = await db
+        .select({ name: staffTable.name })
+        .from(staffTable)
+        .where(eq(staffTable.id, row.staffId));
+      staffName = s?.name ?? null;
+    }
+    res.json(CreateProjectPhaseResponse.parse(serialize(row, staffName)));
   },
 );
 
@@ -142,6 +161,7 @@ router.patch("/project-phases/:id", async (req, res): Promise<void> => {
   if (body.data.sortOrder !== undefined)
     update.sortOrder = String(body.data.sortOrder);
   if (body.data.notes !== undefined) update.notes = body.data.notes;
+  if (body.data.staffId !== undefined) update.staffId = body.data.staffId;
   if (Object.keys(update).length === 0) {
     res.status(400).json({ error: "No fields to update" });
     return;
@@ -184,7 +204,15 @@ router.patch("/project-phases/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Phase not found" });
     return;
   }
-  res.json(UpdateProjectPhaseResponse.parse(serialize(row)));
+  let staffName: string | null = null;
+  if (row.staffId) {
+    const [s] = await db
+      .select({ name: staffTable.name })
+      .from(staffTable)
+      .where(eq(staffTable.id, row.staffId));
+    staffName = s?.name ?? null;
+  }
+  res.json(UpdateProjectPhaseResponse.parse(serialize(row, staffName)));
 });
 
 router.delete("/project-phases/:id", async (req, res): Promise<void> => {

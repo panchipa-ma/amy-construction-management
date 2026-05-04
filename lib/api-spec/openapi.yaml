@@ -1225,6 +1225,8 @@ components:
       properties:
         id: { type: string }
         projectId: { type: string }
+        staffId: { type: string, nullable: true }
+        staffName: { type: string, nullable: true }
         name: { type: string }
         startDate: { type: string, format: date }
         endDate: { type: string, format: date }
@@ -1242,6 +1244,7 @@ components:
         startDate: { type: string, format: date }
         endDate: { type: string, format: date }
         status: { type: string, enum: [planned, in_progress, done] }
+        staffId: { type: string, nullable: true }
         color: { type: string, nullable: true }
         sortOrder: { type: number }
         notes: { type: string, nullable: true }
@@ -1253,6 +1256,7 @@ components:
         startDate: { type: string, format: date }
         endDate: { type: string, format: date }
         status: { type: string, enum: [planned, in_progress, done] }
+        staffId: { type: string, nullable: true }
         color: { type: string, nullable: true }
         sortOrder: { type: number }
         notes: { type: string, nullable: true }

@@ -930,6 +930,8 @@ export const ListProjectPhasesParams = zod.object({
 export const ListProjectPhasesResponseItem = zod.object({
   id: zod.string(),
   projectId: zod.string(),
+  staffId: zod.string().nullish(),
+  staffName: zod.string().nullish(),
   name: zod.string(),
   startDate: zod.coerce.date(),
   endDate: zod.coerce.date(),
@@ -952,6 +954,7 @@ export const CreateProjectPhaseBody = zod.object({
   startDate: zod.coerce.date(),
   endDate: zod.coerce.date(),
   status: zod.enum(["planned", "in_progress", "done"]).optional(),
+  staffId: zod.string().nullish(),
   color: zod.string().nullish(),
   sortOrder: zod.number().optional(),
   notes: zod.string().nullish(),
@@ -960,6 +963,8 @@ export const CreateProjectPhaseBody = zod.object({
 export const CreateProjectPhaseResponse = zod.object({
   id: zod.string(),
   projectId: zod.string(),
+  staffId: zod.string().nullish(),
+  staffName: zod.string().nullish(),
   name: zod.string(),
   startDate: zod.coerce.date(),
   endDate: zod.coerce.date(),
@@ -979,6 +984,7 @@ export const UpdateProjectPhaseBody = zod.object({
   startDate: zod.coerce.date().optional(),
   endDate: zod.coerce.date().optional(),
   status: zod.enum(["planned", "in_progress", "done"]).optional(),
+  staffId: zod.string().nullish(),
   color: zod.string().nullish(),
   sortOrder: zod.number().optional(),
   notes: zod.string().nullish(),
@@ -987,6 +993,8 @@ export const UpdateProjectPhaseBody = zod.object({
 export const UpdateProjectPhaseResponse = zod.object({
   id: zod.string(),
   projectId: zod.string(),
+  staffId: zod.string().nullish(),
+  staffName: zod.string().nullish(),
   name: zod.string(),
   startDate: zod.coerce.date(),
   endDate: zod.coerce.date(),

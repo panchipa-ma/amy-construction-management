@@ -309,6 +309,8 @@ export const ProjectPhaseStatus = {
 export interface ProjectPhase {
   id: string;
   projectId: string;
+  staffId?: string | null;
+  staffName?: string | null;
   name: string;
   startDate: string;
   endDate: string;
@@ -333,6 +335,7 @@ export interface CreateProjectPhaseBody {
   startDate: string;
   endDate: string;
   status?: CreateProjectPhaseBodyStatus;
+  staffId?: string | null;
   color?: string | null;
   sortOrder?: number;
   notes?: string | null;
@@ -352,6 +355,7 @@ export interface UpdateProjectPhaseBody {
   startDate?: string;
   endDate?: string;
   status?: UpdateProjectPhaseBodyStatus;
+  staffId?: string | null;
   color?: string | null;
   sortOrder?: number;
   notes?: string | null;

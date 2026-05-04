@@ -10,6 +10,8 @@ import type { ProjectPhaseStatus } from "./projectPhaseStatus";
 export interface ProjectPhase {
   id: string;
   projectId: string;
+  staffId?: string | null;
+  staffName?: string | null;
   name: string;
   startDate: Date;
   endDate: Date;
