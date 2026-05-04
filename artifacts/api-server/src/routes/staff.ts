@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
-import { eq, gte, lte, and, type SQL } from "drizzle-orm";
+import { eq, gte, lte, and, isNotNull, type SQL } from "drizzle-orm";
 import {
   db,
   staffTable,
   scheduleEntriesTable,
   projectsTable,
+  projectPhasesTable,
 } from "@workspace/db";
 import {
   CreateStaffBody,
@@ -70,6 +71,19 @@ router.get("/staff", async (_req, res): Promise<void> => {
   res.json(ListStaffResponse.parse(rows.map(serialize)));
 });
 
+const MAX_EXPAND_DAYS = 90;
+
+function expandDates(start: string, end: string): string[] {
+  const dates: string[] = [];
+  const cur = new Date(start + "T00:00:00Z");
+  const last = new Date(end + "T00:00:00Z");
+  while (cur <= last && dates.length < MAX_EXPAND_DAYS) {
+    dates.push(cur.toISOString().slice(0, 10));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return dates;
+}
+
 router.get("/staff/assignments", async (req, res): Promise<void> => {
   const parsed = parseAssignmentsQuery(req.query);
   if ("error" in parsed) {
@@ -95,6 +109,23 @@ router.get("/staff/assignments", async (req, res): Promise<void> => {
     );
   const entries =
     conds.length > 0 ? await baseQuery.where(and(...conds)) : await baseQuery;
+
+  const phaseConds: SQL[] = [isNotNull(projectPhasesTable.staffId)];
+  if (from) phaseConds.push(gte(projectPhasesTable.endDate, from));
+  if (to) phaseConds.push(lte(projectPhasesTable.startDate, to));
+  const phases = await db
+    .select({
+      staffId: projectPhasesTable.staffId,
+      projectId: projectPhasesTable.projectId,
+      startDate: projectPhasesTable.startDate,
+      endDate: projectPhasesTable.endDate,
+      projectName: projectsTable.name,
+      unitNumber: projectsTable.unitNumber,
+    })
+    .from(projectPhasesTable)
+    .innerJoin(projectsTable, eq(projectPhasesTable.projectId, projectsTable.id))
+    .where(and(...phaseConds));
+
   const allStaff = await db
     .select()
     .from(staffTable)
@@ -109,28 +140,44 @@ router.get("/staff/assignments", async (req, res): Promise<void> => {
     lastDate: string;
   };
   const byStaff = new Map<string, Map<string, ProjAcc>>();
-  for (const e of entries) {
-    const dateStr = isoDate(e.date)!;
-    let projMap = byStaff.get(e.staffId);
+
+  function addEntry(staffId: string, projectId: string, dateStr: string, projectName: string, unitNumber: string | null) {
+    let projMap = byStaff.get(staffId);
     if (!projMap) {
       projMap = new Map();
-      byStaff.set(e.staffId, projMap);
+      byStaff.set(staffId, projMap);
     }
-    let acc = projMap.get(e.projectId);
+    let acc = projMap.get(projectId);
     if (!acc) {
       acc = {
-        projectId: e.projectId,
-        projectName: e.projectName,
-        unitNumber: e.unitNumber,
+        projectId,
+        projectName,
+        unitNumber,
         days: new Set(),
         firstDate: dateStr,
         lastDate: dateStr,
       };
-      projMap.set(e.projectId, acc);
+      projMap.set(projectId, acc);
     }
     acc.days.add(dateStr);
     if (dateStr < acc.firstDate) acc.firstDate = dateStr;
     if (dateStr > acc.lastDate) acc.lastDate = dateStr;
+  }
+
+  for (const e of entries) {
+    addEntry(e.staffId, e.projectId, isoDate(e.date)!, e.projectName, e.unitNumber);
+  }
+
+  for (const p of phases) {
+    if (!p.staffId) continue;
+    const sd = isoDate(p.startDate)!;
+    const ed = isoDate(p.endDate)!;
+    const clampedStart = from && from > sd ? from : sd;
+    const clampedEnd = to && to < ed ? to : ed;
+    const dates = expandDates(clampedStart, clampedEnd);
+    for (const d of dates) {
+      addEntry(p.staffId, p.projectId, d, p.projectName, p.unitNumber);
+    }
   }
 
   const result = allStaff.map((s) => {

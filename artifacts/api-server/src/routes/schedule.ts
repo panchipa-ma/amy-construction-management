@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
-import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { and, eq, gte, lte, sql, isNotNull } from "drizzle-orm";
 import {
   db,
   scheduleEntriesTable,
   projectsTable,
   staffTable,
+  projectPhasesTable,
 } from "@workspace/db";
 import {
   CreateScheduleEntryBody,
@@ -44,9 +45,87 @@ async function serialize(s: typeof scheduleEntriesTable.$inferSelect) {
   };
 }
 
+const MAX_EXPAND_DAYS = 90;
+
+function expandDates(start: string, end: string): string[] {
+  const dates: string[] = [];
+  const cur = new Date(start + "T00:00:00Z");
+  const last = new Date(end + "T00:00:00Z");
+  while (cur <= last && dates.length < MAX_EXPAND_DAYS) {
+    dates.push(cur.toISOString().slice(0, 10));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return dates;
+}
+
+async function getPhaseVirtualEntries(opts: {
+  projectId?: string;
+  from?: string;
+  to?: string;
+}) {
+  const phaseConds = [isNotNull(projectPhasesTable.staffId)];
+  if (opts.projectId)
+    phaseConds.push(eq(projectPhasesTable.projectId, opts.projectId));
+  if (opts.from) phaseConds.push(gte(projectPhasesTable.endDate, opts.from));
+  if (opts.to) phaseConds.push(lte(projectPhasesTable.startDate, opts.to));
+
+  const phases = await db
+    .select({
+      id: projectPhasesTable.id,
+      projectId: projectPhasesTable.projectId,
+      staffId: projectPhasesTable.staffId,
+      name: projectPhasesTable.name,
+      startDate: projectPhasesTable.startDate,
+      endDate: projectPhasesTable.endDate,
+      createdAt: projectPhasesTable.createdAt,
+      projectName: projectsTable.name,
+      staffName: staffTable.name,
+    })
+    .from(projectPhasesTable)
+    .innerJoin(projectsTable, eq(projectPhasesTable.projectId, projectsTable.id))
+    .innerJoin(staffTable, eq(projectPhasesTable.staffId, staffTable.id))
+    .where(and(...phaseConds));
+
+  const virtual: Array<{
+    id: string;
+    projectId: string;
+    projectName: string;
+    staffId: string;
+    staffName: string;
+    date: string;
+    task: string;
+    startTime: string | null;
+    endTime: string | null;
+    notes: string | null;
+    createdAt: string;
+  }> = [];
+
+  for (const p of phases) {
+    const sd = isoDate(p.startDate)!;
+    const ed = isoDate(p.endDate)!;
+    const clampedStart = opts.from && opts.from > sd ? opts.from : sd;
+    const clampedEnd = opts.to && opts.to < ed ? opts.to : ed;
+    const dates = expandDates(clampedStart, clampedEnd);
+    for (const d of dates) {
+      virtual.push({
+        id: `phase-${p.id}-${d}`,
+        projectId: p.projectId,
+        projectName: p.projectName,
+        staffId: p.staffId!,
+        staffName: p.staffName,
+        date: d,
+        task: p.name,
+        startTime: null,
+        endTime: null,
+        notes: null,
+        createdAt: isoDateTime(p.createdAt),
+      });
+    }
+  }
+  return virtual;
+}
+
 router.get("/schedule", async (req, res): Promise<void> => {
-  // The auto-generated zod schema treats from/to as zod.date(), which rejects
-  // YYYY-MM-DD strings sent as query params. Parse manually instead.
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
   const projectId =
     typeof req.query.projectId === "string" ? req.query.projectId : undefined;
@@ -76,6 +155,19 @@ router.get("/schedule", async (req, res): Promise<void> => {
           .from(scheduleEntriesTable)
           .orderBy(sql`${scheduleEntriesTable.date} asc`);
   const serialized = await Promise.all(rows.map(serialize));
+
+  const phaseEntries = await getPhaseVirtualEntries({ projectId, from, to });
+
+  const existingKeys = new Set(
+    serialized.map((e) => `${e.staffId}:${e.projectId}:${e.date}`),
+  );
+  for (const ve of phaseEntries) {
+    if (!existingKeys.has(`${ve.staffId}:${ve.projectId}:${ve.date}`)) {
+      serialized.push(ve);
+    }
+  }
+
+  serialized.sort((a, b) => a.date.localeCompare(b.date));
   res.json(ListScheduleEntriesResponse.parse(serialized));
 });
 

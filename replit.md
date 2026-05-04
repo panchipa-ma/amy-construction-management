@@ -46,7 +46,8 @@ pnpm monorepo with TypeScript project references.
 
 ## Standalone pages
 
-- **工程表** (`/gantt`): Top-level Gantt chart page listing all projects in collapsible accordion. Reuses `ProjectGantt` component. Filter by status (default: 施工中・契約済) and search by name/customer. Each project expands to show its full interactive Gantt chart with drag, resize, add/edit/delete phases.
+- **工程表** (`/gantt`): Top-level Gantt chart page listing all projects in collapsible accordion. Reuses `ProjectGantt` component. Filter by status (default: 施工中・契約済) and search by name/customer. Each project expands to show its full interactive Gantt chart with drag, resize, add/edit/delete phases. Phase dialog includes 担当職人 dropdown — assigning a staff member to a phase sets `project_phases.staffId`.
+- **職人出面表** (`/staff-assignments`): Daily attendance matrix (職人×日付) and card-based list view. Automatically merges data from two sources: (1) real `schedule_entries` and (2) virtual entries derived from `project_phases` with `staffId` set (date range expanded into daily entries). Deduplication by staffId+projectId+date ensures no double-counting. Phase expansion is capped at 90 days per phase for safety.
 - **スケジュール** (`/schedule`): Weekly staff assignment grid (職人×曜日). Different from 工程表 — this is about who works where.
 
 ## Inline editing (台帳形式)
