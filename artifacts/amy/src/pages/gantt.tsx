@@ -10,7 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronDown, ChevronRight, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronRight, Search, Plus } from "lucide-react";
 import { Link } from "wouter";
 import { ProjectStatusBadge } from "@/components/status-badge";
 
@@ -71,11 +72,19 @@ export default function GanttPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">工程表</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          案件ごとの工事工程（ガントチャート）を一覧で確認・編集できます。
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">工程表</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            案件ごとの工事工程（ガントチャート）を一覧で確認・編集できます。
+          </p>
+        </div>
+        <Link href="/projects/new">
+          <Button className="gap-2">
+            <Plus className="w-4 h-4" />
+            新規案件作成
+          </Button>
+        </Link>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
