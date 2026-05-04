@@ -75,7 +75,7 @@ function AttendanceMatrix() {
 
   const staffQ = useListStaffAssignments({ from, to });
   const scheduleQ = useListScheduleEntries({ from, to });
-  const phasesQ = useListAllProjectPhases({ from, to });
+  const phasesQ = useListAllProjectPhases();
 
   const staff = staffQ.data ?? [];
   const entries = scheduleQ.data ?? [];
@@ -99,21 +99,25 @@ function AttendanceMatrix() {
     return m;
   }, [entries]);
 
-  // Color per projectId
   const projectColor = useMemo(() => {
-    const ids = Array.from(new Set(entries.map((e) => e.projectId)));
+    const ids = new Set<string>();
+    for (const e of entries) ids.add(e.projectId);
+    for (const p of allPhases) ids.add(p.projectId);
     const map = new Map<string, string>();
-    ids.forEach((id, i) => map.set(id, PROJECT_COLORS[i % PROJECT_COLORS.length]));
+    Array.from(ids).forEach((id, i) => map.set(id, PROJECT_COLORS[i % PROJECT_COLORS.length]));
     return map;
-  }, [entries]);
+  }, [entries, allPhases]);
 
   const projectLegend = useMemo(() => {
     const map = new Map<string, string>();
     for (const e of entries) {
       if (!map.has(e.projectId)) map.set(e.projectId, e.projectName);
     }
+    for (const p of allPhases) {
+      if (!map.has(p.projectId)) map.set(p.projectId, p.projectName);
+    }
     return Array.from(map.entries());
-  }, [entries]);
+  }, [entries, allPhases]);
 
   // Per-staff days-on counts for selected range
   const staffDayCount = useMemo(() => {
