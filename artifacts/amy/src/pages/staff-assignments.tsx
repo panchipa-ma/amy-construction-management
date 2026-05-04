@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   useListStaffAssignments,
@@ -109,17 +109,24 @@ function AttendanceMatrix() {
   }, [entries, allPhases]);
 
   const projectLegend = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, { name: string; minStart: string; maxEnd: string }>();
     for (const e of entries) {
-      if (!map.has(e.projectId)) map.set(e.projectId, e.projectName);
+      if (!map.has(e.projectId)) map.set(e.projectId, { name: e.projectName, minStart: "9999-12-31", maxEnd: "0000-01-01" });
     }
     for (const p of allPhases) {
-      if (!map.has(p.projectId)) map.set(p.projectId, p.projectName);
+      const sd = toDateKey(p.startDate);
+      const ed = toDateKey(p.endDate);
+      if (!map.has(p.projectId)) {
+        map.set(p.projectId, { name: p.projectName, minStart: sd, maxEnd: ed });
+      } else {
+        const cur = map.get(p.projectId)!;
+        if (sd < cur.minStart) cur.minStart = sd;
+        if (ed > cur.maxEnd) cur.maxEnd = ed;
+      }
     }
     return Array.from(map.entries());
   }, [entries, allPhases]);
 
-  // Per-staff days-on counts for selected range
   const staffDayCount = useMemo(() => {
     const unique = new Map<string, Set<string>>();
     for (const e of entries) {
@@ -129,27 +136,31 @@ function AttendanceMatrix() {
     return new Map(Array.from(unique.entries()).map(([k, v]) => [k, v.size]));
   }, [entries]);
 
-  const projectPhaseGroups = useMemo(() => {
-    const groups = new Map<
-      string,
-      {
-        projectId: string;
-        projectName: string;
-        phases: typeof allPhases;
-      }
-    >();
+  const staffProjects = useMemo(() => {
+    const m = new Map<string, Map<string, { projectId: string; projectName: string; minStart: string; maxEnd: string }>>();
     for (const p of allPhases) {
-      if (!groups.has(p.projectId)) {
-        groups.set(p.projectId, {
-          projectId: p.projectId,
-          projectName: p.projectName,
-          phases: [],
-        });
+      if (!p.staffId) continue;
+      if (!m.has(p.staffId)) m.set(p.staffId, new Map());
+      const pm = m.get(p.staffId)!;
+      const sd = toDateKey(p.startDate);
+      const ed = toDateKey(p.endDate);
+      if (!pm.has(p.projectId)) {
+        pm.set(p.projectId, { projectId: p.projectId, projectName: p.projectName, minStart: sd, maxEnd: ed });
+      } else {
+        const cur = pm.get(p.projectId)!;
+        if (sd < cur.minStart) cur.minStart = sd;
+        if (ed > cur.maxEnd) cur.maxEnd = ed;
       }
-      groups.get(p.projectId)!.phases.push(p);
     }
-    return Array.from(groups.values());
+    return m;
   }, [allPhases]);
+
+  const jumpToProject = (projectId: string) => {
+    const info = projectLegend.find(([id]) => id === projectId);
+    if (info) {
+      setAnchor(info[1].minStart);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -211,14 +222,15 @@ function AttendanceMatrix() {
           <CardContent className="py-3">
             <div className="flex flex-wrap gap-2 items-center text-xs">
               <span className="text-muted-foreground font-medium">案件:</span>
-              {projectLegend.map(([id, name]) => (
-                <Link
+              {projectLegend.map(([id, info]) => (
+                <button
                   key={id}
-                  href={`/projects/${id}`}
-                  className={`px-2 py-0.5 rounded border ${projectColor.get(id)} hover:opacity-80`}
+                  onClick={() => jumpToProject(id)}
+                  className={`px-2 py-0.5 rounded border ${projectColor.get(id)} hover:opacity-80 cursor-pointer`}
+                  title={`${info.minStart} 〜 ${info.maxEnd} (クリックでジャンプ)`}
                 >
-                  {name}
-                </Link>
+                  {info.name}
+                </button>
               ))}
             </div>
           </CardContent>
@@ -243,6 +255,9 @@ function AttendanceMatrix() {
                 </th>
                 <th className="bg-primary text-primary-foreground border border-border px-2 py-2 w-12 text-center">
                   稼働日
+                </th>
+                <th className="bg-primary text-primary-foreground border border-border px-2 py-2 text-left w-40 min-w-40">
+                  担当案件
                 </th>
                 {dateList.map((d) => {
                   const dt = new Date(d + "T00:00:00");
@@ -285,6 +300,20 @@ function AttendanceMatrix() {
                   <td className="border border-border text-center font-semibold">
                     {staffDayCount.get(s.staffId) ?? 0}
                   </td>
+                  <td className="border border-border px-1 py-1 align-top">
+                    <div className="flex flex-wrap gap-0.5">
+                      {Array.from(staffProjects.get(s.staffId)?.values() ?? []).map((sp) => (
+                        <button
+                          key={sp.projectId}
+                          onClick={() => jumpToProject(sp.projectId)}
+                          className={`text-[9px] px-1 py-0 rounded border truncate max-w-[130px] cursor-pointer ${projectColor.get(sp.projectId)} hover:opacity-80`}
+                          title={`${sp.projectName}\n${sp.minStart} 〜 ${sp.maxEnd}\nクリックでジャンプ`}
+                        >
+                          {sp.projectName}
+                        </button>
+                      ))}
+                    </div>
+                  </td>
                   {dateList.map((d) => {
                     const cell = grid.get(s.staffId)?.get(d) ?? [];
                     const isWeekend = (() => {
@@ -322,118 +351,6 @@ function AttendanceMatrix() {
         </div>
       )}
 
-      {phasesQ.isLoading ? (
-        <Skeleton className="h-48 w-full" />
-      ) : projectPhaseGroups.length > 0 ? (
-        <>
-          <div className="pt-2">
-            <h3 className="text-sm font-semibold text-foreground">全案件 工程スケジュール</h3>
-            <p className="text-xs text-muted-foreground">各案件の工程と担当職人を一覧表示</p>
-          </div>
-          <div className="border border-border rounded-sm overflow-x-auto bg-card">
-            <table className="border-collapse text-xs tabular-nums">
-              <thead>
-                <tr>
-                  <th className="sticky left-0 z-10 bg-primary text-primary-foreground border border-border px-2 py-2 text-left w-44 min-w-44">
-                    案件 / 工程
-                  </th>
-                  <th className="bg-primary text-primary-foreground border border-border px-2 py-2 w-20 min-w-20 text-center">
-                    担当
-                  </th>
-                  {dateList.map((d) => {
-                    const dt = new Date(d + "T00:00:00");
-                    const dow = ["日", "月", "火", "水", "木", "金", "土"][dt.getDay()];
-                    const isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
-                    const isToday = d === todayLocalISO();
-                    return (
-                      <th
-                        key={d}
-                        className={`border border-border px-1 py-1 w-20 min-w-20 text-center font-medium ${
-                          isToday
-                            ? "bg-accent text-accent-foreground"
-                            : isWeekend
-                            ? "bg-muted"
-                            : "bg-muted/40"
-                        }`}
-                      >
-                        <div className="text-[10px] leading-tight">
-                          {dt.getMonth() + 1}/{dt.getDate()}
-                        </div>
-                        <div className="text-[10px] leading-tight">({dow})</div>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {projectPhaseGroups.map((g) => (
-                  <Fragment key={g.projectId}>
-                    <tr className="bg-muted/60">
-                      <td
-                        colSpan={2 + dateList.length}
-                        className="sticky left-0 z-10 border border-border px-2 py-1.5"
-                      >
-                        <Link
-                          href={`/projects/${g.projectId}`}
-                          className="font-semibold text-sm text-primary hover:underline"
-                        >
-                          {g.projectName}
-                        </Link>
-                      </td>
-                    </tr>
-                    {g.phases.map((p) => {
-                      const sd = toDateKey(p.startDate);
-                      const ed = toDateKey(p.endDate);
-                      return (
-                        <tr key={p.phaseId} className="hover:bg-muted/20">
-                          <td className="sticky left-0 z-10 bg-card border border-border px-2 py-1.5 pl-6">
-                            <span className="text-sm">{p.phaseName}</span>
-                          </td>
-                          <td className="border border-border text-center text-[10px] px-1">
-                            {p.staffName ? (
-                              <span className="text-primary font-medium">{p.staffName}</span>
-                            ) : (
-                              <span className="text-muted-foreground">未割当</span>
-                            )}
-                          </td>
-                          {dateList.map((d) => {
-                            const active = d >= sd && d <= ed;
-                            const isWeekend = (() => {
-                              const dt = new Date(d + "T00:00:00");
-                              return dt.getDay() === 0 || dt.getDay() === 6;
-                            })();
-                            return (
-                              <td
-                                key={d}
-                                className={`border border-border p-0 ${
-                                  active
-                                    ? p.staffName
-                                      ? "bg-blue-200"
-                                      : "bg-amber-100"
-                                    : isWeekend
-                                    ? "bg-muted/30"
-                                    : ""
-                                }`}
-                              >
-                                {active && (
-                                  <div
-                                    className="h-full w-full min-h-[24px]"
-                                    title={`${p.phaseName}${p.staffName ? ` (${p.staffName})` : ""}`}
-                                  />
-                                )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      ) : null}
     </div>
   );
 }
