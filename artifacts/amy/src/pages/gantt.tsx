@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useListProjects } from "@workspace/api-client-react";
 import { ProjectGantt } from "@/components/project-gantt";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,39 +15,53 @@ import { ChevronDown, ChevronRight, Search, Plus } from "lucide-react";
 import { Link } from "wouter";
 import { ProjectStatusBadge } from "@/components/status-badge";
 
-const STATUS_LABELS: Record<string, string> = {
-  estimating: "見積中",
-  contracted: "契約済",
-  in_progress: "施工中",
-  completed: "完工",
-  archived: "保管",
-};
-
 export default function GanttPage() {
   const projectsQ = useListProjects();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("active");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const selectedRef = useRef<HTMLDivElement | null>(null);
+
+  const allProjects = projectsQ.data ?? [];
 
   const projects = useMemo(() => {
-    let list = projectsQ.data ?? [];
+    let list = allProjects;
     if (statusFilter === "active") {
       list = list.filter(
-        (p) => p.status === "in_progress" || p.status === "contracted",
+        (p) =>
+          p.status === "in_progress" ||
+          p.status === "contracted" ||
+          p.id === selectedProjectId,
       );
     } else if (statusFilter !== "all") {
-      list = list.filter((p) => p.status === statusFilter);
+      list = list.filter(
+        (p) => p.status === statusFilter || p.id === selectedProjectId,
+      );
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
-          (p.customerName ?? "").toLowerCase().includes(q),
+          (p.customerName ?? "").toLowerCase().includes(q) ||
+          p.id === selectedProjectId,
       );
     }
     return list;
-  }, [projectsQ.data, statusFilter, search]);
+  }, [allProjects, statusFilter, search, selectedProjectId]);
+
+  const handleSelectProject = (id: string) => {
+    setSelectedProjectId(id);
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    setTimeout(() => {
+      selectedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  };
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
@@ -76,7 +90,7 @@ export default function GanttPage() {
         <div>
           <h1 className="text-2xl font-bold">工程表</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            案件ごとの工事工程（ガントチャート）を一覧で確認・編集できます。
+            案件を選択して工程表を作成・編集できます。
           </p>
         </div>
         <Link href="/projects/new">
@@ -85,6 +99,37 @@ export default function GanttPage() {
             新規案件作成
           </Button>
         </Link>
+      </div>
+
+      <div className="border rounded-lg bg-card p-4 space-y-3">
+        <label className="text-sm font-medium">案件を選択して工程表を作成</label>
+        <div className="flex items-center gap-3">
+          <Select value={selectedProjectId} onValueChange={handleSelectProject}>
+            <SelectTrigger className="w-96">
+              <SelectValue placeholder="案件名を選択してください" />
+            </SelectTrigger>
+            <SelectContent>
+              {allProjects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                  {p.customerName ? ` (${p.customerName})` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedProjectId && (
+            <Link href={`/projects/${selectedProjectId}`}>
+              <Button variant="outline" size="sm">
+                案件詳細
+              </Button>
+            </Link>
+          )}
+        </div>
+        {selectedProjectId && (
+          <p className="text-xs text-muted-foreground">
+            下の一覧で選択した案件の工程表が展開されています。工程の追加・編集・ドラッグ操作ができます。
+          </p>
+        )}
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
@@ -139,8 +184,13 @@ export default function GanttPage() {
         <div className="space-y-2">
           {projects.map((p) => {
             const expanded = expandedIds.has(p.id);
+            const isSelected = p.id === selectedProjectId;
             return (
-              <div key={p.id} className="border rounded-md bg-card">
+              <div
+                key={p.id}
+                ref={isSelected ? selectedRef : undefined}
+                className={`border rounded-md bg-card ${isSelected ? "ring-2 ring-primary" : ""}`}
+              >
                 <button
                   type="button"
                   onClick={() => toggleExpand(p.id)}
