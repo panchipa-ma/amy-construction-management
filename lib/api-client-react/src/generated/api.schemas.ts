@@ -361,6 +361,27 @@ export interface UpdateProjectPhaseBody {
   notes?: string | null;
 }
 
+export type PhaseOverviewStatus =
+  (typeof PhaseOverviewStatus)[keyof typeof PhaseOverviewStatus];
+
+export const PhaseOverviewStatus = {
+  planned: "planned",
+  in_progress: "in_progress",
+  done: "done",
+} as const;
+
+export interface PhaseOverview {
+  phaseId: string;
+  projectId: string;
+  projectName: string;
+  phaseName: string;
+  startDate: string;
+  endDate: string;
+  status: PhaseOverviewStatus;
+  staffId?: string | null;
+  staffName?: string | null;
+}
+
 export type StaffAssignmentProjectsItem = {
   projectId: string;
   projectName: string;
@@ -620,6 +641,11 @@ export type ListCostEntriesParams = {
 
 export type ListScheduleEntriesParams = {
   projectId?: string;
+  from?: string;
+  to?: string;
+};
+
+export type ListAllProjectPhasesParams = {
   from?: string;
   to?: string;
 };

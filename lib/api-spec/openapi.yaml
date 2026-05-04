@@ -608,6 +608,27 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ProjectPhase" }
 
+  /project-phases/overview:
+    get:
+      operationId: listAllProjectPhases
+      tags: [phases]
+      summary: All phases across all projects (for attendance overview)
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PhaseOverview" }
+
   /project-phases/{id}:
     patch:
       operationId: updateProjectPhase
@@ -1260,6 +1281,20 @@ components:
         color: { type: string, nullable: true }
         sortOrder: { type: number }
         notes: { type: string, nullable: true }
+
+    PhaseOverview:
+      type: object
+      required: [phaseId, projectId, projectName, phaseName, startDate, endDate, status]
+      properties:
+        phaseId: { type: string }
+        projectId: { type: string }
+        projectName: { type: string }
+        phaseName: { type: string }
+        startDate: { type: string }
+        endDate: { type: string }
+        status: { type: string, enum: [planned, in_progress, done] }
+        staffId: { type: string, nullable: true }
+        staffName: { type: string, nullable: true }
 
     StaffAssignment:
       type: object

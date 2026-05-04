@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
-import { eq, asc } from "drizzle-orm";
-import { db, projectPhasesTable, staffTable } from "@workspace/db";
+import { eq, asc, gte, lte, and, type SQL } from "drizzle-orm";
+import { db, projectPhasesTable, staffTable, projectsTable } from "@workspace/db";
 import {
   ListProjectPhasesParams,
   ListProjectPhasesResponse,
+  ListAllProjectPhasesResponse,
   CreateProjectPhaseParams,
   CreateProjectPhaseBody,
   CreateProjectPhaseResponse,
@@ -126,6 +127,47 @@ router.post(
     res.json(CreateProjectPhaseResponse.parse(serialize(row, staffName)));
   },
 );
+
+router.get("/project-phases/overview", async (req, res): Promise<void> => {
+  const from = typeof req.query.from === "string" ? req.query.from : undefined;
+  const to = typeof req.query.to === "string" ? req.query.to : undefined;
+  if ((from && !isValidISODate(from)) || (to && !isValidISODate(to))) {
+    res.status(400).json({ error: "from/to must be valid YYYY-MM-DD dates" });
+    return;
+  }
+  const conds: SQL[] = [];
+  if (from) conds.push(gte(projectPhasesTable.endDate, from));
+  if (to) conds.push(lte(projectPhasesTable.startDate, to));
+  const rows = await db
+    .select({
+      phaseId: projectPhasesTable.id,
+      projectId: projectPhasesTable.projectId,
+      projectName: projectsTable.name,
+      phaseName: projectPhasesTable.name,
+      startDate: projectPhasesTable.startDate,
+      endDate: projectPhasesTable.endDate,
+      status: projectPhasesTable.status,
+      staffId: projectPhasesTable.staffId,
+      staffName: staffTable.name,
+    })
+    .from(projectPhasesTable)
+    .innerJoin(projectsTable, eq(projectPhasesTable.projectId, projectsTable.id))
+    .leftJoin(staffTable, eq(projectPhasesTable.staffId, staffTable.id))
+    .where(conds.length > 0 ? and(...conds) : undefined)
+    .orderBy(asc(projectPhasesTable.startDate));
+  const result = rows.map((r) => ({
+    phaseId: r.phaseId,
+    projectId: r.projectId,
+    projectName: r.projectName,
+    phaseName: r.phaseName,
+    startDate: isoDate(r.startDate)!,
+    endDate: isoDate(r.endDate)!,
+    status: r.status as "planned" | "in_progress" | "done",
+    staffId: r.staffId ?? null,
+    staffName: r.staffName ?? null,
+  }));
+  res.json(ListAllProjectPhasesResponse.parse(result));
+});
 
 router.patch("/project-phases/:id", async (req, res): Promise<void> => {
   const params = UpdateProjectPhaseParams.safeParse(req.params);

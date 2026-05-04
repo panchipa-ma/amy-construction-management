@@ -975,6 +975,29 @@ export const CreateProjectPhaseResponse = zod.object({
   createdAt: zod.coerce.date(),
 });
 
+/**
+ * @summary All phases across all projects (for attendance overview)
+ */
+export const ListAllProjectPhasesQueryParams = zod.object({
+  from: zod.date().optional(),
+  to: zod.date().optional(),
+});
+
+export const ListAllProjectPhasesResponseItem = zod.object({
+  phaseId: zod.string(),
+  projectId: zod.string(),
+  projectName: zod.string(),
+  phaseName: zod.string(),
+  startDate: zod.string(),
+  endDate: zod.string(),
+  status: zod.enum(["planned", "in_progress", "done"]),
+  staffId: zod.string().nullish(),
+  staffName: zod.string().nullish(),
+});
+export const ListAllProjectPhasesResponse = zod.array(
+  ListAllProjectPhasesResponseItem,
+);
+
 export const UpdateProjectPhaseParams = zod.object({
   id: zod.coerce.string(),
 });

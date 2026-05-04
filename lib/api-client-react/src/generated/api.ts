@@ -40,6 +40,7 @@ import type {
   HealthStatus,
   ImportQuoteToLedgerBody,
   Invoice,
+  ListAllProjectPhasesParams,
   ListCostEntriesParams,
   ListInvoicesParams,
   ListProgressLogsParams,
@@ -51,6 +52,7 @@ import type {
   ListVendorInvoicesParams,
   MatchReceiptBody,
   MatchVendorInvoiceBody,
+  PhaseOverview,
   ProgressLog,
   Project,
   ProjectLedger,
@@ -3103,6 +3105,106 @@ export const useCreateProjectPhase = <
 > => {
   return useMutation(getCreateProjectPhaseMutationOptions(options));
 };
+
+/**
+ * @summary All phases across all projects (for attendance overview)
+ */
+export const getListAllProjectPhasesUrl = (
+  params?: ListAllProjectPhasesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/project-phases/overview?${stringifiedParams}`
+    : `/api/project-phases/overview`;
+};
+
+export const listAllProjectPhases = async (
+  params?: ListAllProjectPhasesParams,
+  options?: RequestInit,
+): Promise<PhaseOverview[]> => {
+  return customFetch<PhaseOverview[]>(getListAllProjectPhasesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAllProjectPhasesQueryKey = (
+  params?: ListAllProjectPhasesParams,
+) => {
+  return [`/api/project-phases/overview`, ...(params ? [params] : [])] as const;
+};
+
+export const getListAllProjectPhasesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAllProjectPhases>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListAllProjectPhasesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAllProjectPhases>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAllProjectPhasesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAllProjectPhases>>
+  > = ({ signal }) =>
+    listAllProjectPhases(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAllProjectPhases>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAllProjectPhasesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAllProjectPhases>>
+>;
+export type ListAllProjectPhasesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary All phases across all projects (for attendance overview)
+ */
+
+export function useListAllProjectPhases<
+  TData = Awaited<ReturnType<typeof listAllProjectPhases>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListAllProjectPhasesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAllProjectPhases>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAllProjectPhasesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getUpdateProjectPhaseUrl = (id: string) => {
   return `/api/project-phases/${id}`;

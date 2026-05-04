@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   useListStaffAssignments,
   useListScheduleEntries,
+  useListAllProjectPhases,
 } from "@workspace/api-client-react";
 import {
   Card,
@@ -74,9 +75,11 @@ function AttendanceMatrix() {
 
   const staffQ = useListStaffAssignments({ from, to });
   const scheduleQ = useListScheduleEntries({ from, to });
+  const phasesQ = useListAllProjectPhases({ from, to });
 
   const staff = staffQ.data ?? [];
   const entries = scheduleQ.data ?? [];
+  const allPhases = phasesQ.data ?? [];
 
   const toDateKey = (d: string | Date): string => {
     const s = typeof d === "object" ? (d as Date).toISOString() : String(d);
@@ -121,6 +124,28 @@ function AttendanceMatrix() {
     }
     return new Map(Array.from(unique.entries()).map(([k, v]) => [k, v.size]));
   }, [entries]);
+
+  const projectPhaseGroups = useMemo(() => {
+    const groups = new Map<
+      string,
+      {
+        projectId: string;
+        projectName: string;
+        phases: typeof allPhases;
+      }
+    >();
+    for (const p of allPhases) {
+      if (!groups.has(p.projectId)) {
+        groups.set(p.projectId, {
+          projectId: p.projectId,
+          projectName: p.projectName,
+          phases: [],
+        });
+      }
+      groups.get(p.projectId)!.phases.push(p);
+    }
+    return Array.from(groups.values());
+  }, [allPhases]);
 
   return (
     <div className="space-y-4">
@@ -292,6 +317,119 @@ function AttendanceMatrix() {
           </table>
         </div>
       )}
+
+      {phasesQ.isLoading ? (
+        <Skeleton className="h-48 w-full" />
+      ) : projectPhaseGroups.length > 0 ? (
+        <>
+          <div className="pt-2">
+            <h3 className="text-sm font-semibold text-foreground">全案件 工程スケジュール</h3>
+            <p className="text-xs text-muted-foreground">各案件の工程と担当職人を一覧表示</p>
+          </div>
+          <div className="border border-border rounded-sm overflow-x-auto bg-card">
+            <table className="border-collapse text-xs tabular-nums">
+              <thead>
+                <tr>
+                  <th className="sticky left-0 z-10 bg-primary text-primary-foreground border border-border px-2 py-2 text-left w-44 min-w-44">
+                    案件 / 工程
+                  </th>
+                  <th className="bg-primary text-primary-foreground border border-border px-2 py-2 w-20 min-w-20 text-center">
+                    担当
+                  </th>
+                  {dateList.map((d) => {
+                    const dt = new Date(d + "T00:00:00");
+                    const dow = ["日", "月", "火", "水", "木", "金", "土"][dt.getDay()];
+                    const isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+                    const isToday = d === todayLocalISO();
+                    return (
+                      <th
+                        key={d}
+                        className={`border border-border px-1 py-1 w-20 min-w-20 text-center font-medium ${
+                          isToday
+                            ? "bg-accent text-accent-foreground"
+                            : isWeekend
+                            ? "bg-muted"
+                            : "bg-muted/40"
+                        }`}
+                      >
+                        <div className="text-[10px] leading-tight">
+                          {dt.getMonth() + 1}/{dt.getDate()}
+                        </div>
+                        <div className="text-[10px] leading-tight">({dow})</div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {projectPhaseGroups.map((g) => (
+                  <Fragment key={g.projectId}>
+                    <tr className="bg-muted/60">
+                      <td
+                        colSpan={2 + dateList.length}
+                        className="sticky left-0 z-10 border border-border px-2 py-1.5"
+                      >
+                        <Link
+                          href={`/projects/${g.projectId}`}
+                          className="font-semibold text-sm text-primary hover:underline"
+                        >
+                          {g.projectName}
+                        </Link>
+                      </td>
+                    </tr>
+                    {g.phases.map((p) => {
+                      const sd = toDateKey(p.startDate);
+                      const ed = toDateKey(p.endDate);
+                      return (
+                        <tr key={p.phaseId} className="hover:bg-muted/20">
+                          <td className="sticky left-0 z-10 bg-card border border-border px-2 py-1.5 pl-6">
+                            <span className="text-sm">{p.phaseName}</span>
+                          </td>
+                          <td className="border border-border text-center text-[10px] px-1">
+                            {p.staffName ? (
+                              <span className="text-primary font-medium">{p.staffName}</span>
+                            ) : (
+                              <span className="text-muted-foreground">未割当</span>
+                            )}
+                          </td>
+                          {dateList.map((d) => {
+                            const active = d >= sd && d <= ed;
+                            const isWeekend = (() => {
+                              const dt = new Date(d + "T00:00:00");
+                              return dt.getDay() === 0 || dt.getDay() === 6;
+                            })();
+                            return (
+                              <td
+                                key={d}
+                                className={`border border-border p-0 ${
+                                  active
+                                    ? p.staffName
+                                      ? "bg-blue-200"
+                                      : "bg-amber-100"
+                                    : isWeekend
+                                    ? "bg-muted/30"
+                                    : ""
+                                }`}
+                              >
+                                {active && (
+                                  <div
+                                    className="h-full w-full min-h-[24px]"
+                                    title={`${p.phaseName}${p.staffName ? ` (${p.staffName})` : ""}`}
+                                  />
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
