@@ -1,9 +1,18 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProjects,
   useGetProjectLedger,
+  useUpdateProject,
+  useCreateCostEntry,
+  useUpdateCostEntry,
+  useDeleteCostEntry,
   getGetProjectLedgerQueryKey,
+  getGetProjectQueryKey,
+  getListProjectsQueryKey,
+  CostCategory,
+  type CostEntry,
 } from "@workspace/api-client-react";
 import {
   Select,
@@ -31,12 +40,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { CostCategoryBadge } from "@/components/cost-category-badge";
 import { LedgerSummary } from "@/components/ledger-summary";
-import { LedgerSpreadsheet } from "@/components/ledger-spreadsheet";
+import {
+  LedgerSpreadsheet,
+  type ProjectPatch,
+  type CostEntryPatch,
+  type CreateCostEntryDraft,
+} from "@/components/ledger-spreadsheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { useToast } from "@/hooks/use-toast";
+import { invalidateDashboard } from "@/lib/invalidate";
+import { apiErrorMessage } from "@/lib/api-error";
 import { ExternalLink } from "lucide-react";
 
 export default function LedgerPage() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const projectsQ = useListProjects();
   const [projectId, setProjectId] = useState<string>("");
   const ledgerQ = useGetProjectLedger(projectId, {
@@ -48,6 +67,27 @@ export default function LedgerPage() {
   const ledger = ledgerQ.data;
   const projects = projectsQ.data ?? [];
   const selectedProject = projects.find((p) => p.id === projectId);
+
+  const updateProjectMut = useUpdateProject();
+  const createCostMut = useCreateCostEntry();
+  const updateCostMut = useUpdateCostEntry();
+  const deleteCostMut = useDeleteCostEntry();
+
+  const latestCostRef = useRef(new Map<string, CostEntry>());
+  const writersRef = useRef(new Map<string, Promise<void>>());
+
+  const invalidateLedger = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: getGetProjectLedgerQueryKey(projectId),
+    });
+    await queryClient.invalidateQueries({
+      queryKey: getGetProjectQueryKey(projectId),
+    });
+    await queryClient.invalidateQueries({
+      queryKey: getListProjectsQueryKey(),
+    });
+    await invalidateDashboard(queryClient);
+  };
 
   return (
     <div className="space-y-6">
@@ -121,7 +161,124 @@ export default function LedgerPage() {
             </TabsList>
             <TabsContent value="sheet" className="mt-3">
               {selectedProject && (
-                <LedgerSpreadsheet ledger={ledger} project={selectedProject} />
+                <LedgerSpreadsheet
+                  ledger={ledger}
+                  project={selectedProject}
+                  onProjectUpdate={async (patch: ProjectPatch) => {
+                    try {
+                      await updateProjectMut.mutateAsync({
+                        id: projectId,
+                        data: patch,
+                      });
+                      await invalidateLedger();
+                    } catch (err) {
+                      toast({
+                        title: apiErrorMessage(err),
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  onCostEntryUpdate={(
+                    entryId: string,
+                    patch: CostEntryPatch,
+                  ) => {
+                    const base =
+                      latestCostRef.current.get(entryId) ??
+                      (ledger.entries.find((e) => e.id === entryId) as
+                        | CostEntry
+                        | undefined);
+                    if (!base) return;
+                    const merged: CostEntry = {
+                      ...base,
+                      category: patch.category ?? base.category,
+                      description: patch.description ?? base.description,
+                      vendor:
+                        patch.vendor !== undefined
+                          ? patch.vendor
+                          : (base.vendor ?? null),
+                      plannedAmount:
+                        patch.plannedAmount ?? base.plannedAmount,
+                      actualAmount: patch.actualAmount ?? base.actualAmount,
+                      entryDate: patch.entryDate ?? base.entryDate,
+                      notes:
+                        patch.notes !== undefined
+                          ? patch.notes
+                          : (base.notes ?? null),
+                    };
+                    latestCostRef.current.set(entryId, merged);
+                    if (writersRef.current.has(entryId)) return;
+                    const writer = (async () => {
+                      try {
+                        let lastSent: string | null = null;
+                        while (true) {
+                          const current =
+                            latestCostRef.current.get(entryId);
+                          if (!current) break;
+                          const body = {
+                            projectId,
+                            category: current.category as CostCategory,
+                            description: current.description,
+                            vendor: current.vendor ?? null,
+                            plannedAmount: current.plannedAmount,
+                            actualAmount: current.actualAmount,
+                            entryDate: current.entryDate,
+                            notes: current.notes ?? null,
+                          };
+                          const fingerprint = JSON.stringify(body);
+                          if (fingerprint === lastSent) break;
+                          lastSent = fingerprint;
+                          await updateCostMut.mutateAsync({
+                            id: entryId,
+                            data: body,
+                          });
+                        }
+                      } catch (err) {
+                        toast({
+                          title: apiErrorMessage(err),
+                          variant: "destructive",
+                        });
+                      } finally {
+                        writersRef.current.delete(entryId);
+                        try {
+                          await invalidateLedger();
+                        } catch {}
+                      }
+                    })();
+                    writersRef.current.set(entryId, writer);
+                  }}
+                  onCostEntryCreate={async (draft: CreateCostEntryDraft) => {
+                    try {
+                      await createCostMut.mutateAsync({
+                        data: {
+                          projectId,
+                          category: draft.category as CostCategory,
+                          description: draft.description || "新規",
+                          vendor: draft.vendor,
+                          plannedAmount: draft.plannedAmount,
+                          actualAmount: draft.actualAmount,
+                          entryDate: draft.entryDate,
+                        },
+                      });
+                      await invalidateLedger();
+                    } catch (err) {
+                      toast({
+                        title: apiErrorMessage(err),
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  onCostEntryDelete={async (entryId: string) => {
+                    try {
+                      await deleteCostMut.mutateAsync({ id: entryId });
+                      await invalidateLedger();
+                    } catch (err) {
+                      toast({
+                        title: apiErrorMessage(err),
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                />
               )}
             </TabsContent>
             <TabsContent value="summary" className="mt-3 space-y-6">
@@ -130,7 +287,7 @@ export default function LedgerPage() {
             <CardHeader>
               <CardTitle className="text-base">原価明細</CardTitle>
               <CardDescription>
-                編集・追加は案件詳細ページから行ってください。
+                台帳形式タブでも直接編集できます。
               </CardDescription>
             </CardHeader>
             <CardContent>

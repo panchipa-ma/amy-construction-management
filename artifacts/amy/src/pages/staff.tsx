@@ -47,7 +47,8 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
-import { Plus, Pencil, Trash2, HardHat, MapPin, CalendarClock, Users } from "lucide-react";
+import { EditableText, EditableNumber } from "@/components/editable-cell";
+import { Plus, Trash2, HardHat, MapPin, CalendarClock, Users } from "lucide-react";
 import { formatCurrency, formatDate, todayLocalISO, addDaysISO } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 
@@ -109,7 +110,6 @@ export default function StaffPage() {
   const { toast } = useToast();
   const { data, isLoading } = useListStaff();
   const today = todayLocalISO();
-  // Pull each staff's bookings for the "現状況" column (today-7 .. today+45).
   const assignmentsQ = useListStaffAssignments({
     from: addDaysISO(today, -7),
     to: addDaysISO(today, 45),
@@ -148,25 +148,32 @@ export default function StaffPage() {
   const deleteMut = useDeleteStaff();
 
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Staff | null>(null);
   const [form, setForm] = useState(empty);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const openCreate = () => {
-    setEditing(null);
     setForm(empty);
     setOpen(true);
   };
-  const openEdit = (s: Staff) => {
-    setEditing(s);
-    setForm({
-      name: s.name,
-      role: s.role,
-      phone: s.phone ?? "",
-      dailyRate: String(s.dailyRate ?? 0),
-      company: s.company ?? "",
-    });
-    setOpen(true);
+
+  const inlineUpdate = async (s: Staff, patch: Partial<{ name: string; role: string; phone: string | null; dailyRate: number | null; company: string | null }>) => {
+    try {
+      await updateMut.mutateAsync({
+        id: s.id,
+        data: {
+          name: patch.name ?? s.name,
+          role: patch.role ?? s.role,
+          phone: patch.phone !== undefined ? patch.phone : (s.phone ?? null),
+          dailyRate: patch.dailyRate !== undefined ? patch.dailyRate : (s.dailyRate ?? null),
+          company: patch.company !== undefined ? patch.company : (s.company ?? null),
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: getListStaffQueryKey() });
+      await invalidateDashboard(queryClient);
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+      await queryClient.invalidateQueries({ queryKey: getListStaffQueryKey() });
+    }
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -183,14 +190,10 @@ export default function StaffPage() {
       company: form.company || null,
     };
     try {
-      if (editing) {
-        await updateMut.mutateAsync({ id: editing.id, data });
-      } else {
-        await createMut.mutateAsync({ data });
-      }
+      await createMut.mutateAsync({ data });
       await queryClient.invalidateQueries({ queryKey: getListStaffQueryKey() });
       await invalidateDashboard(queryClient);
-      toast({ title: editing ? "職人情報を更新しました" : "職人を登録しました" });
+      toast({ title: "職人を登録しました" });
       setOpen(false);
     } catch (err) {
       toast({ title: apiErrorMessage(err), variant: "destructive" });
@@ -218,7 +221,7 @@ export default function StaffPage() {
         <div>
           <h1 className="text-2xl font-bold">職人</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            社員と外注先の職人を管理します。「現状況」欄で各職人の現在/次の現場をひと目で確認できます。
+            社員と外注先の職人を管理します。各セルをクリックして直接編集できます。
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -267,7 +270,7 @@ export default function StaffPage() {
                   <TableHead className="min-w-[260px]">現状況 (発注の参考)</TableHead>
                   <TableHead>電話</TableHead>
                   <TableHead className="text-right">日当</TableHead>
-                  <TableHead className="w-24"></TableHead>
+                  <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -275,36 +278,55 @@ export default function StaffPage() {
                   const status = statusByStaff.get(s.id);
                   return (
                     <TableRow key={s.id}>
-                      <TableCell className="font-medium">{s.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{s.role}</Badge>
+                      <TableCell className="font-medium p-1">
+                        <EditableText
+                          value={s.name}
+                          onSave={(v) => v && inlineUpdate(s, { name: v })}
+                          required
+                          placeholder="氏名"
+                        />
                       </TableCell>
-                      <TableCell>{s.company || "-"}</TableCell>
+                      <TableCell className="p-1">
+                        <EditableText
+                          value={s.role}
+                          onSave={(v) => v && inlineUpdate(s, { role: v })}
+                          required
+                          placeholder="職種"
+                        />
+                      </TableCell>
+                      <TableCell className="p-1">
+                        <EditableText
+                          value={s.company ?? ""}
+                          onSave={(v) => inlineUpdate(s, { company: v || null })}
+                          placeholder="会社名"
+                        />
+                      </TableCell>
                       <TableCell>
                         <StaffStatusCell status={status ?? undefined} />
                       </TableCell>
-                      <TableCell>{s.phone || "-"}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatCurrency(s.dailyRate)}
+                      <TableCell className="p-1">
+                        <EditableText
+                          value={s.phone ?? ""}
+                          onSave={(v) => inlineUpdate(s, { phone: v || null })}
+                          placeholder="電話番号"
+                        />
                       </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1 justify-end">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEdit(s)}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteId(s.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                      <TableCell className="text-right p-1">
+                        <EditableNumber
+                          value={s.dailyRate ?? 0}
+                          onSave={(v) => inlineUpdate(s, { dailyRate: v || null })}
+                          placeholder="日当"
+                        />
+                      </TableCell>
+                      <TableCell className="p-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteId(s.id)}
+                          className="text-destructive hover:text-destructive h-8 w-8"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -318,7 +340,7 @@ export default function StaffPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "職人を編集" : "職人を追加"}</DialogTitle>
+            <DialogTitle>職人を追加</DialogTitle>
           </DialogHeader>
           <form onSubmit={submit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -377,7 +399,7 @@ export default function StaffPage() {
               >
                 キャンセル
               </Button>
-              <Button type="submit">{editing ? "保存" : "登録"}</Button>
+              <Button type="submit">登録</Button>
             </DialogFooter>
           </form>
         </DialogContent>
