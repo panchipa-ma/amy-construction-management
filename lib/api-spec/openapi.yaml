@@ -1372,6 +1372,9 @@ components:
         id: { type: string }
         projectId: { type: string }
         projectName: { type: string }
+        customerName: { type: string, nullable: true }
+        contactName: { type: string, nullable: true }
+        subject: { type: string, nullable: true }
         invoiceNumber: { type: string }
         issueDate: { type: string, format: date }
         dueDate: { type: string, format: date, nullable: true }
@@ -1391,6 +1394,9 @@ components:
       properties:
         projectId: { type: string }
         invoiceNumber: { type: string }
+        customerName: { type: string, nullable: true }
+        contactName: { type: string, nullable: true }
+        subject: { type: string, nullable: true }
         issueDate: { type: string, format: date }
         dueDate: { type: string, format: date, nullable: true }
         notes: { type: string, nullable: true }

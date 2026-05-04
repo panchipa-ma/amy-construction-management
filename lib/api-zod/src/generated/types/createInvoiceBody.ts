@@ -10,6 +10,9 @@ import type { LineItem } from "./lineItem";
 export interface CreateInvoiceBody {
   projectId: string;
   invoiceNumber: string;
+  customerName?: string | null;
+  contactName?: string | null;
+  subject?: string | null;
   issueDate: Date;
   dueDate?: Date | null;
   notes?: string | null;

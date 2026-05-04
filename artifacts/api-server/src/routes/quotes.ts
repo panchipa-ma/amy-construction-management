@@ -176,33 +176,57 @@ router.post(
       return;
     }
     const [project] = await db
-      .select({ name: projectsTable.name })
+      .select({ name: projectsTable.name, customerId: projectsTable.customerId })
       .from(projectsTable)
       .where(eq(projectsTable.id, quote.projectId));
-    const items = (quote.items ?? []) as LineItemJson[];
+    let customerName: string | null = null;
+    if (project?.customerId) {
+      const [c] = await db
+        .select({ name: customersTable.name })
+        .from(customersTable)
+        .where(eq(customersTable.id, project.customerId));
+      customerName = c?.name ?? null;
+    }
+    const quoteItems = (quote.items ?? []) as LineItemJson[];
+    const { subtotal: quoteSubtotal } = computeTotals(quoteItems);
+    const subjectName = quote.subject || project?.name || "";
+    const invoiceItems: LineItemJson[] = [
+      {
+        description: subjectName,
+        unit: "式",
+        quantity: 1,
+        unitPrice: quoteSubtotal,
+      },
+    ];
     const [inv] = await db
       .insert(invoicesTable)
       .values({
         projectId: quote.projectId,
         invoiceNumber: parsed.data.invoiceNumber,
+        customerName,
+        contactName: quote.contactName ?? null,
+        subject: subjectName || null,
         issueDate: parsed.data.issueDate as unknown as string,
         dueDate: (parsed.data.dueDate as unknown as string | null) ?? null,
         notes: quote.notes,
         paid: false,
-        items,
+        items: invoiceItems,
       })
       .returning();
-    const { subtotal, tax, total } = computeTotals(items);
+    const { subtotal, tax, total } = computeTotals(invoiceItems);
     res.json(
       ConvertQuoteToInvoiceResponse.parse({
         id: inv.id,
         projectId: inv.projectId,
         projectName: project?.name ?? "",
+        customerName: inv.customerName ?? null,
+        contactName: inv.contactName ?? null,
+        subject: inv.subject ?? null,
         invoiceNumber: inv.invoiceNumber,
         issueDate: isoDate(inv.issueDate)!,
         dueDate: isoDate(inv.dueDate),
         notes: inv.notes,
-        items,
+        items: invoiceItems,
         subtotal,
         tax,
         total,

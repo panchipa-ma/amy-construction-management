@@ -58,6 +58,13 @@ pnpm monorepo with TypeScript project references.
 - **職人一覧** (`/staff`): Table cells (氏名, 職種, 会社, 電話, 日当) are inline-editable using `EditableText`/`EditableNumber`. Each blur saves immediately via `useUpdateStaff`. On error, the staff list is re-fetched to revert. Dialog kept only for creating new staff.
 - **見積書詳細** (`/quotes/:id`): Edit mode toggled by 編集 button. In edit mode, 件名, ご担当, 見積No, 見積日, 有効期限, 備考, and all line items become editable. Line items can be added/removed. Validation: quoteNumber and issueDate are required before save. Save calls `useUpdateQuote` with full body.
 
+## 請求書 (Invoice) format
+
+- Invoice detail page (`/invoices/:id`) uses a formal Japanese 請求書 layout matching printed invoice format: header with customer 御中, ご担当, 件名, company info with registration number, 合計金額 (税込), 17-row line items table, お振込先 bank details, 小計/消費税/合計 summary.
+- `invoices` DB table has `customerName`, `contactName`, `subject` nullable columns (added to support the formal format).
+- Quote-to-invoice conversion (`POST /api/quotes/:id/convert-to-invoice`) creates a **single summarized line item**: description = quote subject or project name, unit = "式", quantity = 1, unitPrice = quote subtotal (tax-excluded). Customer name, contact, and subject are auto-filled from the quote/project.
+- Company info and bank details are in `lib/company-info.ts` (`COMPANY_INFO`, `BANK_INFO`).
+
 ## Known gotchas
 
 - Don't manually clear `dist/` between builds — esbuild already does it. But if routes mysteriously go missing, force-rebuild api-server.

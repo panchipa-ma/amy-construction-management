@@ -444,6 +444,9 @@ export interface Invoice {
   id: string;
   projectId: string;
   projectName?: string;
+  customerName?: string | null;
+  contactName?: string | null;
+  subject?: string | null;
   invoiceNumber: string;
   issueDate: string;
   dueDate?: string | null;
@@ -459,6 +462,9 @@ export interface Invoice {
 export interface CreateInvoiceBody {
   projectId: string;
   invoiceNumber: string;
+  customerName?: string | null;
+  contactName?: string | null;
+  subject?: string | null;
   issueDate: string;
   dueDate?: string | null;
   notes?: string | null;

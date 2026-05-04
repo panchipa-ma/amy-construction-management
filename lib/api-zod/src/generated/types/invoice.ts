@@ -11,6 +11,9 @@ export interface Invoice {
   id: string;
   projectId: string;
   projectName?: string;
+  customerName?: string | null;
+  contactName?: string | null;
+  subject?: string | null;
   invoiceNumber: string;
   issueDate: Date;
   dueDate?: Date | null;
