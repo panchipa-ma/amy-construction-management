@@ -1,10 +1,11 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, FolderKanban, FileText, Receipt, CalendarDays, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList } from "lucide-react";
+import { LayoutDashboard, FolderKanban, FileText, Receipt, CalendarDays, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart } from "lucide-react";
 
 const navItems = [
   { name: "ダッシュボード", href: "/", icon: LayoutDashboard },
   { name: "案件", href: "/projects", icon: FolderKanban },
   { name: "施工台帳", href: "/ledger", icon: BookOpen },
+  { name: "工程表", href: "/gantt", icon: GanttChart },
   { name: "見積", href: "/quotes", icon: FileText },
   { name: "請求", href: "/invoices", icon: Receipt },
   { name: "職人請求書", href: "/vendor-invoices", icon: Upload },

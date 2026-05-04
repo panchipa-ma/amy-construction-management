@@ -44,6 +44,11 @@ pnpm monorepo with TypeScript project references.
 - **職人請求書アップロード**: page at `/vendor-invoices`. Staff selects 職人 + 号室 + 金額 + ファイル. Server normalizes 号室 (drops 号室/号/室, full→half-width digits) and looks up `projects.unitNumber`. On match, auto-creates a `cost_entry` (category: `labor` if role contains 社員/自社, else `subcontract`) and links via `vendor_invoices.costEntryId`. Status = `matched` | `unmatched`. Manual matching via `POST /api/vendor-invoices/:id/match`. Delete cascades cost_entry removal.
 - **File uploads**: `POST /api/storage/uploads/request-url` returns `{uploadURL, objectPath}`. Frontend captures `objectPath` from this call (via ref in onGetUploadParameters), then constructs serve path `/api/storage${objectPath}` for `vendor_invoices.fileUrl`. Files are served by `GET /api/storage/objects/*` (currently unauthenticated — fine for single-tenant).
 
+## Standalone pages
+
+- **工程表** (`/gantt`): Top-level Gantt chart page listing all projects in collapsible accordion. Reuses `ProjectGantt` component. Filter by status (default: 施工中・契約済) and search by name/customer. Each project expands to show its full interactive Gantt chart with drag, resize, add/edit/delete phases.
+- **スケジュール** (`/schedule`): Weekly staff assignment grid (職人×曜日). Different from 工程表 — this is about who works where.
+
 ## Inline editing (台帳形式)
 
 - `components/editable-cell.tsx` exposes `EditableText`, `EditableNumber`, `EditableDate`. All save on blur and on Enter; Escape sets a `cancelRef` flag that the synchronous onBlur checks to skip commit (state setters fire after blur, so a flag is needed). `required` prop reverts to original on empty.

@@ -22,6 +22,7 @@ import VendorInvoicesPage from "@/pages/vendor-invoices";
 import ReceiptsPage from "@/pages/receipts";
 import LedgerPage from "@/pages/ledger";
 import StaffAssignmentsPage from "@/pages/staff-assignments";
+import GanttPage from "@/pages/gantt";
 
 function Router() {
   return (
@@ -38,6 +39,7 @@ function Router() {
       <Route path="/invoices" component={InvoicesListPage} />
       <Route path="/invoices/new" component={InvoiceNewPage} />
       <Route path="/invoices/:id" component={InvoiceDetailPage} />
+      <Route path="/gantt" component={GanttPage} />
       <Route path="/schedule" component={SchedulePage} />
       <Route path="/vendor-invoices" component={VendorInvoicesPage} />
       <Route path="/receipts" component={ReceiptsPage} />
