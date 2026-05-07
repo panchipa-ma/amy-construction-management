@@ -291,8 +291,9 @@ router.get("/commissions", async (req, res): Promise<void> => {
   }
 
   // 3) 他人売上ボーナス (亘ルール)
+  // 案件ごとに otherSalesBonusRate を上書き可能。NULL なら staff のデフォルト率。
   for (const staff of bonusStaff) {
-    const rate = n(staff.otherSalesBonusRate);
+    const defaultRate = n(staff.otherSalesBonusRate);
     const name = staff.name.trim();
     for (const inv of monthInvoices) {
       const project = projectMap.get(inv.projectId);
@@ -303,6 +304,12 @@ router.get("/commissions", async (req, res): Promise<void> => {
       const items = (inv.items ?? []) as LineItemJson[];
       const { total } = computeTotals(items);
       if (total <= 0) continue;
+      // 案件側に率が指定されていればそちらを優先 (0 を含む — 0 はその案件で対象外を意味する)
+      const rate =
+        project.otherSalesBonusRate != null
+          ? n(project.otherSalesBonusRate)
+          : defaultRate;
+      if (rate <= 0) continue;
       const amount = Math.round((total * rate) / 100);
       if (amount <= 0) continue;
       const p = getPerson(name);
@@ -320,7 +327,9 @@ router.get("/commissions", async (req, res): Promise<void> => {
         amount,
         rate,
         baseAmount: total,
-        note: salesRep ? `${salesRep} 獲得分` : "担当営業未設定",
+        note: salesRep
+          ? `${salesRep} 獲得分${project.otherSalesBonusRate != null ? " (案件率)" : ""}`
+          : "担当営業未設定",
       });
     }
   }

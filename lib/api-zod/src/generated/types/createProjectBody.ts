@@ -20,6 +20,7 @@ export interface CreateProjectBody {
   salesCommissionRate?: number | null;
   standardProfitRate?: number | null;
   supervisorCommissionRate?: number | null;
+  otherSalesBonusRate?: number | null;
   salesRep?: string | null;
   siteSupervisor?: string | null;
   notes?: string | null;

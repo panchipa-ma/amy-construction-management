@@ -50,6 +50,7 @@ export default function ProjectNewPage() {
     standardProfitRate: "20",
     salesCommissionRate: "5",
     supervisorCommissionRate: "30",
+    otherSalesBonusRate: "",
     salesRep: "",
     siteSupervisor: "",
     notes: "",
@@ -77,6 +78,10 @@ export default function ProjectNewPage() {
           salesCommissionRate: Number(form.salesCommissionRate) || 5,
           supervisorCommissionRate:
             Number(form.supervisorCommissionRate) || 30,
+          otherSalesBonusRate:
+            form.otherSalesBonusRate === ""
+              ? null
+              : Number(form.otherSalesBonusRate),
           salesRep: form.salesRep || null,
           siteSupervisor: form.siteSupervisor || null,
           notes: form.notes || null,
@@ -331,6 +336,29 @@ export default function ProjectNewPage() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   顧客の規定値が自動入力されます (顧客マスタで変更可)
+                </p>
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="otherSalesBonusRate">
+                  他人売上ボーナス率 (%) ※この案件のみオーバーライド
+                </Label>
+                <Input
+                  id="otherSalesBonusRate"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={form.otherSalesBonusRate}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      otherSalesBonusRate: e.target.value,
+                    })
+                  }
+                  placeholder="空欄なら職人マスタの率 (例: 亘 2.5%) を使用"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  通常は空欄でOK。例外的にこの案件だけ別の率にしたい場合のみ入力 (0 でこの案件は対象外)
                 </p>
               </div>
               <div className="col-span-2">

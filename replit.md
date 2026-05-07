@@ -81,9 +81,9 @@ Three components per person:
 
 1. **営業歩合** — per invoice: `invoice税込合計 × project.salesCommissionRate%` → attributed to `project.salesRep`.
 2. **現場監督歩合** — only for **completed** projects whose latest sent invoice falls in the target month (so each project is counted exactly once, in the month its final invoice goes out). Formula: `規定超過粗利 × project.supervisorCommissionRate%`, where `規定超過粗利 = max(0, sum(invoice税込) − 営業歩合 − sum(invoice税込) × standardProfitRate% − sum(actualAmount))`. Falls back to `customer.defaultProfitRate` when project has no `standardProfitRate`. Attributed to `project.siteSupervisor`.
-3. **他人売上ボーナス** — `staff.otherSalesBonusRate` (numeric, nullable, %) is the per-staff "亘ルール" rate. For each staff with a positive rate, sum tax-incl invoice totals where `project.salesRep ≠ staff.name` and multiply by the rate. Excludes 監督歩合 by design (separate calc).
+3. **他人売上ボーナス** — `staff.otherSalesBonusRate` (numeric, nullable, %) is the per-staff "亘ルール" default rate. Per-project override via `projects.otherSalesBonusRate` (numeric, nullable): NULL → fall back to staff default; explicit `0` → opt this project out. For each bonus staff, sum tax-incl invoice totals where `project.salesRep ≠ staff.name` and multiply by the effective rate. When the project rate is used, the line note appends ` (案件率)`. Excludes 監督歩合 by design (separate calc).
 
-Page (`pages/commissions.tsx`): month picker (defaults to current), 4 summary tiles (営業/監督/他人/合計+invoice count), expandable per-person table with kind-tagged invoice lines linking to the project. Sidebar entry "月次歩合" with `Calculator` icon, `internalOnly: true`. Staff page exposes `otherSalesBonusRate` as both a dialog field and inline-editable column ("他人売上ボーナス %").
+Page (`pages/commissions.tsx`): month picker (defaults to current), 3 summary tiles (営業/監督/他人 — overall 合計 intentionally omitted; per-person totals are in the table) + small "送付済請求書 N件 / ¥X" line. Expandable per-person table with kind-tagged invoice lines linking to the project. Sidebar entry "月次歩合" with `Calculator` icon, `internalOnly: true`. Staff page exposes `otherSalesBonusRate` as both a dialog field and inline-editable column ("他人売上ボーナス %"). 案件作成フォーム (`project-new.tsx`) と 施工台帳 (`ledger-spreadsheet.tsx` 基本情報セクション) で per-project `otherSalesBonusRate` を編集可能 (空欄/0 の挙動は上記)。
 
 ## Cross-document workflows
 

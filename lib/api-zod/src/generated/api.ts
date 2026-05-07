@@ -143,6 +143,12 @@ export const ListProjectsResponseItem = zod.object({
     .number()
     .optional()
     .describe("現場監督歩合 (%, 規定超過粗利に対する配分率)"),
+  otherSalesBonusRate: zod
+    .number()
+    .nullish()
+    .describe(
+      "他人売上ボーナス率 (%, この案件のオーバーライド)。NULL時は職人マスタの率を使用",
+    ),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -169,6 +175,7 @@ export const CreateProjectBody = zod.object({
   salesCommissionRate: zod.number().nullish(),
   standardProfitRate: zod.number().nullish(),
   supervisorCommissionRate: zod.number().nullish(),
+  otherSalesBonusRate: zod.number().nullish(),
   salesRep: zod.string().nullish(),
   siteSupervisor: zod.string().nullish(),
   notes: zod.string().nullish(),
@@ -209,6 +216,12 @@ export const CreateProjectResponse = zod.object({
     .number()
     .optional()
     .describe("現場監督歩合 (%, 規定超過粗利に対する配分率)"),
+  otherSalesBonusRate: zod
+    .number()
+    .nullish()
+    .describe(
+      "他人売上ボーナス率 (%, この案件のオーバーライド)。NULL時は職人マスタの率を使用",
+    ),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -254,6 +267,12 @@ export const GetProjectResponse = zod.object({
     .number()
     .optional()
     .describe("現場監督歩合 (%, 規定超過粗利に対する配分率)"),
+  otherSalesBonusRate: zod
+    .number()
+    .nullish()
+    .describe(
+      "他人売上ボーナス率 (%, この案件のオーバーライド)。NULL時は職人マスタの率を使用",
+    ),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -279,6 +298,7 @@ export const UpdateProjectBody = zod.object({
   salesCommissionRate: zod.number().nullish(),
   standardProfitRate: zod.number().nullish(),
   supervisorCommissionRate: zod.number().nullish(),
+  otherSalesBonusRate: zod.number().nullish(),
   salesRep: zod.string().nullish(),
   siteSupervisor: zod.string().nullish(),
   notes: zod.string().nullish(),
@@ -319,6 +339,12 @@ export const UpdateProjectResponse = zod.object({
     .number()
     .optional()
     .describe("現場監督歩合 (%, 規定超過粗利に対する配分率)"),
+  otherSalesBonusRate: zod
+    .number()
+    .nullish()
+    .describe(
+      "他人売上ボーナス率 (%, この案件のオーバーライド)。NULL時は職人マスタの率を使用",
+    ),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),

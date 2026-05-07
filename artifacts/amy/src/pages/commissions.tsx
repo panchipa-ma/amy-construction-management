@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useState } from "react";
 import { Link } from "wouter";
 import {
   useGetCommissions,
@@ -55,11 +55,6 @@ export default function CommissionsPage() {
 
   const totals = data?.totals;
   const people = data?.people ?? [];
-
-  const grandTotalLabel = useMemo(() => {
-    if (!totals) return "—";
-    return formatCurrency(totals.total);
-  }, [totals]);
 
   function toggle(name: string) {
     const next = new Set(expanded);
@@ -121,41 +116,39 @@ export default function CommissionsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="grid grid-cols-4 gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
+            <div className="grid grid-cols-3 gap-3">
+              {Array.from({ length: 3 }).map((_, i) => (
                 <Skeleton key={i} className="h-20 w-full" />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <SummaryTile
-                label="営業歩合"
-                value={formatCurrency(totals?.salesCommission ?? 0)}
-                tone="blue"
-              />
-              <SummaryTile
-                label="現場監督歩合"
-                value={formatCurrency(totals?.supervisorCommission ?? 0)}
-                tone="emerald"
-                hint="竣工案件のみ"
-              />
-              <SummaryTile
-                label="他人売上ボーナス"
-                value={formatCurrency(totals?.otherSalesBonus ?? 0)}
-                tone="amber"
-                hint="例: 亘 2.5%"
-              />
-              <SummaryTile
-                label="合計"
-                value={grandTotalLabel}
-                tone="navy"
-                hint={
-                  totals
-                    ? `送付済請求書 ${totals.invoiceCount}件 / ¥${totals.invoiceTotal.toLocaleString()}`
-                    : ""
-                }
-              />
-            </div>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <SummaryTile
+                  label="営業歩合"
+                  value={formatCurrency(totals?.salesCommission ?? 0)}
+                  tone="blue"
+                />
+                <SummaryTile
+                  label="現場監督歩合"
+                  value={formatCurrency(totals?.supervisorCommission ?? 0)}
+                  tone="emerald"
+                  hint="竣工案件のみ"
+                />
+                <SummaryTile
+                  label="他人売上ボーナス"
+                  value={formatCurrency(totals?.otherSalesBonus ?? 0)}
+                  tone="amber"
+                  hint="例: 亘 2.5% (案件ごとに変更可)"
+                />
+              </div>
+              {totals && (
+                <p className="text-xs text-muted-foreground mt-3">
+                  対象月の送付済請求書: {totals.invoiceCount}件 / 合計 ¥
+                  {totals.invoiceTotal.toLocaleString()} (税込)
+                </p>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

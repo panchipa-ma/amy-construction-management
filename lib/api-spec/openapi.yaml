@@ -1282,6 +1282,7 @@ components:
         salesCommissionRate: { type: number, description: "営業歩合率 (%, 売上に対して)" }
         standardProfitRate: { type: number, description: "規定利率 (%, NULL時は顧客マスタから取得)" }
         supervisorCommissionRate: { type: number, description: "現場監督歩合 (%, 規定超過粗利に対する配分率)" }
+        otherSalesBonusRate: { type: number, nullable: true, description: "他人売上ボーナス率 (%, この案件のオーバーライド)。NULL時は職人マスタの率を使用" }
         salesRep: { type: string, nullable: true, description: "担当営業" }
         siteSupervisor: { type: string, nullable: true, description: "担当現場監督" }
         notes: { type: string, nullable: true }
@@ -1303,6 +1304,7 @@ components:
         salesCommissionRate: { type: number, nullable: true }
         standardProfitRate: { type: number, nullable: true }
         supervisorCommissionRate: { type: number, nullable: true }
+        otherSalesBonusRate: { type: number, nullable: true }
         salesRep: { type: string, nullable: true }
         siteSupervisor: { type: string, nullable: true }
         notes: { type: string, nullable: true }
@@ -1322,6 +1324,7 @@ components:
         salesCommissionRate: { type: number, nullable: true }
         standardProfitRate: { type: number, nullable: true }
         supervisorCommissionRate: { type: number, nullable: true }
+        otherSalesBonusRate: { type: number, nullable: true }
         salesRep: { type: string, nullable: true }
         siteSupervisor: { type: string, nullable: true }
         notes: { type: string, nullable: true }

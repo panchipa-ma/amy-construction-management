@@ -64,6 +64,7 @@ type Project = {
   salesCommissionRate?: number | null;
   standardProfitRate?: number | null;
   supervisorCommissionRate?: number | null;
+  otherSalesBonusRate?: number | null;
   salesRep?: string | null;
   siteSupervisor?: string | null;
 };
@@ -93,6 +94,7 @@ export type ProjectPatch = Partial<{
   salesCommissionRate: number | null;
   standardProfitRate: number | null;
   supervisorCommissionRate: number | null;
+  otherSalesBonusRate: number | null;
   salesRep: string | null;
   siteSupervisor: string | null;
   notes: string | null;
@@ -279,6 +281,33 @@ export function LedgerSpreadsheet({
                     </div>
                   ) : (
                     `${(project.supervisorCommissionRate ?? 30).toFixed(1)}%`
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <th>他人売上ボーナス率</th>
+                <td className="tabular-nums" colSpan={3}>
+                  {editable ? (
+                    <div className="flex items-center gap-2">
+                      <EditableNumber
+                        value={project.otherSalesBonusRate ?? 0}
+                        onSave={(v) =>
+                          onProjectUpdate!({
+                            otherSalesBonusRate: v > 0 ? v : null,
+                          })
+                        }
+                      />
+                      <span className="text-muted-foreground">%</span>
+                      <span className="text-xs text-muted-foreground">
+                        {project.otherSalesBonusRate == null
+                          ? "(空欄: 職人マスタの率を使用 — 例: 亘 2.5%)"
+                          : "(この案件のみオーバーライド / 0 でこの案件は対象外)"}
+                      </span>
+                    </div>
+                  ) : project.otherSalesBonusRate != null ? (
+                    `${project.otherSalesBonusRate.toFixed(1)}% (案件オーバーライド)`
+                  ) : (
+                    "職人マスタ既定値"
                   )}
                 </td>
               </tr>

@@ -81,6 +81,9 @@ export const projectsTable = pgTable("projects", {
   supervisorCommissionRate: numeric("supervisor_commission_rate")
     .notNull()
     .default("30"),
+  // この案件で発生した「他人売上ボーナス」の率 (%)。NULL の場合は職人マスタの
+  // staff.otherSalesBonusRate (デフォルト 2.5%) にフォールバック。
+  otherSalesBonusRate: numeric("other_sales_bonus_rate"),
   salesRep: text("sales_rep"),
   siteSupervisor: text("site_supervisor"),
   notes: text("notes"),
