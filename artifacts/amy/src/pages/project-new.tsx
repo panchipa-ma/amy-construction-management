@@ -48,6 +48,7 @@ export default function ProjectNewPage() {
     endDate: "",
     contractAmount: "0",
     salesCommissionRate: "5",
+    supervisorCommissionRate: "30",
     salesRep: "",
     siteSupervisor: "",
     notes: "",
@@ -72,6 +73,8 @@ export default function ProjectNewPage() {
           endDate: form.endDate || null,
           contractAmount: Number(form.contractAmount) || 0,
           salesCommissionRate: Number(form.salesCommissionRate) || 5,
+          supervisorCommissionRate:
+            Number(form.supervisorCommissionRate) || 30,
           salesRep: form.salesRep || null,
           siteSupervisor: form.siteSupervisor || null,
           notes: form.notes || null,
@@ -159,6 +162,10 @@ export default function ProjectNewPage() {
                         != null
                         ? String(cust.defaultSalesCommissionRate)
                         : f.salesCommissionRate,
+                      supervisorCommissionRate:
+                        cust?.defaultSupervisorCommissionRate != null
+                          ? String(cust.defaultSupervisorCommissionRate)
+                          : f.supervisorCommissionRate,
                     }));
                   }}
                 >
@@ -266,7 +273,7 @@ export default function ProjectNewPage() {
                   顧客の規定値が自動入力されます (顧客マスタで変更可)
                 </p>
               </div>
-              <div className="col-span-2">
+              <div>
                 <Label htmlFor="siteSupervisor">担当現場監督</Label>
                 <Input
                   id="siteSupervisor"
@@ -274,8 +281,31 @@ export default function ProjectNewPage() {
                   onChange={(e) =>
                     setForm({ ...form, siteSupervisor: e.target.value })
                   }
-                  placeholder="例: 鈴木 (規定利率20%超過粗利の30%が歩合)"
+                  placeholder="例: 鈴木"
                 />
+              </div>
+              <div>
+                <Label htmlFor="supervisorCommissionRate">
+                  監督歩合率 (%) ※規定超過粗利に対して
+                </Label>
+                <Input
+                  id="supervisorCommissionRate"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={form.supervisorCommissionRate}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      supervisorCommissionRate: e.target.value,
+                    })
+                  }
+                  placeholder="例: 30"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  顧客の規定値が自動入力されます (顧客マスタで変更可)
+                </p>
               </div>
               <div className="col-span-2">
                 <Label htmlFor="notes">備考</Label>

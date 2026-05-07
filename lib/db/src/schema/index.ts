@@ -72,6 +72,10 @@ export const projectsTable = pgTable("projects", {
   endDate: date("end_date"),
   contractAmount: numeric("contract_amount").notNull().default("0"),
   salesCommissionRate: numeric("sales_commission_rate").notNull().default("5"),
+  // 現場監督歩合率 (%) — 規定超過粗利のうち監督への配分率。顧客既定値からプリフィル可。
+  supervisorCommissionRate: numeric("supervisor_commission_rate")
+    .notNull()
+    .default("30"),
   salesRep: text("sales_rep"),
   siteSupervisor: text("site_supervisor"),
   notes: text("notes"),

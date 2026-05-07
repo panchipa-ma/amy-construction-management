@@ -42,8 +42,6 @@ async function serializeProject(p: ProjectRow) {
     .select({
       name: customersTable.name,
       defaultProfitRate: customersTable.defaultProfitRate,
-      defaultSupervisorCommissionRate:
-        customersTable.defaultSupervisorCommissionRate,
     })
     .from(customersTable)
     .where(eq(customersTable.id, p.customerId));
@@ -64,9 +62,7 @@ async function serializeProject(p: ProjectRow) {
     actualCost: actual,
     salesCommissionRate: n(p.salesCommissionRate),
     standardProfitRate: customer ? n(customer.defaultProfitRate) : 20,
-    supervisorCommissionRate: customer
-      ? n(customer.defaultSupervisorCommissionRate)
-      : 30,
+    supervisorCommissionRate: n(p.supervisorCommissionRate),
     salesRep: p.salesRep,
     siteSupervisor: p.siteSupervisor,
     notes: p.notes,
@@ -121,6 +117,10 @@ router.post("/projects", async (req, res): Promise<void> => {
         parsed.data.salesCommissionRate == null
           ? "5"
           : String(parsed.data.salesCommissionRate),
+      supervisorCommissionRate:
+        parsed.data.supervisorCommissionRate == null
+          ? "30"
+          : String(parsed.data.supervisorCommissionRate),
       salesRep: parsed.data.salesRep ?? null,
       siteSupervisor: parsed.data.siteSupervisor ?? null,
       notes: parsed.data.notes ?? null,
@@ -164,6 +164,9 @@ router.patch("/projects/:id", async (req, res): Promise<void> => {
   }
   if (parsed.data.salesCommissionRate != null) {
     data.salesCommissionRate = String(parsed.data.salesCommissionRate);
+  }
+  if (parsed.data.supervisorCommissionRate != null) {
+    data.supervisorCommissionRate = String(parsed.data.supervisorCommissionRate);
   }
   if ("startDate" in parsed.data) data.startDate = isoDate(parsed.data.startDate);
   if ("endDate" in parsed.data) data.endDate = isoDate(parsed.data.endDate);

@@ -142,7 +142,7 @@ export const ListProjectsResponseItem = zod.object({
   supervisorCommissionRate: zod
     .number()
     .optional()
-    .describe("現場監督歩合 (%, 顧客マスタから取得)"),
+    .describe("現場監督歩合 (%, 規定超過粗利に対する配分率)"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -167,6 +167,7 @@ export const CreateProjectBody = zod.object({
   endDate: zod.coerce.date().nullish(),
   contractAmount: zod.number().optional(),
   salesCommissionRate: zod.number().nullish(),
+  supervisorCommissionRate: zod.number().nullish(),
   salesRep: zod.string().nullish(),
   siteSupervisor: zod.string().nullish(),
   notes: zod.string().nullish(),
@@ -206,7 +207,7 @@ export const CreateProjectResponse = zod.object({
   supervisorCommissionRate: zod
     .number()
     .optional()
-    .describe("現場監督歩合 (%, 顧客マスタから取得)"),
+    .describe("現場監督歩合 (%, 規定超過粗利に対する配分率)"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -251,7 +252,7 @@ export const GetProjectResponse = zod.object({
   supervisorCommissionRate: zod
     .number()
     .optional()
-    .describe("現場監督歩合 (%, 顧客マスタから取得)"),
+    .describe("現場監督歩合 (%, 規定超過粗利に対する配分率)"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -275,6 +276,7 @@ export const UpdateProjectBody = zod.object({
   endDate: zod.coerce.date().nullish(),
   contractAmount: zod.number().optional(),
   salesCommissionRate: zod.number().nullish(),
+  supervisorCommissionRate: zod.number().nullish(),
   salesRep: zod.string().nullish(),
   siteSupervisor: zod.string().nullish(),
   notes: zod.string().nullish(),
@@ -314,7 +316,7 @@ export const UpdateProjectResponse = zod.object({
   supervisorCommissionRate: zod
     .number()
     .optional()
-    .describe("現場監督歩合 (%, 顧客マスタから取得)"),
+    .describe("現場監督歩合 (%, 規定超過粗利に対する配分率)"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
