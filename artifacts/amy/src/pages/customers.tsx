@@ -259,6 +259,7 @@ export default function CustomersPage() {
                   <TableHead className="text-right">規定利率</TableHead>
                   <TableHead className="text-right">営業歩合</TableHead>
                   <TableHead className="text-right">監督歩合</TableHead>
+                  <TableHead className="text-right">マネジメント報酬</TableHead>
                   <TableHead className="w-24"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -288,6 +289,12 @@ export default function CustomersPage() {
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {(c.defaultSupervisorCommissionRate ?? 30).toFixed(1)}%
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {c.defaultOtherSalesBonusRecipient &&
+                      c.defaultOtherSalesBonusRate != null
+                        ? `${c.defaultOtherSalesBonusRate.toFixed(1)}% (${c.defaultOtherSalesBonusRecipient})`
+                        : "-"}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1 justify-end">
