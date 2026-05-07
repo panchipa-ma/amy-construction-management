@@ -5,9 +5,11 @@ import {
   useListQuotes,
   useDeleteQuote,
   useConvertQuoteToInvoice,
+  useUpdateProject,
   getListQuotesQueryKey,
   getListProjectsQueryKey,
   getListInvoicesQueryKey,
+  ProjectStatus,
 } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,6 +62,7 @@ export default function QuotesListPage() {
   const { data, isLoading } = useListQuotes();
   const deleteMut = useDeleteQuote();
   const convertMut = useConvertQuoteToInvoice();
+  const updateProjectMut = useUpdateProject();
   const rows = data ?? [];
   const sel = useBulkSelection(rows.map((q) => q.id));
 
@@ -103,11 +106,23 @@ export default function QuotesListPage() {
           dueDate: convertForm.dueDate || null,
         },
       });
+      // 請求書を作成したら案件を「竣工」に進めて請求済の方へ移動させる
+      try {
+        await updateProjectMut.mutateAsync({
+          id: inv.projectId,
+          data: { status: ProjectStatus.completed },
+        });
+      } catch {
+        // 案件のステータス更新は補助的なものなので、失敗しても請求書作成自体は成功扱い
+      }
       await queryClient.invalidateQueries({
         queryKey: getListInvoicesQueryKey(),
       });
+      await queryClient.invalidateQueries({
+        queryKey: getListProjectsQueryKey(),
+      });
       await invalidateDashboard(queryClient);
-      toast({ title: "請求書を作成しました" });
+      toast({ title: "請求書を作成し、案件を請求済へ移動しました" });
       setConvertFor(null);
       setLocation(`/invoices/${inv.id}`);
     } catch (err) {
