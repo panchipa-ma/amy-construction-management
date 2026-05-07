@@ -332,13 +332,13 @@ export default function QuoteNewPage() {
         onSubmit={submit}
         className="quote-paper max-w-[1040px] mx-auto px-8 py-8 text-[14px] text-foreground"
       >
-        {/* Decorative top accent */}
-        <div className="h-[3px] bg-primary mb-3" />
-
         {/* Title */}
-        <h1 className="quote-title text-center text-[32px] text-foreground mb-5">
-          御&nbsp;&nbsp;見&nbsp;&nbsp;積&nbsp;&nbsp;書
-        </h1>
+        <div className="text-center mb-6 -mt-2">
+          <h1 className="quote-title inline-block text-[36px] font-semibold text-foreground tracking-[0.5em] pl-[0.5em]">
+            御&nbsp;&nbsp;見&nbsp;&nbsp;積&nbsp;&nbsp;書
+          </h1>
+          <div className="mx-auto mt-2 h-[2px] w-20 bg-primary" />
+        </div>
 
         {/* Customer + Meta */}
         <div className="grid grid-cols-[1.5fr_1fr] gap-8 mb-5">

@@ -391,11 +391,12 @@ export default function QuoteDetailPage() {
       </div>
 
       <div className="quote-paper max-w-[1040px] mx-auto px-8 py-8 text-[14px] text-foreground print:border-0 print:p-0 print:max-w-none print:mx-0 print:shadow-none">
-        <div className="h-[3px] bg-primary mb-3" />
-
-        <h1 className="quote-title text-center text-[32px] text-foreground mb-5">
-          御&nbsp;&nbsp;見&nbsp;&nbsp;積&nbsp;&nbsp;書
-        </h1>
+        <div className="text-center mb-6 -mt-2">
+          <h1 className="quote-title inline-block text-[36px] font-semibold text-foreground tracking-[0.5em] pl-[0.5em]">
+            御&nbsp;&nbsp;見&nbsp;&nbsp;積&nbsp;&nbsp;書
+          </h1>
+          <div className="mx-auto mt-2 h-[2px] w-20 bg-primary" />
+        </div>
 
         <div className="grid grid-cols-[1.5fr_1fr] gap-8 mb-5">
           <div className="space-y-3 min-w-0">

@@ -586,21 +586,29 @@ export default function VendorQuoteNewPage() {
           lineHeight: 1.5,
         }}
       >
-        {/* Top accent */}
-        <div style={{ height: "3px", background: "#1f3a66", marginBottom: "20px" }} />
-
         {/* Title */}
-        <h1
-          style={{
-            textAlign: "center",
-            fontSize: "30px",
-            fontWeight: 600,
-            letterSpacing: "0.4em",
-            marginBottom: "20px",
-          }}
-        >
-          御見積書
-        </h1>
+        <div style={{ textAlign: "center", marginBottom: "24px", marginTop: "-4px" }}>
+          <h1
+            style={{
+              display: "inline-block",
+              fontSize: "34px",
+              fontWeight: 600,
+              letterSpacing: "0.5em",
+              paddingLeft: "0.5em",
+              margin: 0,
+            }}
+          >
+            御見積書
+          </h1>
+          <div
+            style={{
+              width: "80px",
+              height: "2px",
+              background: "#1f3a66",
+              margin: "10px auto 0",
+            }}
+          />
+        </div>
 
         {/* Customer + Meta */}
         <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "32px", marginBottom: "20px" }}>
