@@ -19,6 +19,8 @@ export type SheetProject = {
   startDate?: string | null;
   endDate?: string | null;
   siteSupervisor?: string | null;
+  supervisorPhone?: string | null;
+  companyName?: string | null;
 };
 
 const DAY_W = 26;
@@ -94,6 +96,28 @@ export function PrintGanttSheet({
         boxSizing: "border-box",
       }}
     >
+      {/* ─── 会社情報バー ─── */}
+      {(project.companyName || project.supervisorPhone) && (
+        <div
+          style={{
+            width: totalWidth,
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "baseline",
+            gap: 20,
+            padding: "2px 4px 6px",
+            fontSize: 13,
+          }}
+        >
+          {project.companyName && (
+            <span style={{ fontWeight: 600 }}>{project.companyName}</span>
+          )}
+          {project.supervisorPhone && (
+            <span>TEL: {project.supervisorPhone}</span>
+          )}
+        </div>
+      )}
+
       {/* ─── 上部 ヘッダ (1 行) ─── */}
       <div
         style={{

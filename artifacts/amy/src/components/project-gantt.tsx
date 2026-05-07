@@ -7,6 +7,7 @@ import {
   useDeleteProjectPhase,
   useListStaff,
   useGetProject,
+  useListEmployees,
   getListProjectPhasesQueryKey,
   getGetProjectQueryKey,
   type ProjectPhase,
@@ -44,6 +45,7 @@ import {
   PrintGanttSheet,
   getMonthsForPhases,
 } from "@/components/print-gantt-sheet";
+import { COMPANY_INFO } from "@/lib/company-info";
 
 const STATUS_LABEL: Record<string, string> = {
   planned: "予定",
@@ -156,6 +158,13 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
     query: { queryKey: getGetProjectQueryKey(projectId) },
   });
   const project = projectQ.data;
+  const employeesQ = useListEmployees();
+  const supervisorPhone = (() => {
+    const supName = project?.siteSupervisor?.trim();
+    if (!supName) return COMPANY_INFO.tel;
+    const emp = employeesQ.data?.find((e) => e.name.trim() === supName);
+    return emp?.phone?.trim() || COMPANY_INFO.tel;
+  })();
   useEffect(() => {
     dragRef.current = drag;
   }, [drag]);
@@ -828,6 +837,8 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                   startDate: project?.startDate ?? null,
                   endDate: project?.endDate ?? null,
                   siteSupervisor: project?.siteSupervisor ?? null,
+                  supervisorPhone,
+                  companyName: COMPANY_INFO.name,
                 }}
                 phases={phases}
                 year={year}
