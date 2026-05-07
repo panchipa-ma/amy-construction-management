@@ -13,6 +13,7 @@ export * from "./appUserRole";
 export * from "./appUserStatus";
 export * from "./assignVendorInvoiceStaffBody";
 export * from "./convertQuoteToInvoiceBody";
+export * from "./convertVendorQuoteToInvoiceBody";
 export * from "./costCategory";
 export * from "./costEntry";
 export * from "./costPipelineItem";

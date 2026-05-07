@@ -3,6 +3,7 @@ import { eq, and } from "drizzle-orm";
 import {
   db,
   vendorQuotesTable,
+  vendorInvoicesTable,
   staffTable,
   projectsTable,
   costEntriesTable,
@@ -16,6 +17,9 @@ import {
   MatchVendorQuoteParams,
   MatchVendorQuoteBody,
   MatchVendorQuoteResponse,
+  ConvertVendorQuoteToInvoiceParams,
+  ConvertVendorQuoteToInvoiceBody,
+  ConvertVendorQuoteToInvoiceResponse,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime, n } from "../lib/serializers";
 
@@ -87,6 +91,39 @@ async function findProjectByUnit(unitNumber: string) {
  * Create a planned cost entry (想定原価). Mirrors createCostEntryForInvoice
  * in vendor-invoices.ts but writes to plannedAmount instead of actualAmount.
  */
+async function createCostEntryForInvoice(opts: {
+  projectId: string;
+  staffId: string | null;
+  staffName: string;
+  amount: number;
+  invoiceDate: string;
+  unitNumber: string;
+}) {
+  let category: "labor" | "subcontract" = "subcontract";
+  if (opts.staffId) {
+    const [staff] = await db
+      .select({ role: staffTable.role })
+      .from(staffTable)
+      .where(eq(staffTable.id, opts.staffId));
+    const role = staff?.role ?? "";
+    if (role.includes("社員") || role.includes("自社")) category = "labor";
+  }
+  const [entry] = await db
+    .insert(costEntriesTable)
+    .values({
+      projectId: opts.projectId,
+      category,
+      description: `${opts.staffName} 請求 (${opts.unitNumber})`,
+      vendor: opts.staffName,
+      plannedAmount: "0",
+      actualAmount: String(opts.amount),
+      entryDate: opts.invoiceDate,
+      notes: "職人見積書からの請求書変換により自動登録（実績）",
+    })
+    .returning();
+  return entry.id;
+}
+
 async function createCostEntryForQuote(opts: {
   projectId: string;
   staffId: string | null;
@@ -267,5 +304,99 @@ router.post("/vendor-quotes/:id/match", async (req, res): Promise<void> => {
     .returning();
   res.json(MatchVendorQuoteResponse.parse(await serialize(row)));
 });
+
+router.post(
+  "/vendor-quotes/:id/convert-to-invoice",
+  async (req, res): Promise<void> => {
+    const params = ConvertVendorQuoteToInvoiceParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const parsed = ConvertVendorQuoteToInvoiceBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const [quote] = await db
+      .select()
+      .from(vendorQuotesTable)
+      .where(eq(vendorQuotesTable.id, params.data.id));
+    if (!quote) {
+      res.status(404).json({ error: "Vendor quote not found" });
+      return;
+    }
+
+    let staffName = quote.vendorName ?? "職人";
+    if (quote.staffId) {
+      const [staff] = await db
+        .select({ name: staffTable.name })
+        .from(staffTable)
+        .where(eq(staffTable.id, quote.staffId));
+      if (staff?.name) staffName = staff.name;
+    }
+
+    const invoiceDate = parsed.data.invoiceDate as unknown as string;
+    const amount = n(quote.amount);
+
+    let costEntryId: string | null = null;
+    if (quote.projectId) {
+      costEntryId = await createCostEntryForInvoice({
+        projectId: quote.projectId,
+        staffId: quote.staffId,
+        staffName,
+        amount,
+        invoiceDate,
+        unitNumber: quote.unitNumber,
+      });
+    }
+
+    const [inv] = await db
+      .insert(vendorInvoicesTable)
+      .values({
+        staffId: quote.staffId,
+        vendorName: quote.vendorName ?? "",
+        projectId: quote.projectId,
+        costEntryId,
+        unitNumber: quote.unitNumber,
+        amount: String(amount),
+        invoiceDate,
+        fileUrl: quote.fileUrl,
+        fileName: quote.fileName.replace(/^見積書_/, "請求書_"),
+        notes: `職人見積書から変換${quote.notes ? ` / ${quote.notes}` : ""}`,
+        status: quote.projectId ? "matched" : "unmatched",
+      })
+      .returning();
+
+    let projectName: string | null = null;
+    if (inv.projectId) {
+      const [p] = await db
+        .select({ name: projectsTable.name })
+        .from(projectsTable)
+        .where(eq(projectsTable.id, inv.projectId));
+      projectName = p?.name ?? null;
+    }
+    res.json(
+      ConvertVendorQuoteToInvoiceResponse.parse({
+        id: inv.id,
+        staffId: inv.staffId,
+        staffName: quote.staffId ? staffName : null,
+        vendorName: inv.vendorName ?? "",
+        projectId: inv.projectId,
+        projectName,
+        costEntryId: inv.costEntryId,
+        unitNumber: inv.unitNumber,
+        amount: n(inv.amount),
+        invoiceDate: isoDate(inv.invoiceDate)!,
+        fileUrl: inv.fileUrl,
+        fileName: inv.fileName,
+        notes: inv.notes,
+        status: inv.status as "matched" | "unmatched",
+        uploadedAt: isoDateTime(inv.uploadedAt),
+      }),
+    );
+    void parsed.data.dueDate;
+  },
+);
 
 export default router;

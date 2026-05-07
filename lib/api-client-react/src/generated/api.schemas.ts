@@ -285,6 +285,11 @@ export interface MatchVendorQuoteBody {
   projectId: string;
 }
 
+export interface ConvertVendorQuoteToInvoiceBody {
+  invoiceDate: string;
+  dueDate?: string | null;
+}
+
 export type ReceiptStatus = (typeof ReceiptStatus)[keyof typeof ReceiptStatus];
 
 export const ReceiptStatus = {

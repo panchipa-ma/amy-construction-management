@@ -5,8 +5,10 @@ import {
   useListVendorQuotes,
   useDeleteVendorQuote,
   useMatchVendorQuote,
+  useConvertVendorQuoteToInvoice,
   useListProjects,
   getListVendorQuotesQueryKey,
+  getListVendorInvoicesQueryKey,
   getGetProjectLedgerQueryKey,
   getGetProjectQueryKey,
   getListProjectsQueryKey,
@@ -51,7 +53,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Link2, FilePlus } from "lucide-react";
+import { Trash2, Link2, FilePlus, ArrowRightLeft } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -64,16 +68,25 @@ export default function VendorQuotesPage() {
   const projectsQ = useListProjects();
   const deleteMut = useDeleteVendorQuote();
   const matchMut = useMatchVendorQuote();
+  const convertMut = useConvertVendorQuoteToInvoice();
 
   const [askDelete, setAskDelete] = useState<string | null>(null);
   const [matchTarget, setMatchTarget] = useState<{
     id: string;
     projectId: string;
   } | null>(null);
+  const [convertTarget, setConvertTarget] = useState<{
+    id: string;
+    invoiceDate: string;
+    dueDate: string;
+  } | null>(null);
 
   const refresh = async (projectIds?: (string | null | undefined)[]) => {
     await queryClient.invalidateQueries({
       queryKey: getListVendorQuotesQueryKey(),
+    });
+    await queryClient.invalidateQueries({
+      queryKey: getListVendorInvoicesQueryKey(),
     });
     await queryClient.invalidateQueries({
       queryKey: getListProjectsQueryKey(),
@@ -100,6 +113,32 @@ export default function VendorQuotesPage() {
       await refresh([target?.projectId]);
       toast({ title: "削除しました" });
       setAskDelete(null);
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+    }
+  };
+
+  const handleConvert = async () => {
+    if (!convertTarget) return;
+    if (!convertTarget.invoiceDate) {
+      toast({ title: "請求日を入力してください", variant: "destructive" });
+      return;
+    }
+    const target = (listQ.data ?? []).find((v) => v.id === convertTarget.id);
+    try {
+      const inv = await convertMut.mutateAsync({
+        id: convertTarget.id,
+        data: {
+          invoiceDate: convertTarget.invoiceDate,
+          dueDate: convertTarget.dueDate || null,
+        },
+      });
+      await refresh([target?.projectId, inv.projectId]);
+      toast({
+        title: "請求書に変換しました",
+        description: "施工台帳に実績原価が登録されました（想定はそのまま残ります）",
+      });
+      setConvertTarget(null);
     } catch (err) {
       toast({ title: apiErrorMessage(err), variant: "destructive" });
     }
@@ -230,6 +269,28 @@ export default function VendorQuotesPage() {
                         )}
                         <Button
                           size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const today = new Date()
+                              .toISOString()
+                              .slice(0, 10);
+                            const eom = new Date();
+                            eom.setMonth(eom.getMonth() + 1);
+                            eom.setDate(0);
+                            setConvertTarget({
+                              id: v.id,
+                              invoiceDate: today,
+                              dueDate: eom.toISOString().slice(0, 10),
+                            });
+                          }}
+                          className="gap-1"
+                          data-testid={`button-convert-${v.id}`}
+                        >
+                          <ArrowRightLeft className="w-3 h-3" />
+                          請求書に変換
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="ghost"
                           onClick={() => setAskDelete(v.id)}
                           className="text-destructive hover:text-destructive"
@@ -287,6 +348,59 @@ export default function VendorQuotesPage() {
               disabled={!matchTarget?.projectId || matchMut.isPending}
             >
               紐付ける
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!convertTarget}
+        onOpenChange={(o) => !o && setConvertTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>職人見積書を請求書に変換</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              この見積書を元に職人請求書を作成します。施工台帳には<span className="font-medium">実績原価</span>が新たに登録されます（想定原価はそのまま残ります）。
+            </p>
+            <div className="space-y-2">
+              <Label>請求日</Label>
+              <Input
+                type="date"
+                value={convertTarget?.invoiceDate ?? ""}
+                onChange={(e) =>
+                  setConvertTarget((t) =>
+                    t ? { ...t, invoiceDate: e.target.value } : t,
+                  )
+                }
+                data-testid="input-convert-invoice-date"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>支払期限（任意）</Label>
+              <Input
+                type="date"
+                value={convertTarget?.dueDate ?? ""}
+                onChange={(e) =>
+                  setConvertTarget((t) =>
+                    t ? { ...t, dueDate: e.target.value } : t,
+                  )
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConvertTarget(null)}>
+              キャンセル
+            </Button>
+            <Button
+              onClick={handleConvert}
+              disabled={!convertTarget?.invoiceDate || convertMut.isPending}
+              data-testid="button-confirm-convert"
+            >
+              請求書を作成
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -989,6 +989,28 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/VendorQuote" }
 
+  /vendor-quotes/{id}/convert-to-invoice:
+    post:
+      operationId: convertVendorQuoteToInvoice
+      tags: [vendorQuotes]
+      summary: Create a 職人請求書 (vendor invoice) from an existing 職人見積書. Reuses vendor/staff/project/file. Adds an actual cost entry on the ledger (the original planned cost entry from the quote is left intact, so 計画 vs 実績 can both be tracked).
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConvertVendorQuoteToInvoiceBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VendorInvoice" }
+
   /receipts:
     get:
       operationId: listReceipts
@@ -1348,6 +1370,13 @@ components:
       required: [projectId]
       properties:
         projectId: { type: string }
+
+    ConvertVendorQuoteToInvoiceBody:
+      type: object
+      required: [invoiceDate]
+      properties:
+        invoiceDate: { type: string, format: date }
+        dueDate: { type: string, format: date, nullable: true }
 
     Receipt:
       type: object

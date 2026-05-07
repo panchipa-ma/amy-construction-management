@@ -1475,6 +1475,36 @@ export const MatchVendorQuoteResponse = zod.object({
   uploadedAt: zod.coerce.date(),
 });
 
+/**
+ * @summary Create a 職人請求書 (vendor invoice) from an existing 職人見積書. Reuses vendor/staff/project/file. Adds an actual cost entry on the ledger (the original planned cost entry from the quote is left intact, so 計画 vs 実績 can both be tracked).
+ */
+export const ConvertVendorQuoteToInvoiceParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ConvertVendorQuoteToInvoiceBody = zod.object({
+  invoiceDate: zod.coerce.date(),
+  dueDate: zod.coerce.date().nullish(),
+});
+
+export const ConvertVendorQuoteToInvoiceResponse = zod.object({
+  id: zod.string(),
+  staffId: zod.string().nullish(),
+  staffName: zod.string().nullish(),
+  vendorName: zod.string().describe("OCR抽出の取引先名。staffに紐付けば一致"),
+  projectId: zod.string().nullish(),
+  projectName: zod.string().nullish(),
+  costEntryId: zod.string().nullish(),
+  unitNumber: zod.string().describe("マンション号室"),
+  amount: zod.number(),
+  invoiceDate: zod.coerce.date(),
+  fileUrl: zod.string().describe("objectPath (e.g. \/objects\/uploads\/uuid)"),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["matched", "unmatched"]),
+  uploadedAt: zod.coerce.date(),
+});
+
 export const ListReceiptsQueryParams = zod.object({
   projectId: zod.coerce.string().optional(),
   status: zod.enum(["matched", "unmatched"]).optional(),

@@ -21,6 +21,7 @@ import type {
   AppUser,
   AssignVendorInvoiceStaffBody,
   ConvertQuoteToInvoiceBody,
+  ConvertVendorQuoteToInvoiceBody,
   CostEntry,
   CostPipelineItem,
   CreateCostEntryBody,
@@ -4883,6 +4884,94 @@ export const useMatchVendorQuote = <
   TContext
 > => {
   return useMutation(getMatchVendorQuoteMutationOptions(options));
+};
+
+/**
+ * @summary Create a 職人請求書 (vendor invoice) from an existing 職人見積書. Reuses vendor/staff/project/file. Adds an actual cost entry on the ledger (the original planned cost entry from the quote is left intact, so 計画 vs 実績 can both be tracked).
+ */
+export const getConvertVendorQuoteToInvoiceUrl = (id: string) => {
+  return `/api/vendor-quotes/${id}/convert-to-invoice`;
+};
+
+export const convertVendorQuoteToInvoice = async (
+  id: string,
+  convertVendorQuoteToInvoiceBody: ConvertVendorQuoteToInvoiceBody,
+  options?: RequestInit,
+): Promise<VendorInvoice> => {
+  return customFetch<VendorInvoice>(getConvertVendorQuoteToInvoiceUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(convertVendorQuoteToInvoiceBody),
+  });
+};
+
+export const getConvertVendorQuoteToInvoiceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof convertVendorQuoteToInvoice>>,
+    TError,
+    { id: string; data: BodyType<ConvertVendorQuoteToInvoiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof convertVendorQuoteToInvoice>>,
+  TError,
+  { id: string; data: BodyType<ConvertVendorQuoteToInvoiceBody> },
+  TContext
+> => {
+  const mutationKey = ["convertVendorQuoteToInvoice"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof convertVendorQuoteToInvoice>>,
+    { id: string; data: BodyType<ConvertVendorQuoteToInvoiceBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return convertVendorQuoteToInvoice(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConvertVendorQuoteToInvoiceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof convertVendorQuoteToInvoice>>
+>;
+export type ConvertVendorQuoteToInvoiceMutationBody =
+  BodyType<ConvertVendorQuoteToInvoiceBody>;
+export type ConvertVendorQuoteToInvoiceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a 職人請求書 (vendor invoice) from an existing 職人見積書. Reuses vendor/staff/project/file. Adds an actual cost entry on the ledger (the original planned cost entry from the quote is left intact, so 計画 vs 実績 can both be tracked).
+ */
+export const useConvertVendorQuoteToInvoice = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof convertVendorQuoteToInvoice>>,
+    TError,
+    { id: string; data: BodyType<ConvertVendorQuoteToInvoiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof convertVendorQuoteToInvoice>>,
+  TError,
+  { id: string; data: BodyType<ConvertVendorQuoteToInvoiceBody> },
+  TContext
+> => {
+  return useMutation(getConvertVendorQuoteToInvoiceMutationOptions(options));
 };
 
 export const getListReceiptsUrl = (params?: ListReceiptsParams) => {
