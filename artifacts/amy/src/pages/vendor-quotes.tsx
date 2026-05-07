@@ -382,7 +382,7 @@ export default function VendorQuotesPage() {
           <DialogHeader>
             <DialogTitle>職人見積書を請求書に変換</DialogTitle>
             <DialogDescription>
-              「{askConvert?.label}」の内容を引き継いで職人請求書を作成します。次の画面で請求日・支払期限・宛名・明細などを最終確認してから保存してください。請求書PDFはその場で再生成されます。
+              「{askConvert?.label}」の内容を引き継いで職人請求書を作成します。次の画面で請求日・支払期限・宛名・明細などを最終確認してから保存してください。保存と同時にこの見積書は職人見積書一覧から削除され、職人請求書一覧へ移行します。請求書PDFはその場で再生成されます。
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

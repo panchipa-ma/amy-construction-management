@@ -5,6 +5,7 @@ import {
   useListProjects,
   useListVendorQuotes,
   useCreateVendorInvoice,
+  useDeleteVendorQuote,
   useRequestUploadUrl,
   getListVendorInvoicesQueryKey,
   getListVendorQuotesQueryKey,
@@ -134,6 +135,7 @@ export default function VendorInvoiceNewPage() {
   const { toast } = useToast();
   const projectsQ = useListProjects();
   const createMut = useCreateVendorInvoice();
+  const deleteVendorQuoteMut = useDeleteVendorQuote();
   const requestUrlMut = useRequestUploadUrl();
 
   const { user } = useUser();
@@ -358,6 +360,26 @@ export default function VendorInvoiceNewPage() {
         },
       });
 
+      // 見積→請求変換の場合、元の職人見積書を削除して見積一覧から
+      // 請求書一覧へ「移行」させる。請求書の作成自体は成功しているので、
+      // 削除に失敗しても処理は継続し、警告だけ表示する。
+      let convertedFromQuote = false;
+      if (fromVendorQuoteId) {
+        try {
+          await deleteVendorQuoteMut.mutateAsync({ id: fromVendorQuoteId });
+          await queryClient.invalidateQueries({
+            queryKey: getListVendorQuotesQueryKey(),
+          });
+          convertedFromQuote = true;
+        } catch (e) {
+          toast({
+            title: "元の職人見積書の削除に失敗しました",
+            description: apiErrorMessage(e),
+            variant: "destructive",
+          });
+        }
+      }
+
       // Refresh related queries
       await queryClient.invalidateQueries({
         queryKey: getListVendorInvoicesQueryKey(),
@@ -376,7 +398,9 @@ export default function VendorInvoiceNewPage() {
       await invalidateDashboard(queryClient);
 
       toast({
-        title: "請求書を作成しました",
+        title: convertedFromQuote
+          ? "見積書を請求書に移行しました"
+          : "請求書を作成しました",
         description: `${defaults.companyName} / ${formatCurrency(total)}`,
       });
       setLocation("/vendor-invoices");
