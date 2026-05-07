@@ -111,6 +111,7 @@ export default function InvoicesListPage() {
           dueDate: inv.dueDate ?? null,
           notes: inv.notes ?? null,
           paid: !inv.paid,
+          sentToClient: inv.sentToClient,
           items: inv.items,
         },
       });
@@ -118,6 +119,32 @@ export default function InvoicesListPage() {
         queryKey: getListInvoicesQueryKey(),
       });
       await invalidateDashboard(queryClient);
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+    }
+  };
+
+  const toggleSentToClient = async (
+    id: string,
+    inv: NonNullable<typeof data>[number],
+  ) => {
+    try {
+      await updateMut.mutateAsync({
+        id,
+        data: {
+          projectId: inv.projectId,
+          invoiceNumber: inv.invoiceNumber,
+          issueDate: inv.issueDate,
+          dueDate: inv.dueDate ?? null,
+          notes: inv.notes ?? null,
+          paid: inv.paid,
+          sentToClient: !inv.sentToClient,
+          items: inv.items,
+        },
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getListInvoicesQueryKey(),
+      });
     } catch (err) {
       toast({ title: apiErrorMessage(err), variant: "destructive" });
     }
@@ -210,6 +237,7 @@ export default function InvoicesListPage() {
                   <TableHead>発行日</TableHead>
                   <TableHead>支払期限</TableHead>
                   <TableHead className="text-right">金額 (税込)</TableHead>
+                  <TableHead>元請へ送付</TableHead>
                   <TableHead>状態</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
@@ -238,6 +266,26 @@ export default function InvoicesListPage() {
                     <TableCell>{formatDate(inv.dueDate)}</TableCell>
                     <TableCell className="text-right tabular-nums font-medium">
                       {formatCurrency(inv.total)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={inv.sentToClient}
+                          onCheckedChange={() => toggleSentToClient(inv.id, inv)}
+                          aria-label="元請へ送付済"
+                          data-testid={`checkbox-sent-${inv.id}`}
+                        />
+                        <Badge
+                          variant="outline"
+                          className={
+                            inv.sentToClient
+                              ? "bg-sky-100 text-sky-800 border-sky-200"
+                              : "bg-muted text-muted-foreground"
+                          }
+                        >
+                          {inv.sentToClient ? "送付済" : "未送付"}
+                        </Badge>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

@@ -72,6 +72,7 @@ export default function InvoiceDetailPage() {
           dueDate: inv.dueDate ?? null,
           notes: inv.notes ?? null,
           paid: !inv.paid,
+          sentToClient: inv.sentToClient,
           items: inv.items,
         },
       });

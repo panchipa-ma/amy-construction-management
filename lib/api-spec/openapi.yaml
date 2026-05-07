@@ -1593,7 +1593,7 @@ components:
 
     Invoice:
       type: object
-      required: [id, projectId, invoiceNumber, issueDate, items, subtotal, tax, total, paid, createdAt]
+      required: [id, projectId, invoiceNumber, issueDate, items, subtotal, tax, total, paid, sentToClient, createdAt]
       properties:
         id: { type: string }
         projectId: { type: string }
@@ -1612,6 +1612,7 @@ components:
         tax: { type: number }
         total: { type: number }
         paid: { type: boolean }
+        sentToClient: { type: boolean, description: "元請（顧客）へ請求書を送付済かどうか" }
         createdAt: { type: string, format: date-time }
 
     CreateInvoiceBody:
@@ -1627,6 +1628,7 @@ components:
         dueDate: { type: string, format: date, nullable: true }
         notes: { type: string, nullable: true }
         paid: { type: boolean }
+        sentToClient: { type: boolean }
         items:
           type: array
           items: { $ref: "#/components/schemas/LineItem" }

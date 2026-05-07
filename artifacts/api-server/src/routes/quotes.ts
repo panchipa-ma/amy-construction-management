@@ -230,6 +230,7 @@ router.post(
         dueDate: (parsed.data.dueDate as unknown as string | null) ?? null,
         notes: quote.notes,
         paid: false,
+        sentToClient: false,
         items: invoiceItems,
       })
       .returning();
@@ -257,6 +258,7 @@ router.post(
         tax,
         total,
         paid: inv.paid,
+        sentToClient: inv.sentToClient,
         createdAt: isoDateTime(inv.createdAt),
       }),
     );

@@ -42,6 +42,7 @@ async function serialize(inv: typeof invoicesTable.$inferSelect) {
     tax,
     total,
     paid: inv.paid,
+    sentToClient: inv.sentToClient,
     createdAt: isoDateTime(inv.createdAt),
   };
 }
@@ -82,6 +83,7 @@ router.post("/invoices", async (req, res): Promise<void> => {
       dueDate: (parsed.data.dueDate as unknown as string | null) ?? null,
       notes: parsed.data.notes ?? null,
       paid: parsed.data.paid ?? false,
+      sentToClient: parsed.data.sentToClient ?? false,
       items: parsed.data.items as LineItemJson[],
       createdBy: me.clerkUserId,
     })
@@ -129,6 +131,7 @@ router.patch("/invoices/:id", async (req, res): Promise<void> => {
       dueDate: (parsed.data.dueDate as unknown as string | null) ?? null,
       notes: parsed.data.notes ?? null,
       paid: parsed.data.paid ?? false,
+      sentToClient: parsed.data.sentToClient ?? false,
       items: parsed.data.items as LineItemJson[],
     })
     .where(eq(invoicesTable.id, params.data.id))

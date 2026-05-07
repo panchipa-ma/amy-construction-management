@@ -554,6 +554,8 @@ export interface Invoice {
   tax: number;
   total: number;
   paid: boolean;
+  /** 元請（顧客）へ請求書を送付済かどうか */
+  sentToClient: boolean;
   createdAt: string;
 }
 
@@ -567,6 +569,7 @@ export interface CreateInvoiceBody {
   dueDate?: string | null;
   notes?: string | null;
   paid?: boolean;
+  sentToClient?: boolean;
   items: LineItem[];
 }
 

@@ -176,6 +176,8 @@ export const invoicesTable = pgTable("invoices", {
   subject: text("subject"),
   notes: text("notes"),
   paid: boolean("paid").notNull().default(false),
+  // 元請（顧客）へ請求書を送付済かどうか。入金状況とは独立。
+  sentToClient: boolean("sent_to_client").notNull().default(false),
   items: jsonb("items").$type<LineItemJson[]>().notNull().default([]),
   createdBy: text("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true })

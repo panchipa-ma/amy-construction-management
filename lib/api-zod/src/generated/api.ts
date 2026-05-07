@@ -713,6 +713,7 @@ export const ListInvoicesResponseItem = zod.object({
   tax: zod.number(),
   total: zod.number(),
   paid: zod.boolean(),
+  sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
   createdAt: zod.coerce.date(),
 });
 export const ListInvoicesResponse = zod.array(ListInvoicesResponseItem);
@@ -727,6 +728,7 @@ export const CreateInvoiceBody = zod.object({
   dueDate: zod.coerce.date().nullish(),
   notes: zod.string().nullish(),
   paid: zod.boolean().optional(),
+  sentToClient: zod.boolean().optional(),
   items: zod.array(
     zod.object({
       description: zod.string(),
@@ -762,6 +764,7 @@ export const CreateInvoiceResponse = zod.object({
   tax: zod.number(),
   total: zod.number(),
   paid: zod.boolean(),
+  sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
   createdAt: zod.coerce.date(),
 });
 
@@ -793,6 +796,7 @@ export const GetInvoiceResponse = zod.object({
   tax: zod.number(),
   total: zod.number(),
   paid: zod.boolean(),
+  sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
   createdAt: zod.coerce.date(),
 });
 
@@ -810,6 +814,7 @@ export const UpdateInvoiceBody = zod.object({
   dueDate: zod.coerce.date().nullish(),
   notes: zod.string().nullish(),
   paid: zod.boolean().optional(),
+  sentToClient: zod.boolean().optional(),
   items: zod.array(
     zod.object({
       description: zod.string(),
@@ -845,6 +850,7 @@ export const UpdateInvoiceResponse = zod.object({
   tax: zod.number(),
   total: zod.number(),
   paid: zod.boolean(),
+  sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
   createdAt: zod.coerce.date(),
 });
 
@@ -1217,6 +1223,7 @@ export const ConvertQuoteToInvoiceResponse = zod.object({
   tax: zod.number(),
   total: zod.number(),
   paid: zod.boolean(),
+  sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
   createdAt: zod.coerce.date(),
 });
 
