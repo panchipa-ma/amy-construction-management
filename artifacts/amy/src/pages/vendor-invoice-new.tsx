@@ -644,86 +644,204 @@ export default function VendorInvoiceNewPage() {
       <div className="text-sm font-medium text-muted-foreground">
         プレビュー（このレイアウトでPDFが生成されます）
       </div>
+      {/*
+        IMPORTANT: This printable area uses INLINE styles instead of Tailwind
+        utility classes. html2canvas-pro does not always pick up styles defined
+        inside @layer cascade layers (which is where Tailwind v4 places all
+        utilities), and arbitrary-value utilities can also get tree-shaken from
+        the production CSS bundle. Inline styles are guaranteed to render the
+        same in dev and prod and are always seen by html2canvas.
+      */}
       <div
         ref={printRef}
-        className="bg-white border border-border shadow-sm p-8 text-foreground"
-        style={{ width: "210mm", minHeight: "297mm", boxSizing: "border-box" }}
+        style={{
+          width: "210mm",
+          minHeight: "297mm",
+          boxSizing: "border-box",
+          padding: "32px",
+          background: "#ffffff",
+          color: "#0f172a",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+          fontFamily:
+            "-apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif",
+          fontSize: "13px",
+          lineHeight: 1.5,
+        }}
       >
-        <h1 className="text-center text-2xl font-bold tracking-[0.5em] mb-6">
+        <h1
+          style={{
+            textAlign: "center",
+            fontSize: "24px",
+            fontWeight: 700,
+            letterSpacing: "0.5em",
+            marginBottom: "24px",
+          }}
+        >
           請　求　書
         </h1>
-        <div className="grid grid-cols-[1fr_auto] gap-6 mb-4">
-          <div className="space-y-3">
-            <div className="flex items-end gap-1">
-              <span className="text-lg font-bold border-b border-foreground pb-0.5 min-w-[200px]">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr auto",
+            gap: "24px",
+            marginBottom: "16px",
+          }}
+        >
+          <div>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: "4px" }}>
+              <span
+                style={{
+                  fontSize: "18px",
+                  fontWeight: 700,
+                  borderBottom: "1px solid #0f172a",
+                  paddingBottom: "2px",
+                  minWidth: "200px",
+                  display: "inline-block",
+                }}
+              >
                 {defaults.recipientName || "—"}
               </span>
-              <span className="text-base font-medium pb-0.5 ml-2">御中</span>
+              <span style={{ fontSize: "16px", fontWeight: 500, paddingBottom: "2px", marginLeft: "8px" }}>
+                御中
+              </span>
             </div>
-            <div className="text-sm">
-              <span className="text-muted-foreground">件名：</span>
-              <span className="font-medium">
+            <div style={{ marginTop: "12px" }}>
+              <span style={{ color: "#64748b" }}>件名：</span>
+              <span style={{ fontWeight: 500 }}>
                 {project ? projectLabel(project) : ""}
               </span>
             </div>
-            <p className="text-sm mt-3">下記の通り、ご請求申し上げます。</p>
+            <p style={{ marginTop: "12px" }}>下記の通り、ご請求申し上げます。</p>
           </div>
-          <div className="text-sm space-y-1">
-            <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-right">
-              <span className="text-muted-foreground">請求日</span>
+          <div style={{ minWidth: "240px" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "auto 1fr",
+                columnGap: "16px",
+                rowGap: "2px",
+                textAlign: "right",
+              }}
+            >
+              <span style={{ color: "#64748b" }}>請求日</span>
               <span>{issueDate ? formatDate(issueDate) : ""}</span>
-              <span className="text-muted-foreground">支払期限</span>
+              <span style={{ color: "#64748b" }}>支払期限</span>
               <span>{dueDate ? formatDate(dueDate) : ""}</span>
             </div>
-            <div className="mt-3 pt-3 border-t text-left">
-              <div className="font-bold">{defaults.companyName || "—"}</div>
+            <div
+              style={{
+                marginTop: "12px",
+                paddingTop: "12px",
+                borderTop: "1px solid #e2e8f0",
+                textAlign: "left",
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>{defaults.companyName || "—"}</div>
               {defaults.postalCode && (
-                <div className="text-xs text-muted-foreground">
+                <div style={{ fontSize: "11px", color: "#64748b" }}>
                   {defaults.postalCode}
                 </div>
               )}
               {defaults.address && (
-                <div className="text-xs">{defaults.address}</div>
+                <div style={{ fontSize: "11px" }}>{defaults.address}</div>
               )}
               {defaults.registrationNumber && (
-                <div className="text-xs text-muted-foreground">
+                <div style={{ fontSize: "11px", color: "#64748b" }}>
                   登録番号：{defaults.registrationNumber}
                 </div>
               )}
               {defaults.email && (
-                <div className="text-xs">E-Mail：{defaults.email}</div>
+                <div style={{ fontSize: "11px" }}>E-Mail：{defaults.email}</div>
               )}
               {defaults.authorName && (
-                <div className="text-xs mt-1">担当：{defaults.authorName}</div>
+                <div style={{ fontSize: "11px", marginTop: "4px" }}>
+                  担当：{defaults.authorName}
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 border-y-2 border-foreground py-2 mb-4">
-          <span className="font-bold text-sm">合計金額</span>
-          <span className="text-xl font-bold tabular-nums">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "16px",
+            borderTop: "2px solid #0f172a",
+            borderBottom: "2px solid #0f172a",
+            padding: "8px 0",
+            marginBottom: "16px",
+          }}
+        >
+          <span style={{ fontWeight: 700 }}>合計金額</span>
+          <span style={{ fontSize: "20px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
             {formatCurrency(total)}
           </span>
-          <span className="text-xs text-muted-foreground">（税込）</span>
+          <span style={{ fontSize: "11px", color: "#64748b" }}>（税込）</span>
         </div>
 
-        <table className="w-full border-collapse text-sm mb-4">
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            marginBottom: "16px",
+          }}
+        >
           <thead>
-            <tr className="bg-[hsl(220,50%,25%)] text-white">
-              <th className="border border-[hsl(220,50%,25%)] px-2 py-1.5 w-10 text-center font-medium">
+            <tr style={{ background: "#1f3a66", color: "#ffffff" }}>
+              <th
+                style={{
+                  border: "1px solid #1f3a66",
+                  padding: "6px 8px",
+                  width: "40px",
+                  textAlign: "center",
+                  fontWeight: 500,
+                }}
+              >
                 No.
               </th>
-              <th className="border border-[hsl(220,50%,25%)] px-2 py-1.5 text-left font-medium">
+              <th
+                style={{
+                  border: "1px solid #1f3a66",
+                  padding: "6px 8px",
+                  textAlign: "left",
+                  fontWeight: 500,
+                }}
+              >
                 摘要
               </th>
-              <th className="border border-[hsl(220,50%,25%)] px-2 py-1.5 w-16 text-center font-medium">
+              <th
+                style={{
+                  border: "1px solid #1f3a66",
+                  padding: "6px 8px",
+                  width: "64px",
+                  textAlign: "center",
+                  fontWeight: 500,
+                }}
+              >
                 数量
               </th>
-              <th className="border border-[hsl(220,50%,25%)] px-2 py-1.5 w-24 text-right font-medium">
+              <th
+                style={{
+                  border: "1px solid #1f3a66",
+                  padding: "6px 8px",
+                  width: "96px",
+                  textAlign: "right",
+                  fontWeight: 500,
+                }}
+              >
                 単価
               </th>
-              <th className="border border-[hsl(220,50%,25%)] px-2 py-1.5 w-28 text-right font-medium">
+              <th
+                style={{
+                  border: "1px solid #1f3a66",
+                  padding: "6px 8px",
+                  width: "112px",
+                  textAlign: "right",
+                  fontWeight: 500,
+                }}
+              >
                 金額
               </th>
             </tr>
@@ -733,20 +851,48 @@ export default function VendorInvoiceNewPage() {
               const has = it.description.trim();
               const amt = (it.quantity || 0) * (it.unitPrice || 0);
               return (
-                <tr key={i} className={i % 2 === 0 ? "bg-blue-50/40" : ""}>
-                  <td className="border border-border px-2 py-1 text-center text-muted-foreground">
+                <tr key={i} style={{ background: i % 2 === 0 ? "#eff6ff" : "#ffffff" }}>
+                  <td
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      padding: "4px 8px",
+                      textAlign: "center",
+                      color: "#64748b",
+                    }}
+                  >
                     {i + 1}
                   </td>
-                  <td className="border border-border px-2 py-1">
+                  <td style={{ border: "1px solid #e2e8f0", padding: "4px 8px" }}>
                     {has ? it.description : ""}
                   </td>
-                  <td className="border border-border px-2 py-1 text-center tabular-nums">
+                  <td
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      padding: "4px 8px",
+                      textAlign: "center",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
                     {has ? it.quantity : ""}
                   </td>
-                  <td className="border border-border px-2 py-1 text-right tabular-nums">
+                  <td
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      padding: "4px 8px",
+                      textAlign: "right",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
                     {has ? formatCurrency(it.unitPrice) : ""}
                   </td>
-                  <td className="border border-border px-2 py-1 text-right tabular-nums">
+                  <td
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      padding: "4px 8px",
+                      textAlign: "right",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
                     {has ? formatCurrency(amt) : ""}
                   </td>
                 </tr>
@@ -755,12 +901,18 @@ export default function VendorInvoiceNewPage() {
           </tbody>
         </table>
 
-        <div className="grid grid-cols-[1fr_auto] gap-6">
-          <div className="text-sm space-y-1">
-            <div className="font-medium text-muted-foreground mb-1">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr auto",
+            gap: "24px",
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 500, color: "#64748b", marginBottom: "4px" }}>
               お振込先
             </div>
-            <div className="pl-2 space-y-0.5">
+            <div style={{ paddingLeft: "8px" }}>
               {(defaults.bankName || defaults.branchName) && (
                 <div>
                   {defaults.bankName} {defaults.branchName}
@@ -773,30 +925,85 @@ export default function VendorInvoiceNewPage() {
               {defaults.accountHolder && <div>{defaults.accountHolder}</div>}
             </div>
           </div>
-          <div className="w-64">
-            <table className="w-full border-collapse text-sm">
+          <div style={{ width: "256px" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <tbody>
-                <tr className="bg-[hsl(220,50%,25%)] text-white">
-                  <td className="border border-[hsl(220,50%,25%)] px-3 py-1.5 font-medium text-center">
+                <tr>
+                  <td
+                    style={{
+                      border: "1px solid #1f3a66",
+                      background: "#1f3a66",
+                      color: "#ffffff",
+                      padding: "6px 12px",
+                      fontWeight: 500,
+                      textAlign: "center",
+                    }}
+                  >
                     小計
                   </td>
-                  <td className="border border-[hsl(220,50%,25%)] px-3 py-1.5 text-right tabular-nums bg-white text-foreground">
+                  <td
+                    style={{
+                      border: "1px solid #1f3a66",
+                      background: "#ffffff",
+                      color: "#0f172a",
+                      padding: "6px 12px",
+                      textAlign: "right",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
                     {formatCurrency(subtotal)}
                   </td>
                 </tr>
-                <tr className="bg-[hsl(220,50%,25%)] text-white">
-                  <td className="border border-[hsl(220,50%,25%)] px-3 py-1.5 font-medium text-center">
+                <tr>
+                  <td
+                    style={{
+                      border: "1px solid #1f3a66",
+                      background: "#1f3a66",
+                      color: "#ffffff",
+                      padding: "6px 12px",
+                      fontWeight: 500,
+                      textAlign: "center",
+                    }}
+                  >
                     消費税(10%)
                   </td>
-                  <td className="border border-[hsl(220,50%,25%)] px-3 py-1.5 text-right tabular-nums bg-white text-foreground">
+                  <td
+                    style={{
+                      border: "1px solid #1f3a66",
+                      background: "#ffffff",
+                      color: "#0f172a",
+                      padding: "6px 12px",
+                      textAlign: "right",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
                     {formatCurrency(tax)}
                   </td>
                 </tr>
-                <tr className="bg-[hsl(220,50%,25%)] text-white">
-                  <td className="border border-[hsl(220,50%,25%)] px-3 py-1.5 font-bold text-center">
+                <tr>
+                  <td
+                    style={{
+                      border: "1px solid #1f3a66",
+                      background: "#1f3a66",
+                      color: "#ffffff",
+                      padding: "6px 12px",
+                      fontWeight: 700,
+                      textAlign: "center",
+                    }}
+                  >
                     合計
                   </td>
-                  <td className="border border-[hsl(220,50%,25%)] px-3 py-1.5 text-right tabular-nums font-bold bg-white text-foreground">
+                  <td
+                    style={{
+                      border: "1px solid #1f3a66",
+                      background: "#ffffff",
+                      color: "#0f172a",
+                      padding: "6px 12px",
+                      textAlign: "right",
+                      fontWeight: 700,
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
                     {formatCurrency(total)}
                   </td>
                 </tr>
@@ -806,11 +1013,19 @@ export default function VendorInvoiceNewPage() {
         </div>
 
         {notes && (
-          <div className="mt-4 border-t pt-3">
-            <div className="inline-block bg-muted px-3 py-1 text-sm font-medium mb-1">
+          <div style={{ marginTop: "16px", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>
+            <div
+              style={{
+                display: "inline-block",
+                background: "#f1f5f9",
+                padding: "4px 12px",
+                fontWeight: 500,
+                marginBottom: "4px",
+              }}
+            >
               備考
             </div>
-            <p className="text-sm whitespace-pre-wrap pl-1">{notes}</p>
+            <p style={{ whiteSpace: "pre-wrap", paddingLeft: "4px" }}>{notes}</p>
           </div>
         )}
       </div>
