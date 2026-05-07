@@ -5,9 +5,8 @@
  * AMY 施工管理 API
  * OpenAPI spec version: 0.1.0
  */
-import type { ProjectStatus } from "./projectStatus";
 
 export type DashboardSummaryStatusBreakdownItem = {
-  status: ProjectStatus;
+  status: string;
   count: number;
 };

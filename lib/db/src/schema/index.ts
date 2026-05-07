@@ -65,6 +65,7 @@ export const projectsTable = pgTable("projects", {
   salesRep: text("sales_rep"),
   siteSupervisor: text("site_supervisor"),
   notes: text("notes"),
+  createdBy: text("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -156,6 +157,7 @@ export const quotesTable = pgTable("quotes", {
   validUntil: date("valid_until"),
   notes: text("notes"),
   items: jsonb("items").$type<LineItemJson[]>().notNull().default([]),
+  createdBy: text("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -175,6 +177,7 @@ export const invoicesTable = pgTable("invoices", {
   notes: text("notes"),
   paid: boolean("paid").notNull().default(false),
   items: jsonb("items").$type<LineItemJson[]>().notNull().default([]),
+  createdBy: text("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -192,6 +195,7 @@ export const costEntriesTable = pgTable("cost_entries", {
   actualAmount: numeric("actual_amount").notNull().default("0"),
   entryDate: date("entry_date").notNull(),
   notes: text("notes"),
+  createdBy: text("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -245,6 +249,7 @@ export const progressLogsTable = pgTable("progress_logs", {
   title: text("title").notNull(),
   description: text("description"),
   photoUrl: text("photo_url"),
+  createdBy: text("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

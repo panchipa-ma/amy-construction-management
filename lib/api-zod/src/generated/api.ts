@@ -25,18 +25,16 @@ export const GetDashboardSummaryResponse = zod.object({
   actualCostActive: zod.number(),
   grossProfitActive: zod.number(),
   unpaidInvoiceTotal: zod.number(),
-  statusBreakdown: zod.array(
-    zod.object({
-      status: zod.enum([
-        "estimating",
-        "contracted",
-        "in_progress",
-        "completed",
-        "archived",
-      ]),
-      count: zod.number(),
-    }),
-  ),
+  statusBreakdown: zod
+    .array(
+      zod.object({
+        status: zod.string(),
+        count: zod.number(),
+      }),
+    )
+    .describe(
+      "Counts grouped by computed dashboard bucket. Buckets are not the\nraw project status enum; they are: estimating \/ in_progress \/\ncompleted \/ billed \/ paid.\n",
+    ),
   monthlyInvoiceTotals: zod
     .array(
       zod.object({
@@ -73,6 +71,12 @@ export const GetRecentActivityResponseItem = zod.object({
   subtitle: zod.string().nullish(),
   projectId: zod.string().nullish(),
   projectName: zod.string().nullish(),
+  actorName: zod
+    .string()
+    .nullish()
+    .describe(
+      "Display name of the user who created the entry, or null when unknown.",
+    ),
   timestamp: zod.coerce.date(),
 });
 export const GetRecentActivityResponse = zod.array(

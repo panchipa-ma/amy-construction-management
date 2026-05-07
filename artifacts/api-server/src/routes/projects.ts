@@ -21,6 +21,7 @@ import {
   GetProjectLedgerResponse,
 } from "@workspace/api-zod";
 import { isoDateTime, isoDate, n } from "../lib/serializers";
+import { getOrCreateAppUser } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -91,6 +92,7 @@ router.post("/projects", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const me = await getOrCreateAppUser(req);
   const [row] = await db
     .insert(projectsTable)
     .values({
@@ -113,6 +115,7 @@ router.post("/projects", async (req, res): Promise<void> => {
       salesRep: parsed.data.salesRep ?? null,
       siteSupervisor: parsed.data.siteSupervisor ?? null,
       notes: parsed.data.notes ?? null,
+      createdBy: me.clerkUserId,
     })
     .returning();
   res.json(CreateProjectResponse.parse(await serializeProject(row)));

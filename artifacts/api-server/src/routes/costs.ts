@@ -12,6 +12,7 @@ import {
   UpdateCostEntryResponse,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime, n } from "../lib/serializers";
+import { getOrCreateAppUser } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -62,6 +63,7 @@ router.post("/cost-entries", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const me = await getOrCreateAppUser(req);
   const [row] = await db
     .insert(costEntriesTable)
     .values({
@@ -73,6 +75,7 @@ router.post("/cost-entries", async (req, res): Promise<void> => {
       actualAmount: String(parsed.data.actualAmount),
       entryDate: parsed.data.entryDate as unknown as string,
       notes: parsed.data.notes ?? null,
+      createdBy: me.clerkUserId,
     })
     .returning();
   res.json(CreateCostEntryResponse.parse(await serialize(row)));

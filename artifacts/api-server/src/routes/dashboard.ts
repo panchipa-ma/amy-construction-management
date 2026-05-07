@@ -8,7 +8,9 @@ import {
   quotesTable,
   scheduleEntriesTable,
   progressLogsTable,
+  appUsersTable,
 } from "@workspace/db";
+import { inArray } from "drizzle-orm";
 import type { LineItemJson } from "@workspace/db";
 import {
   GetDashboardSummaryResponse,
@@ -97,17 +99,52 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
     .map(([month, v]) => ({ month, ...v }))
     .sort((a, b) => a.month.localeCompare(b.month));
 
-  const allStatuses = [
-    "estimating",
-    "contracted",
-    "in_progress",
-    "completed",
-    "archived",
-  ] as const;
-  const statusBreakdown = allStatuses.map((status) => ({
-    status,
-    count: projects.filter((p) => p.status === status).length,
-  }));
+  // Bucket projects into 5 dashboard categories. Buckets are derived, not the
+  // raw enum: a "completed" project that has any invoice is shown as 請求済 /
+  // 入金済 instead, so we get a real progress funnel (estimating → in_progress
+  // → completed → billed → paid). contracted/archived are intentionally
+  // omitted from the chart.
+  const invoicesByProject = new Map<
+    string,
+    { hasAny: boolean; allPaid: boolean }
+  >();
+  for (const inv of invoices) {
+    const cur = invoicesByProject.get(inv.projectId) ?? {
+      hasAny: false,
+      allPaid: true,
+    };
+    cur.hasAny = true;
+    if (!inv.paid) cur.allPaid = false;
+    invoicesByProject.set(inv.projectId, cur);
+  }
+  const buckets: Record<
+    "estimating" | "in_progress" | "completed" | "billed" | "paid",
+    number
+  > = {
+    estimating: 0,
+    in_progress: 0,
+    completed: 0,
+    billed: 0,
+    paid: 0,
+  };
+  for (const p of projects) {
+    // archived projects are excluded from the funnel entirely, even if they
+    // happen to carry invoices.
+    if (p.status === "archived") continue;
+    const inv = invoicesByProject.get(p.id);
+    if (inv?.hasAny) {
+      if (inv.allPaid) buckets.paid += 1;
+      else buckets.billed += 1;
+      continue;
+    }
+    if (p.status === "estimating") buckets.estimating += 1;
+    else if (p.status === "in_progress" || p.status === "contracted")
+      buckets.in_progress += 1;
+    else if (p.status === "completed") buckets.completed += 1;
+  }
+  const statusBreakdown = (
+    ["estimating", "in_progress", "completed", "billed", "paid"] as const
+  ).map((status) => ({ status, count: buckets[status] }));
 
   res.json(
     GetDashboardSummaryResponse.parse({
@@ -142,6 +179,7 @@ router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
     subtitle: string | null;
     projectId: string | null;
     projectName: string | null;
+    actorName: string | null;
     timestamp: string;
   };
 
@@ -163,6 +201,64 @@ router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
     return name;
   };
 
+  const costs = await db
+    .select()
+    .from(costEntriesTable)
+    .orderBy(sql`${costEntriesTable.createdAt} desc`)
+    .limit(10);
+  const quotes = await db
+    .select()
+    .from(quotesTable)
+    .orderBy(sql`${quotesTable.createdAt} desc`)
+    .limit(5);
+  const invs = await db
+    .select()
+    .from(invoicesTable)
+    .orderBy(sql`${invoicesTable.createdAt} desc`)
+    .limit(5);
+  const schedules = await db
+    .select()
+    .from(scheduleEntriesTable)
+    .orderBy(sql`${scheduleEntriesTable.createdAt} desc`)
+    .limit(5);
+  const logs = await db
+    .select()
+    .from(progressLogsTable)
+    .orderBy(sql`${progressLogsTable.createdAt} desc`)
+    .limit(5);
+
+  // Collect every distinct Clerk userId that authored anything we'll show,
+  // then resolve them to display names in a single query. Pre-Clerk rows
+  // (createdBy = NULL) get actorName = null and the UI hides the byline.
+  const actorIds = new Set<string>();
+  const collect = (id: string | null | undefined) => {
+    if (id) actorIds.add(id);
+  };
+  projects.forEach((p) => collect(p.createdBy));
+  costs.forEach((c) => collect(c.createdBy));
+  quotes.forEach((q) => collect(q.createdBy));
+  invs.forEach((i) => collect(i.createdBy));
+  schedules.forEach((s) => collect(s.createdBy));
+  logs.forEach((l) => collect(l.createdBy));
+
+  const actorMap = new Map<string, string>();
+  if (actorIds.size > 0) {
+    const rows = await db
+      .select({
+        clerkUserId: appUsersTable.clerkUserId,
+        displayName: appUsersTable.displayName,
+        email: appUsersTable.email,
+      })
+      .from(appUsersTable)
+      .where(inArray(appUsersTable.clerkUserId, Array.from(actorIds)));
+    for (const r of rows) {
+      const name = r.displayName?.trim() || r.email?.trim() || null;
+      if (name) actorMap.set(r.clerkUserId, name);
+    }
+  }
+  const actorOf = (id: string | null | undefined): string | null =>
+    id ? actorMap.get(id) ?? null : null;
+
   const items: Activity[] = projects.map((p) => ({
     id: `project-${p.id}`,
     kind: "project",
@@ -170,14 +266,10 @@ router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
     subtitle: null,
     projectId: p.id,
     projectName: p.name,
+    actorName: actorOf(p.createdBy),
     timestamp: isoDateTime(p.createdAt),
   }));
 
-  const costs = await db
-    .select()
-    .from(costEntriesTable)
-    .orderBy(sql`${costEntriesTable.createdAt} desc`)
-    .limit(10);
   for (const c of costs) {
     const projectName = await ensureProjectName(c.projectId);
     items.push({
@@ -187,15 +279,11 @@ router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
       subtitle: `実績 ¥${n(c.actualAmount).toLocaleString()}`,
       projectId: c.projectId,
       projectName,
+      actorName: actorOf(c.createdBy),
       timestamp: isoDateTime(c.createdAt),
     });
   }
 
-  const quotes = await db
-    .select()
-    .from(quotesTable)
-    .orderBy(sql`${quotesTable.createdAt} desc`)
-    .limit(5);
   for (const q of quotes) {
     const projectName = await ensureProjectName(q.projectId);
     items.push({
@@ -205,15 +293,11 @@ router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
       subtitle: null,
       projectId: q.projectId,
       projectName,
+      actorName: actorOf(q.createdBy),
       timestamp: isoDateTime(q.createdAt),
     });
   }
 
-  const invs = await db
-    .select()
-    .from(invoicesTable)
-    .orderBy(sql`${invoicesTable.createdAt} desc`)
-    .limit(5);
   for (const inv of invs) {
     const projectName = await ensureProjectName(inv.projectId);
     items.push({
@@ -223,15 +307,11 @@ router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
       subtitle: inv.paid ? "入金済" : "未入金",
       projectId: inv.projectId,
       projectName,
+      actorName: actorOf(inv.createdBy),
       timestamp: isoDateTime(inv.createdAt),
     });
   }
 
-  const schedules = await db
-    .select()
-    .from(scheduleEntriesTable)
-    .orderBy(sql`${scheduleEntriesTable.createdAt} desc`)
-    .limit(5);
   for (const s of schedules) {
     const projectName = await ensureProjectName(s.projectId);
     items.push({
@@ -241,15 +321,11 @@ router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
       subtitle: null,
       projectId: s.projectId,
       projectName,
+      actorName: actorOf(s.createdBy),
       timestamp: isoDateTime(s.createdAt),
     });
   }
 
-  const logs = await db
-    .select()
-    .from(progressLogsTable)
-    .orderBy(sql`${progressLogsTable.createdAt} desc`)
-    .limit(5);
   for (const l of logs) {
     const projectName = await ensureProjectName(l.projectId);
     items.push({
@@ -259,6 +335,7 @@ router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
       subtitle: null,
       projectId: l.projectId,
       projectName,
+      actorName: actorOf(l.createdBy),
       timestamp: isoDateTime(l.createdAt),
     });
   }

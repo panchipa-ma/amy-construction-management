@@ -17,7 +17,7 @@ import phasesRouter from "./phases";
 import storageRouter from "./storage";
 import ocrRouter from "./ocr";
 import usersRouter from "./users";
-import { requireApproved } from "../lib/auth";
+import { requireApproved, requireInternal } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -39,7 +39,11 @@ router.use(storageRouter);
 router.use(requireAuth);
 router.use(usersRouter);
 router.use(requireApproved);
-router.use(dashboardRouter);
+// Dashboard is internal-only: it aggregates data across all projects/users
+// (status breakdown, recent activity with actor names, monthly invoice totals,
+// cost pipeline). External users have no UI entry into it, but lock the
+// endpoints down so a direct API call can't leak global data either.
+router.use(requireInternal, dashboardRouter);
 router.use(projectsRouter);
 router.use(customersRouter);
 router.use(staffRouter);

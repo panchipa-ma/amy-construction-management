@@ -17,6 +17,10 @@ export interface DashboardSummary {
   actualCostActive: number;
   grossProfitActive: number;
   unpaidInvoiceTotal: number;
+  /** Counts grouped by computed dashboard bucket. Buckets are not the
+raw project status enum; they are: estimating / in_progress /
+completed / billed / paid.
+ */
   statusBreakdown: DashboardSummaryStatusBreakdownItem[];
   /** Invoice totals grouped by the month of the payment due date (支払期限). */
   monthlyInvoiceTotals: DashboardSummaryMonthlyInvoiceTotalsItem[];

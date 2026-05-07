@@ -9,6 +9,7 @@ import {
   CreateProgressLogResponse,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime } from "../lib/serializers";
+import { getOrCreateAppUser } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -56,6 +57,7 @@ router.post("/progress-logs", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const me = await getOrCreateAppUser(req);
   const [row] = await db
     .insert(progressLogsTable)
     .values({
@@ -64,6 +66,7 @@ router.post("/progress-logs", async (req, res): Promise<void> => {
       title: parsed.data.title,
       description: parsed.data.description ?? null,
       photoUrl: parsed.data.photoUrl ?? null,
+      createdBy: me.clerkUserId,
     })
     .returning();
   res.json(CreateProgressLogResponse.parse(await serialize(row)));

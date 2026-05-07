@@ -48,10 +48,10 @@ import { ExternalLink } from "lucide-react";
 
 const STATUS_LABEL: Record<string, string> = {
   estimating: "見積中",
-  contracted: "受注",
   in_progress: "施工中",
   completed: "竣工",
-  archived: "完了",
+  billed: "請求済",
+  paid: "入金済",
 };
 
 function KpiCard({
@@ -502,6 +502,7 @@ export default function DashboardPage() {
                         </Link>
                       )}
                       {a.subtitle && <span> · {a.subtitle}</span>}
+                      {a.actorName && <span> · {a.actorName}</span>}
                     </div>
                   </div>
                   <div className="text-xs text-muted-foreground whitespace-nowrap">

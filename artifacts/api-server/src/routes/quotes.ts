@@ -28,6 +28,7 @@ import {
   ImportQuoteToLedgerResponse,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime, computeTotals, n } from "../lib/serializers";
+import { getOrCreateAppUser } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -104,6 +105,7 @@ router.post("/quotes", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const me = await getOrCreateAppUser(req);
   const [row] = await db
     .insert(quotesTable)
     .values({
@@ -115,6 +117,7 @@ router.post("/quotes", async (req, res): Promise<void> => {
       validUntil: (parsed.data.validUntil as unknown as string | null) ?? null,
       notes: parsed.data.notes ?? null,
       items: parsed.data.items as LineItemJson[],
+      createdBy: me.clerkUserId,
     })
     .returning();
   await syncProjectContractAmount(row.projectId);

@@ -15,6 +15,7 @@ import {
   UpdateInvoiceResponse,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime, computeTotals } from "../lib/serializers";
+import { getOrCreateAppUser } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -68,6 +69,7 @@ router.post("/invoices", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const me = await getOrCreateAppUser(req);
   const [row] = await db
     .insert(invoicesTable)
     .values({
@@ -81,6 +83,7 @@ router.post("/invoices", async (req, res): Promise<void> => {
       notes: parsed.data.notes ?? null,
       paid: parsed.data.paid ?? false,
       items: parsed.data.items as LineItemJson[],
+      createdBy: me.clerkUserId,
     })
     .returning();
   res.json(CreateInvoiceResponse.parse(await serialize(row)));

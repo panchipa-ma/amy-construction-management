@@ -14,5 +14,7 @@ export interface ActivityItem {
   subtitle?: string | null;
   projectId?: string | null;
   projectName?: string | null;
+  /** Display name of the user who created the entry, or null when unknown. */
+  actorName?: string | null;
   timestamp: Date;
 }

@@ -1750,11 +1750,15 @@ components:
         unpaidInvoiceTotal: { type: number }
         statusBreakdown:
           type: array
+          description: |
+            Counts grouped by computed dashboard bucket. Buckets are not the
+            raw project status enum; they are: estimating / in_progress /
+            completed / billed / paid.
           items:
             type: object
             required: [status, count]
             properties:
-              status: { $ref: "#/components/schemas/ProjectStatus" }
+              status: { type: string }
               count: { type: integer }
         monthlyInvoiceTotals:
           type: array
@@ -1785,6 +1789,7 @@ components:
         subtitle: { type: string, nullable: true }
         projectId: { type: string, nullable: true }
         projectName: { type: string, nullable: true }
+        actorName: { type: string, nullable: true, description: "Display name of the user who created the entry, or null when unknown." }
         timestamp: { type: string, format: date-time }
 
     CostPipelineItem:
