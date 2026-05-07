@@ -26,13 +26,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -48,22 +41,21 @@ import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { apiErrorMessage } from "@/lib/api-error";
 
-type PaidFilter = "all" | "paid" | "unpaid";
+// 入金済の請求書はサイドバーの「請求済」欄にしか表示しない。
+// 通常の「請求」一覧は未入金のみ。
+type PaidFilter = "paid" | "unpaid";
 
 export default function InvoicesListPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const search = useSearch();
-  const initialFilter: PaidFilter = (() => {
-    const v = new URLSearchParams(search).get("paid");
-    if (v === "true") return "paid";
-    if (v === "false") return "unpaid";
-    return "all";
-  })();
+  const isPaidView =
+    new URLSearchParams(search).get("paid") === "true";
+  const initialFilter: PaidFilter = isPaidView ? "paid" : "unpaid";
   const [paidFilter, setPaidFilter] = useState<PaidFilter>(initialFilter);
   useEffect(() => {
     const v = new URLSearchParams(search).get("paid");
-    setPaidFilter(v === "true" ? "paid" : v === "false" ? "unpaid" : "all");
+    setPaidFilter(v === "true" ? "paid" : "unpaid");
   }, [search]);
 
   const { data, isLoading } = useListInvoices();
@@ -71,9 +63,9 @@ export default function InvoicesListPage() {
   const deleteMut = useDeleteInvoice();
   const rows = useMemo(() => {
     const list = data ?? [];
-    if (paidFilter === "paid") return list.filter((i) => i.paid);
-    if (paidFilter === "unpaid") return list.filter((i) => !i.paid);
-    return list;
+    return paidFilter === "paid"
+      ? list.filter((i) => i.paid)
+      : list.filter((i) => !i.paid);
   }, [data, paidFilter]);
 
   const [askDelete, setAskDelete] = useState<{
@@ -126,9 +118,13 @@ export default function InvoicesListPage() {
     <div className="space-y-6 max-w-[1200px]">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">請求書</h1>
+          <h1 className="text-2xl font-bold">
+            {isPaidView ? "請求済（入金済）" : "請求書"}
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            すべての請求書と入金状況を管理します。
+            {isPaidView
+              ? "入金済になった請求書はこちらに自動で移動します。"
+              : "未入金の請求書を管理します（入金済はサイドバー「請求済」へ自動移動）。"}
           </p>
         </div>
         <Link href="/invoices/new">
@@ -140,21 +136,10 @@ export default function InvoicesListPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-base">請求書一覧</CardTitle>
-          <Select
-            value={paidFilter}
-            onValueChange={(v) => setPaidFilter(v as PaidFilter)}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">すべて</SelectItem>
-              <SelectItem value="paid">入金済</SelectItem>
-              <SelectItem value="unpaid">未入金</SelectItem>
-            </SelectContent>
-          </Select>
+        <CardHeader>
+          <CardTitle className="text-base">
+            {isPaidView ? "入金済の請求書" : "未入金の請求書"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (

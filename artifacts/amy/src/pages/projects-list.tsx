@@ -48,27 +48,44 @@ import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { apiErrorMessage } from "@/lib/api-error";
 
+// On the regular 案件一覧, 竣工 projects are intentionally hidden — they live
+// only on the dedicated 竣工 sidebar view (?status=completed).
+const ACTIVE_STATUS_OPTIONS = PROJECT_STATUS_OPTIONS.filter(
+  (o) => o.value !== "completed",
+);
+
 export default function ProjectsListPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const search = useSearch();
+  const urlStatus = new URLSearchParams(search).get("status");
+  const isCompletedView = urlStatus === "completed";
   const initialStatus = (() => {
-    const s = new URLSearchParams(search).get("status");
-    return s && PROJECT_STATUS_OPTIONS.some((o) => o.value === s) ? s : "all";
+    if (isCompletedView) return "completed";
+    return urlStatus && ACTIVE_STATUS_OPTIONS.some((o) => o.value === urlStatus)
+      ? urlStatus
+      : "active";
   })();
   const [status, setStatus] = useState<string>(initialStatus);
-  // Re-sync when sidebar nav changes the query string.
   useEffect(() => {
     const s = new URLSearchParams(search).get("status");
-    setStatus(
-      s && PROJECT_STATUS_OPTIONS.some((o) => o.value === s) ? s : "all",
-    );
+    if (s === "completed") {
+      setStatus("completed");
+    } else {
+      setStatus(
+        s && ACTIVE_STATUS_OPTIONS.some((o) => o.value === s) ? s : "active",
+      );
+    }
   }, [search]);
   const params =
-    status === "all" ? undefined : { status: status as ProjectStatus };
+    status === "active" ? undefined : { status: status as ProjectStatus };
   const { data, isLoading } = useListProjects(params);
   const deleteMut = useDeleteProject();
-  const rows = data ?? [];
+  // When showing "進行中" (active), explicitly drop completed in case the
+  // server returns them with no filter.
+  const rows = (data ?? []).filter((p) =>
+    status === "active" ? p.status !== "completed" : true,
+  );
 
   const [askDelete, setAskDelete] = useState<{ id: string; name: string } | null>(
     null,
@@ -93,9 +110,13 @@ export default function ProjectsListPage() {
     <div className="space-y-6 max-w-[1400px]">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">案件一覧</h1>
+          <h1 className="text-2xl font-bold">
+            {isCompletedView ? "竣工案件" : "案件一覧"}
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            進行中の案件と完了した案件を管理します。
+            {isCompletedView
+              ? "ステータスが竣工になった案件はこちらに自動で移動します。"
+              : "進行中の案件を管理します（竣工はサイドバー「竣工」へ自動移動）。"}
           </p>
         </div>
         <Link href="/projects/new">
@@ -108,20 +129,24 @@ export default function ProjectsListPage() {
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-base">案件</CardTitle>
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">すべて</SelectItem>
-              {PROJECT_STATUS_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CardTitle className="text-base">
+            {isCompletedView ? "竣工案件" : "案件"}
+          </CardTitle>
+          {!isCompletedView && (
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">進行中（竣工除く）</SelectItem>
+                {ACTIVE_STATUS_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </CardHeader>
         <CardContent>
           {isLoading ? (

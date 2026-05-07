@@ -102,6 +102,13 @@ pnpm monorepo with TypeScript project references.
 - **職人請求書を作成** (`/vendor-invoices/new`): Form-based vendor-invoice creation. Fields: 宛名 (default 株式会社AMY, custom入力可), 作成者, 件名 (案件 dropdown — drives unitNumber for auto-routing), 発行日, 支払期限, 発行元 (会社名/インボイス番号/郵便番号/住所/メール), 振込先 (銀行/支店/種別/口座番号/名義), 明細 (摘要/数量/単価). Uses `html2canvas-pro` + `jsPDF` to render the preview area to PDF, uploads via `/api/storage/uploads/request-url`, then POSTs to `/api/vendor-invoices` with the resulting servePath. Creator inputs (発行元 + 振込先 + 宛名 + 作成者) persist in `localStorage` under key `amy.vendorInvoiceCreator.v1` so 2回目以降は自動入力.
 - **File uploads**: `POST /api/storage/uploads/request-url` returns `{uploadURL, objectPath}`. Frontend captures `objectPath` from this call (via ref in onGetUploadParameters), then constructs serve path `/api/storage${objectPath}` for `vendor_invoices.fileUrl`. Files are served by `GET /api/storage/objects/*` (currently unauthenticated — fine for single-tenant).
 
+## 竣工 / 請求済 自動移動 (sidebar shortcuts)
+
+- Sidebar 「竣工」 → `/projects?status=completed`, 「請求済」 → `/invoices?paid=true` (`app-shell.tsx`).
+- `pages/projects-list.tsx`: default filter is `"active"` which **excludes** `completed` projects. The 案件 list never shows 竣工 — they auto-move to the 竣工 view. The status `<Select>` is hidden on the 竣工 view (it's already filtered) and `ACTIVE_STATUS_OPTIONS` (PROJECT_STATUS_OPTIONS minus `completed`) drives the dropdown on the regular list. Title/subtitle switch based on `?status=completed`.
+- `pages/invoices-list.tsx`: default filter is `"unpaid"`. Paid invoices never appear on the 請求 list — they auto-move to 請求済 (`?paid=true`). The previous all/paid/unpaid `<Select>` was removed; the URL param is the single switch. Title/subtitle switch based on `?paid=true`.
+- Sidebar active-state in `app-shell.tsx` strips the query before checking `isPathAllowed`, and uses exact `path+query` match for filtered shortcuts so 案件 vs 竣工 (and 請求 vs 請求済) don't both highlight at once.
+
 ## Standalone pages
 
 - **工程表** (`/gantt`): Top-level Gantt chart page listing all projects in collapsible accordion. Reuses `ProjectGantt` component. Filter by status (default: 施工中・契約済) and search by name/customer. Each project expands to show its full interactive Gantt chart with drag, resize, add/edit/delete phases. Phase dialog includes 担当職人 dropdown — assigning a staff member to a phase sets `project_phases.staffId`.
