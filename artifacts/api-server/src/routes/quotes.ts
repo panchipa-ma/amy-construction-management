@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import {
   db,
   quotesTable,
@@ -30,6 +30,21 @@ import {
 import { isoDate, isoDateTime, computeTotals, n } from "../lib/serializers";
 
 const router: IRouter = Router();
+
+async function syncProjectContractAmount(projectId: string): Promise<void> {
+  const [latest] = await db
+    .select({ items: quotesTable.items })
+    .from(quotesTable)
+    .where(eq(quotesTable.projectId, projectId))
+    .orderBy(desc(quotesTable.createdAt))
+    .limit(1);
+  const items = (latest?.items ?? []) as LineItemJson[];
+  const { subtotal } = computeTotals(items);
+  await db
+    .update(projectsTable)
+    .set({ contractAmount: String(subtotal) })
+    .where(eq(projectsTable.id, projectId));
+}
 
 async function serialize(q: typeof quotesTable.$inferSelect) {
   const [project] = await db
@@ -102,6 +117,7 @@ router.post("/quotes", async (req, res): Promise<void> => {
       items: parsed.data.items as LineItemJson[],
     })
     .returning();
+  await syncProjectContractAmount(row.projectId);
   res.json(CreateQuoteResponse.parse(await serialize(row)));
 });
 
@@ -151,6 +167,7 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Quote not found" });
     return;
   }
+  await syncProjectContractAmount(row.projectId);
   res.json(UpdateQuoteResponse.parse(await serialize(row)));
 });
 
@@ -320,7 +337,12 @@ router.delete("/quotes/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const [existing] = await db
+    .select({ projectId: quotesTable.projectId })
+    .from(quotesTable)
+    .where(eq(quotesTable.id, params.data.id));
   await db.delete(quotesTable).where(eq(quotesTable.id, params.data.id));
+  if (existing) await syncProjectContractAmount(existing.projectId);
   res.sendStatus(204);
 });
 
