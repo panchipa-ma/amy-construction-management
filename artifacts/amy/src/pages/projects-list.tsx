@@ -96,9 +96,33 @@ export default function ProjectsListPage() {
   const updateProjectMut = useUpdateProject();
   // When showing "進行中" (active), explicitly drop completed in case the
   // server returns them with no filter.
-  const rows = (data ?? []).filter((p) =>
+  const baseRows = (data ?? []).filter((p) =>
     status === "active" ? p.status !== "completed" : true,
   );
+
+  // 竣工 view: optional month filter on endDate (工期終了日)
+  const [completedMonth, setCompletedMonth] = useState<string>("all");
+  const completedMonthOptions = (() => {
+    if (!isCompletedView) return [] as { value: string; label: string }[];
+    const set = new Set<string>();
+    for (const p of baseRows) {
+      const d = p.endDate ? String(p.endDate).slice(0, 7) : "";
+      if (d) set.add(d);
+    }
+    return Array.from(set)
+      .sort((a, b) => (a < b ? 1 : -1))
+      .map((m) => ({
+        value: m,
+        label: `${m.slice(0, 4)}年${m.slice(5, 7)}月`,
+      }));
+  })();
+  const rows =
+    isCompletedView && completedMonth !== "all"
+      ? baseRows.filter(
+          (p) =>
+            p.endDate && String(p.endDate).slice(0, 7) === completedMonth,
+        )
+      : baseRows;
 
   const [askDelete, setAskDelete] = useState<{ id: string; name: string } | null>(
     null,
@@ -186,6 +210,21 @@ export default function ProjectsListPage() {
               <SelectContent>
                 <SelectItem value="active">進行中（竣工除く）</SelectItem>
                 {ACTIVE_STATUS_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {isCompletedView && (
+            <Select value={completedMonth} onValueChange={setCompletedMonth}>
+              <SelectTrigger className="w-44" data-testid="select-completed-month">
+                <SelectValue placeholder="月で絞り込み" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全体（すべての月）</SelectItem>
+                {completedMonthOptions.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
                     {o.label}
                   </SelectItem>
