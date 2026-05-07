@@ -777,7 +777,7 @@ export default function VendorInvoiceNewPage() {
             alignItems: "center",
             justifyContent: "space-between",
             borderTop: "2px solid #0f172a",
-            borderBottom: "1px solid #cbd5e1",
+            borderBottom: "1px solid #475569",
             padding: "8px 4px",
             marginBottom: "12px",
           }}
@@ -811,11 +811,11 @@ export default function VendorInvoiceNewPage() {
                 })),
               ];
           const cellBase = {
-            border: "1px solid #e2e8f0",
-            padding: "4px 8px",
+            border: "1px solid #94a3b8",
+            padding: "5px 8px",
             fontVariantNumeric: "tabular-nums" as const,
             fontSize: "11px",
-            height: "22px",
+            height: "24px",
           };
           return (
             <table
@@ -977,7 +977,7 @@ export default function VendorInvoiceNewPage() {
                 </td>
                 <td
                   style={{
-                    border: "1px solid #cbd5e1",
+                    border: "1px solid #94a3b8",
                     padding: "6px 12px",
                     textAlign: "right",
                     fontVariantNumeric: "tabular-nums",
@@ -1001,7 +1001,7 @@ export default function VendorInvoiceNewPage() {
                 </td>
                 <td
                   style={{
-                    border: "1px solid #cbd5e1",
+                    border: "1px solid #94a3b8",
                     padding: "6px 12px",
                     textAlign: "right",
                     fontVariantNumeric: "tabular-nums",
@@ -1025,7 +1025,7 @@ export default function VendorInvoiceNewPage() {
                 </td>
                 <td
                   style={{
-                    border: "1px solid #cbd5e1",
+                    border: "1px solid #94a3b8",
                     padding: "8px 12px",
                     textAlign: "right",
                     fontWeight: 700,
