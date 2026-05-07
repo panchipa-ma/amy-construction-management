@@ -18,7 +18,7 @@ import { ProjectStatusBadge } from "@/components/status-badge";
 export default function GanttPage() {
   const projectsQ = useListProjects();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [statusFilter, setStatusFilter] = useState<string>("in_progress");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const selectedRef = useRef<HTMLDivElement | null>(null);
@@ -147,13 +147,10 @@ export default function GanttPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="active">施工中・契約済</SelectItem>
             <SelectItem value="all">すべて</SelectItem>
             <SelectItem value="estimating">見積中</SelectItem>
-            <SelectItem value="contracted">契約済</SelectItem>
             <SelectItem value="in_progress">施工中</SelectItem>
-            <SelectItem value="completed">完工</SelectItem>
-            <SelectItem value="archived">保管</SelectItem>
+            <SelectItem value="completed">竣工</SelectItem>
           </SelectContent>
         </Select>
         <div className="flex gap-1 ml-auto">
