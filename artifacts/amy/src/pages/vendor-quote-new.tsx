@@ -29,6 +29,8 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { useUser } from "@clerk/react";
 import { readProfile } from "@/lib/profile";
+import { UNIT_OPTIONS } from "@/lib/units";
+import { QUOTE_TERMS } from "@/lib/company-info";
 
 // Per-quote form state (recipient + author). Issuer + bank info come from the
 // signed-in user's Clerk profile (same as 職人請求書).
@@ -66,7 +68,13 @@ const EMPTY_DEFAULTS: CreatorDefaults = {
   accountHolder: "",
 };
 
-type LineRow = { description: string; quantity: number; unitPrice: number };
+type LineRow = {
+  description: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  notes: string;
+};
 
 function loadFormDefaults(): { recipientName: string; authorName: string } {
   try {
@@ -116,7 +124,7 @@ export default function VendorQuoteNewPage() {
   const [validUntil, setValidUntil] = useState<string>(plus30DaysISO(todayISO()));
   const [notes, setNotes] = useState<string>("");
   const [items, setItems] = useState<LineRow[]>([
-    { description: "", quantity: 1, unitPrice: 0 },
+    { description: "", unit: "式", quantity: 1, unitPrice: 0, notes: "" },
   ]);
   const [submitting, setSubmitting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
@@ -151,7 +159,10 @@ export default function VendorQuoteNewPage() {
   const total = subtotal + tax;
 
   const addRow = () =>
-    setItems((rs) => [...rs, { description: "", quantity: 1, unitPrice: 0 }]);
+    setItems((rs) => [
+      ...rs,
+      { description: "", unit: "式", quantity: 1, unitPrice: 0, notes: "" },
+    ]);
   const removeRow = (i: number) =>
     setItems((rs) => rs.filter((_, idx) => idx !== i));
   const updateRow = (i: number, patch: Partial<LineRow>) =>
@@ -429,17 +440,19 @@ export default function VendorQuoteNewPage() {
                 行を追加
               </Button>
             </div>
-            <div className="grid grid-cols-[1fr_100px_140px_140px_40px] gap-2 text-xs text-muted-foreground px-2 mb-1">
+            <div className="grid grid-cols-[1fr_70px_70px_110px_110px_1fr_40px] gap-2 text-xs text-muted-foreground px-2 mb-1">
               <div>摘要</div>
+              <div className="text-center">単位</div>
               <div className="text-right">数量</div>
               <div className="text-right">単価</div>
               <div className="text-right">金額</div>
+              <div>備考</div>
               <div></div>
             </div>
             {items.map((row, i) => (
               <div
                 key={i}
-                className="grid grid-cols-[1fr_100px_140px_140px_40px] gap-2 mb-1.5 items-center"
+                className="grid grid-cols-[1fr_70px_70px_110px_110px_1fr_40px] gap-2 mb-1.5 items-center"
               >
                 <Input
                   value={row.description}
@@ -448,6 +461,21 @@ export default function VendorQuoteNewPage() {
                   }
                   placeholder="例: 大工工事"
                 />
+                <Select
+                  value={row.unit || ""}
+                  onValueChange={(v) => updateRow(i, { unit: v })}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIT_OPTIONS.map((u) => (
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Input
                   type="number"
                   min="0"
@@ -475,6 +503,11 @@ export default function VendorQuoteNewPage() {
                 <div className="text-right tabular-nums text-sm py-2 px-2">
                   {formatCurrency((row.quantity || 0) * (row.unitPrice || 0))}
                 </div>
+                <Input
+                  value={row.notes}
+                  onChange={(e) => updateRow(i, { notes: e.target.value })}
+                  placeholder="（任意）"
+                />
                 <Button
                   variant="ghost"
                   size="sm"
@@ -553,195 +586,192 @@ export default function VendorQuoteNewPage() {
           lineHeight: 1.5,
         }}
       >
+        {/* Top accent */}
+        <div style={{ height: "3px", background: "#1f3a66", marginBottom: "20px" }} />
+
+        {/* Title */}
         <h1
           style={{
             textAlign: "center",
-            fontSize: "24px",
-            fontWeight: 700,
-            letterSpacing: "0.5em",
-            marginBottom: "24px",
+            fontSize: "30px",
+            fontWeight: 600,
+            letterSpacing: "0.4em",
+            marginBottom: "20px",
           }}
         >
-          御　見　積　書
+          御見積書
         </h1>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr auto",
-            gap: "24px",
-            marginBottom: "16px",
-          }}
-        >
+
+        {/* Customer + Meta */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "32px", marginBottom: "20px" }}>
           <div>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: "4px" }}>
-              <span
-                style={{
-                  fontSize: "18px",
-                  fontWeight: 700,
-                  borderBottom: "1px solid #0f172a",
-                  paddingBottom: "2px",
-                  minWidth: "200px",
-                  display: "inline-block",
-                }}
-              >
-                {defaults.recipientName || "—"}
-              </span>
-              <span style={{ fontSize: "16px", fontWeight: 500, paddingBottom: "2px", marginLeft: "8px" }}>
-                御中
-              </span>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: "12px", borderBottom: "2px solid #0f172a", paddingBottom: "6px" }}>
+              <span style={{ fontSize: "22px", fontWeight: 700, flex: 1 }}>{defaults.recipientName || "—"}</span>
+              <span style={{ fontSize: "18px" }}>御中</span>
             </div>
-            <div style={{ marginTop: "12px" }}>
-              <span style={{ color: "#64748b" }}>件名：</span>
-              <span style={{ fontWeight: 500 }}>
-                {project ? projectLabel(project) : ""}
-              </span>
-            </div>
-            <p style={{ marginTop: "12px" }}>下記の通り、お見積申し上げます。</p>
+            {defaults.authorName && (
+              <div style={{ display: "flex", gap: "12px", marginTop: "10px", alignItems: "center", fontSize: "13px" }}>
+                <span style={{ color: "#64748b", width: "56px" }}>ご担当</span>
+                <span style={{ flex: 1, borderBottom: "1px solid #e2e8f0", paddingBottom: "2px" }}>{defaults.authorName}</span>
+                <span>様</span>
+              </div>
+            )}
           </div>
-          <div style={{ minWidth: "240px" }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "auto 1fr",
-                columnGap: "16px",
-                rowGap: "2px",
-                textAlign: "right",
-              }}
-            >
-              <span style={{ color: "#64748b" }}>見積日</span>
-              <span>{issueDate ? formatDate(issueDate) : ""}</span>
-              <span style={{ color: "#64748b" }}>有効期限</span>
-              <span>{validUntil ? formatDate(validUntil) : ""}</span>
+          <div style={{ border: "1px solid #0f172a", fontSize: "12px", alignSelf: "flex-start" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "78px 1fr", borderBottom: "1px solid #0f172a" }}>
+              <div style={{ padding: "6px 10px", background: "#f1f5f9", borderRight: "1px solid #0f172a" }}>見積日</div>
+              <div style={{ padding: "6px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{issueDate ? formatDate(issueDate) : ""}</div>
             </div>
-            <div
-              style={{
-                marginTop: "12px",
-                paddingTop: "12px",
-                borderTop: "1px solid #e2e8f0",
-                textAlign: "left",
-              }}
-            >
-              <div style={{ fontWeight: 700 }}>{defaults.companyName || "—"}</div>
-              {defaults.postalCode && (
-                <div style={{ fontSize: "11px", color: "#64748b" }}>
-                  {defaults.postalCode}
-                </div>
-              )}
-              {defaults.address && (
-                <div style={{ fontSize: "11px" }}>{defaults.address}</div>
-              )}
-              {defaults.registrationNumber && (
-                <div style={{ fontSize: "11px", color: "#64748b" }}>
-                  登録番号：{defaults.registrationNumber}
-                </div>
-              )}
-              {defaults.email && (
-                <div style={{ fontSize: "11px" }}>E-Mail：{defaults.email}</div>
-              )}
-              {defaults.authorName && (
-                <div style={{ fontSize: "11px", marginTop: "4px" }}>
-                  担当：{defaults.authorName}
-                </div>
-              )}
+            <div style={{ display: "grid", gridTemplateColumns: "78px 1fr" }}>
+              <div style={{ padding: "6px 10px", background: "#f1f5f9", borderRight: "1px solid #0f172a" }}>有効期限</div>
+              <div style={{ padding: "6px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{validUntil ? formatDate(validUntil) : ""}</div>
             </div>
           </div>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "16px",
-            borderTop: "2px solid #0f172a",
-            borderBottom: "2px solid #0f172a",
-            padding: "8px 0",
-            marginBottom: "16px",
-          }}
-        >
-          <span style={{ fontWeight: 700 }}>御見積金額</span>
-          <span style={{ fontSize: "20px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
-            {formatCurrency(total)}
-          </span>
-          <span style={{ fontSize: "11px", color: "#64748b" }}>（税込）</span>
+        {/* 件名 + Issuer card */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "32px", marginBottom: "20px" }}>
+          <div>
+            {project && (
+              <div style={{ marginBottom: "12px" }}>
+                <div style={{ fontSize: "10px", letterSpacing: "0.3em", color: "#64748b", marginBottom: "4px" }}>案件</div>
+                <div style={{ borderBottom: "1px solid #e2e8f0", paddingBottom: "4px", fontSize: "14px" }}>{projectLabel(project)}</div>
+              </div>
+            )}
+            <div style={{ borderLeft: "4px solid #1f3a66", paddingLeft: "12px", paddingTop: "2px", paddingBottom: "2px" }}>
+              <div style={{ fontSize: "10px", letterSpacing: "0.3em", color: "#64748b" }}>件名</div>
+              <div style={{ fontSize: "16px", fontWeight: 600 }}>{project ? projectLabel(project) : "—"}</div>
+            </div>
+            <p style={{ fontSize: "12px", color: "#64748b", marginTop: "12px", lineHeight: 1.6 }}>下記のとおり、御見積もり申し上げます。</p>
+          </div>
+
+          <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "12px 16px", fontSize: "11.5px", lineHeight: 1.7 }}>
+            <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "2px" }}>{defaults.companyName || "—"}</div>
+            {(defaults.postalCode || defaults.address) && (
+              <div style={{ color: "#64748b" }}>
+                {defaults.postalCode && <span style={{ marginRight: "6px" }}>{defaults.postalCode}</span>}
+                {defaults.address}
+              </div>
+            )}
+            {defaults.registrationNumber && (
+              <div><span style={{ color: "#64748b", marginRight: "4px" }}>登録番号</span>{defaults.registrationNumber}</div>
+            )}
+            {defaults.email && (
+              <div><span style={{ color: "#64748b", marginRight: "4px" }}>E</span>{defaults.email}</div>
+            )}
+            {defaults.authorName && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "6px" }}>
+                <span><span style={{ color: "#64748b", marginRight: "4px" }}>担当</span>{defaults.authorName}</span>
+                <span style={{ width: "34px", height: "34px", border: "2px solid rgba(220,38,38,0.4)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(220,38,38,0.5)", fontSize: "11px", fontFamily: "serif" }}>印</span>
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* 合計金額 hero */}
+        <div style={{ display: "flex", border: "2px solid #1f3a66", marginBottom: "16px", background: "#fafbfd" }}>
+          <div style={{ width: "144px", padding: "10px 16px", background: "#1f3a66", color: "#ffffff", fontWeight: 600, borderRight: "2px solid #1f3a66", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", letterSpacing: "0.25em" }}>合 計 金 額</div>
+          <div style={{ flex: 1, padding: "10px 20px", display: "flex", alignItems: "baseline", justifyContent: "flex-end", gap: "8px" }}>
+            <span style={{ color: "#64748b", fontSize: "14px" }}>¥</span>
+            <span style={{ fontSize: "28px", fontWeight: 700, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{total.toLocaleString()}</span>
+            <span style={{ fontSize: "11px", color: "#64748b" }}>（税込）</span>
+          </div>
+        </div>
+
+        {/* Items table */}
         {(() => {
-          const MIN_ROWS = 10;
+          const MIN_ROWS = 8;
           const padded = items.length >= MIN_ROWS
             ? items
             : [
                 ...items,
                 ...Array.from({ length: MIN_ROWS - items.length }, () => ({
                   description: "",
+                  unit: "",
                   quantity: 0,
                   unitPrice: 0,
+                  notes: "",
                 })),
               ];
-          const cellBase = {
-            border: "1px solid #e2e8f0",
-            padding: "6px 8px",
-            fontVariantNumeric: "tabular-nums" as const,
-          };
+          const cols = "32px 1fr 52px 60px 88px 108px 1fr";
+          const headBorder = "1px solid #d8dbe6";
+          const rowBorder = "1px solid #cbd5e1";
           return (
-            <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "0" }}>
-              <thead>
-                <tr style={{ background: "#1f3a66", color: "#ffffff" }}>
-                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "40px", textAlign: "center", fontWeight: 500 }}>No.</th>
-                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", textAlign: "left", fontWeight: 500 }}>工事項目・摘要</th>
-                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "60px", textAlign: "center", fontWeight: 500 }}>単位</th>
-                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "60px", textAlign: "center", fontWeight: 500 }}>数量</th>
-                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "90px", textAlign: "right", fontWeight: 500 }}>単価</th>
-                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "100px", textAlign: "right", fontWeight: 500 }}>金額</th>
-                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "120px", textAlign: "left", fontWeight: 500 }}>備考</th>
-                </tr>
-              </thead>
-              <tbody>
-                {padded.map((it, i) => {
-                  const has = it.description.trim();
-                  const amt = (it.quantity || 0) * (it.unitPrice || 0);
-                  return (
-                    <tr key={i}>
-                      <td style={{ ...cellBase, textAlign: "center", color: "#64748b" }}>{has ? i + 1 : ""}</td>
-                      <td style={{ ...cellBase, textAlign: "left" }}>{has ? it.description : ""}</td>
-                      <td style={{ ...cellBase, textAlign: "center" }}>{has ? "式" : ""}</td>
-                      <td style={{ ...cellBase, textAlign: "center" }}>{has ? it.quantity : ""}</td>
-                      <td style={{ ...cellBase, textAlign: "right" }}>{has ? formatCurrency(it.unitPrice) : ""}</td>
-                      <td style={{ ...cellBase, textAlign: "right" }}>{has ? formatCurrency(amt) : ""}</td>
-                      <td style={{ ...cellBase, textAlign: "left" }}></td>
-                    </tr>
-                  );
-                })}
-                <tr>
-                  <td colSpan={4} style={{ borderLeft: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
-                  <td style={{ border: "1px solid #1f3a66", background: "#1f3a66", color: "#ffffff", padding: "6px 12px", fontWeight: 500, textAlign: "center" }}>小計</td>
-                  <td style={{ border: "1px solid #e2e8f0", padding: "6px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(subtotal)}</td>
-                  <td style={{ borderRight: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
-                </tr>
-                <tr>
-                  <td colSpan={4} style={{ borderLeft: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
-                  <td style={{ border: "1px solid #1f3a66", background: "#1f3a66", color: "#ffffff", padding: "6px 12px", fontWeight: 500, textAlign: "center" }}>消費税(10%)</td>
-                  <td style={{ border: "1px solid #e2e8f0", padding: "6px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(tax)}</td>
-                  <td style={{ borderRight: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
-                </tr>
-                <tr>
-                  <td colSpan={4} style={{ borderLeft: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
-                  <td style={{ border: "1px solid #1f3a66", background: "#1f3a66", color: "#ffffff", padding: "6px 12px", fontWeight: 700, textAlign: "center" }}>合計</td>
-                  <td style={{ border: "1px solid #e2e8f0", padding: "6px 12px", textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{formatCurrency(total)}</td>
-                  <td style={{ borderRight: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
-                </tr>
-              </tbody>
-            </table>
+            <div style={{ border: "2px solid #0f172a", marginBottom: "0" }}>
+              {/* Header */}
+              <div style={{ display: "grid", gridTemplateColumns: cols, background: "#1f3a66", color: "#ffffff", fontSize: "11.5px", fontWeight: 600 }}>
+                <div style={{ padding: "8px 4px", textAlign: "center", borderRight: headBorder }}>No.</div>
+                <div style={{ padding: "8px 12px", borderRight: headBorder }}>工事項目・摘要</div>
+                <div style={{ padding: "8px 4px", textAlign: "center", borderRight: headBorder }}>単位</div>
+                <div style={{ padding: "8px 4px", textAlign: "right", borderRight: headBorder }}>数量</div>
+                <div style={{ padding: "8px", textAlign: "right", borderRight: headBorder }}>単価</div>
+                <div style={{ padding: "8px", textAlign: "right", borderRight: headBorder }}>金額</div>
+                <div style={{ padding: "8px 12px" }}>備考</div>
+              </div>
+              {/* Rows */}
+              {padded.map((row, i) => {
+                const has = row.description.trim();
+                const amt = (row.quantity || 0) * (row.unitPrice || 0);
+                return (
+                  <div key={i} style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, fontSize: "13px", minHeight: "32px" }}>
+                    <div style={{ padding: "6px 4px", textAlign: "center", color: "#64748b", borderRight: rowBorder, fontVariantNumeric: "tabular-nums", fontSize: "12px" }}>{has ? i + 1 : ""}</div>
+                    <div style={{ padding: "6px 12px", borderRight: rowBorder, whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{has ? row.description : ""}</div>
+                    <div style={{ padding: "6px 4px", textAlign: "center", borderRight: rowBorder, fontSize: "12px" }}>{has ? row.unit || "" : ""}</div>
+                    <div style={{ padding: "6px 4px", textAlign: "right", fontVariantNumeric: "tabular-nums", borderRight: rowBorder }}>{has ? row.quantity : ""}</div>
+                    <div style={{ padding: "6px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums", borderRight: rowBorder }}>{has && row.unitPrice ? formatCurrency(row.unitPrice) : ""}</div>
+                    <div style={{ padding: "6px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums", borderRight: rowBorder, fontWeight: 500 }}>{has && amt > 0 ? formatCurrency(amt) : ""}</div>
+                    <div style={{ padding: "6px 12px", whiteSpace: "pre-wrap", fontSize: "12.5px", lineHeight: 1.4 }}>{has ? row.notes || "" : ""}</div>
+                  </div>
+                );
+              })}
+              {/* Totals footer */}
+              <div style={{ display: "grid", gridTemplateColumns: cols, borderTop: "2px solid #0f172a", background: "#f1f5f9", fontSize: "12px" }}>
+                <div style={{ gridColumn: "1 / span 4" }}></div>
+                <div style={{ padding: "8px", borderLeft: rowBorder, textAlign: "right", fontWeight: 600 }}>小計</div>
+                <div style={{ padding: "8px", borderLeft: rowBorder, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(subtotal)}</div>
+                <div style={{ borderLeft: rowBorder }}></div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, background: "#f1f5f9", fontSize: "12px" }}>
+                <div style={{ gridColumn: "1 / span 4" }}></div>
+                <div style={{ padding: "8px", borderLeft: rowBorder, textAlign: "right", fontWeight: 600 }}>消費税</div>
+                <div style={{ padding: "8px", borderLeft: rowBorder, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(tax)}</div>
+                <div style={{ borderLeft: rowBorder }}></div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, background: "#1f3a66", color: "#ffffff", fontSize: "13px" }}>
+                <div style={{ gridColumn: "1 / span 4" }}></div>
+                <div style={{ padding: "10px 8px", borderLeft: headBorder, textAlign: "right", fontWeight: 700 }}>合計</div>
+                <div style={{ padding: "10px 8px", borderLeft: headBorder, textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>{formatCurrency(total)}</div>
+                <div style={{ borderLeft: headBorder }}></div>
+              </div>
+            </div>
           );
         })()}
 
-        {notes && (
-          <div style={{ marginTop: "16px", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>
-            <div style={{ display: "inline-block", background: "#f1f5f9", padding: "4px 12px", fontWeight: 500, marginBottom: "4px" }}>
-              備考
+        {/* Terms + Notes */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginTop: "16px", marginBottom: "8px" }}>
+          <div>
+            <div style={{ fontSize: "10px", letterSpacing: "0.3em", color: "#64748b", marginBottom: "6px" }}>取引条件</div>
+            <div style={{ border: "1px solid #94a3b8", fontSize: "11.5px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "72px 1fr", borderBottom: "1px solid #cbd5e1" }}>
+                <div style={{ padding: "6px 10px", background: "#f1f5f9", borderRight: "1px solid #cbd5e1" }}>納期</div>
+                <div style={{ padding: "6px 10px" }}>{QUOTE_TERMS.delivery}</div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "72px 1fr" }}>
+                <div style={{ padding: "6px 10px", background: "#f1f5f9", borderRight: "1px solid #cbd5e1" }}>支払条件</div>
+                <div style={{ padding: "6px 10px" }}>{QUOTE_TERMS.payment}</div>
+              </div>
             </div>
-            <p style={{ whiteSpace: "pre-wrap", paddingLeft: "4px" }}>{notes}</p>
           </div>
-        )}
+          <div>
+            <div style={{ fontSize: "10px", letterSpacing: "0.3em", color: "#64748b", marginBottom: "6px" }}>備考</div>
+            <div style={{ border: "1px solid #94a3b8", padding: "8px 10px", fontSize: "11.5px", whiteSpace: "pre-wrap", minHeight: "60px", lineHeight: 1.6 }}>{notes}</div>
+          </div>
+        </div>
+
+        {/* Footer credit line */}
+        <div style={{ marginTop: "20px", paddingTop: "8px", borderTop: "1px solid #e2e8f0", textAlign: "center", fontSize: "10px", color: "#64748b", letterSpacing: "0.15em" }}>
+          {defaults.companyName || "—"}
+        </div>
       </div>
       </div>
     </div>
