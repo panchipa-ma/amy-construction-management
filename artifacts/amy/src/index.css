@@ -235,12 +235,16 @@
 }
 
 @media print {
+  /* No outer @page margin — the .quote-paper itself is sized to A4
+     and provides its own internal margin. WYSIWYG. */
   @page {
     size: A4 portrait;
-    margin: 6mm 7mm;
+    margin: 0;
   }
   html, body {
     background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -255,29 +259,18 @@
   [data-pdf-hide="true"] {
     display: none !important;
   }
-  /* Generic page wrappers — strip outer paddings/margins so the document
-     starts flush against the @page margin (no extra whitespace). */
+  /* Strip the workbench wrapper so the paper sits flush against page edge. */
   .quote-workbench {
     background: white !important;
     padding: 0 !important;
     margin: 0 !important;
     min-height: 0 !important;
   }
+  /* The paper IS the page — keep its on-screen padding for WYSIWYG. */
   .quote-paper {
     box-shadow: none !important;
-    background: white !important;
     border: 0 !important;
-    padding: 0 !important;
-    margin: 0 auto !important;
-    max-width: none !important;
-  }
-  /* Tighter title block in print only */
-  .quote-paper .quote-title {
-    font-size: 28px !important;
-  }
-  .quote-paper > .text-center:first-child {
-    margin-bottom: 12px !important;
-    margin-top: 0 !important;
+    margin: 0 !important;
   }
   /* Avoid splitting an item row across pages */
   .quote-paper .grid {

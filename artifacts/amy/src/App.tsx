@@ -309,7 +309,9 @@ function ClerkProviderWithRoutes() {
         <ClerkQueryClientCacheInvalidator />
         <TooltipProvider>
           <AppRoutes />
-          <Toaster />
+          <div className="print:hidden">
+            <Toaster />
+          </div>
         </TooltipProvider>
       </QueryClientProvider>
     </ClerkProvider>
