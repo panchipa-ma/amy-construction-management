@@ -166,6 +166,17 @@ export default function VendorInvoiceNewPage() {
   const [submitting, setSubmitting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
+  // Auto-generated 請求No (display-only — not persisted server-side).
+  // Format: INV-YYYYMMDD-XXX. Stable across re-renders, regenerates when
+  // issueDate changes so the date prefix stays in sync.
+  const [invoiceNoSuffix] = useState<string>(() =>
+    String(Math.floor(100 + Math.random() * 900)),
+  );
+  const invoiceNo = useMemo(() => {
+    const datePart = (issueDate || todayISO()).replace(/-/g, "");
+    return `INV-${datePart}-${invoiceNoSuffix}`;
+  }, [issueDate, invoiceNoSuffix]);
+
   // Hydrate from profile (Clerk metadata) + per-invoice form storage on mount/profile-change.
   // Skip after a vendor-quote prefill has already populated companyName/recipient/author —
   // otherwise a Clerk user-object refresh would clobber the prefilled values.
@@ -659,129 +670,136 @@ export default function VendorInvoiceNewPage() {
         style={{
           width: "210mm",
           boxSizing: "border-box",
-          padding: "16px 18px",
+          padding: "12mm 14mm",
           background: "#ffffff",
           color: "#0f172a",
           fontFamily:
             "-apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif",
-          fontSize: "13px",
-          lineHeight: 1.5,
+          fontSize: "12px",
+          lineHeight: 1.45,
         }}
       >
         <h1
           style={{
             textAlign: "center",
-            fontSize: "24px",
+            fontSize: "26px",
             fontWeight: 700,
-            letterSpacing: "0.5em",
-            marginBottom: "24px",
+            letterSpacing: "0.6em",
+            margin: "0 0 18px 0",
           }}
         >
           請　求　書
         </h1>
+
+        {/* Header: left=recipient/subject, right=meta+issuer card */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr auto",
-            gap: "24px",
-            marginBottom: "16px",
+            gridTemplateColumns: "1fr 240px",
+            gap: "20px",
+            marginBottom: "14px",
           }}
         >
           <div>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: "4px" }}>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: "8px" }}>
               <span
                 style={{
                   fontSize: "18px",
                   fontWeight: 700,
-                  borderBottom: "1px solid #0f172a",
+                  borderBottom: "1.5px solid #0f172a",
                   paddingBottom: "2px",
-                  minWidth: "200px",
+                  minWidth: "240px",
                   display: "inline-block",
                 }}
               >
                 {defaults.recipientName || "—"}
               </span>
-              <span style={{ fontSize: "16px", fontWeight: 500, paddingBottom: "2px", marginLeft: "8px" }}>
+              <span style={{ fontSize: "14px", fontWeight: 500, paddingBottom: "2px" }}>
                 御中
               </span>
             </div>
-            <div style={{ marginTop: "12px" }}>
+            <div style={{ marginTop: "14px", fontSize: "11px", color: "#64748b" }}>
+              ご担当：
+            </div>
+            <div style={{ marginTop: "10px" }}>
               <span style={{ color: "#64748b" }}>件名：</span>
-              <span style={{ fontWeight: 500 }}>
+              <span style={{ fontWeight: 500, marginLeft: "4px" }}>
                 {project ? projectLabel(project) : ""}
               </span>
             </div>
-            <p style={{ marginTop: "12px" }}>下記の通り、ご請求申し上げます。</p>
+            <p style={{ margin: "10px 0 0 0", fontSize: "11px" }}>
+              下記の通り、ご請求申し上げます。
+            </p>
           </div>
-          <div style={{ minWidth: "240px" }}>
+          <div style={{ fontSize: "11px" }}>
+            {/* 請求No / 請求日 */}
             <div
               style={{
                 display: "grid",
                 gridTemplateColumns: "auto 1fr",
-                columnGap: "16px",
-                rowGap: "2px",
-                textAlign: "right",
+                columnGap: "10px",
+                rowGap: "3px",
               }}
             >
+              <span style={{ color: "#64748b" }}>請求No.</span>
+              <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{invoiceNo}</span>
               <span style={{ color: "#64748b" }}>請求日</span>
-              <span>{issueDate ? formatDate(issueDate) : ""}</span>
-              <span style={{ color: "#64748b" }}>支払期限</span>
-              <span>{dueDate ? formatDate(dueDate) : ""}</span>
+              <span style={{ textAlign: "right" }}>{issueDate ? formatDate(issueDate) : ""}</span>
             </div>
-            <div
-              style={{
-                marginTop: "12px",
-                paddingTop: "12px",
-                borderTop: "1px solid #e2e8f0",
-                textAlign: "left",
-              }}
-            >
-              <div style={{ fontWeight: 700 }}>{defaults.companyName || "—"}</div>
+            {/* Issuer card */}
+            <div style={{ marginTop: "12px" }}>
+              <div style={{ fontSize: "13px", fontWeight: 700, marginBottom: "4px" }}>
+                {defaults.companyName || "—"}
+              </div>
               {defaults.postalCode && (
-                <div style={{ fontSize: "11px", color: "#64748b" }}>
-                  {defaults.postalCode}
-                </div>
+                <div style={{ color: "#475569" }}>〒{defaults.postalCode}</div>
               )}
-              {defaults.address && (
-                <div style={{ fontSize: "11px" }}>{defaults.address}</div>
-              )}
+              {defaults.address && <div>{defaults.address}</div>}
               {defaults.registrationNumber && (
-                <div style={{ fontSize: "11px", color: "#64748b" }}>
-                  登録番号：{defaults.registrationNumber}
+                <div style={{ color: "#475569" }}>
+                  登録番号：T{defaults.registrationNumber.replace(/^T/i, "")}
                 </div>
               )}
-              {defaults.email && (
-                <div style={{ fontSize: "11px" }}>E-Mail：{defaults.email}</div>
-              )}
+              <div style={{ marginTop: "4px" }}>
+                {defaults.email && <div>E-Mail：{defaults.email}</div>}
+              </div>
               {defaults.authorName && (
-                <div style={{ fontSize: "11px", marginTop: "4px" }}>
-                  担当：{defaults.authorName}
-                </div>
+                <div style={{ marginTop: "4px" }}>担当：{defaults.authorName}</div>
               )}
             </div>
           </div>
         </div>
 
+        {/* 合計金額 hero + お支払期限 */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "16px",
+            justifyContent: "space-between",
             borderTop: "2px solid #0f172a",
-            borderBottom: "2px solid #0f172a",
-            padding: "8px 0",
-            marginBottom: "16px",
+            borderBottom: "1px solid #cbd5e1",
+            padding: "8px 4px",
+            marginBottom: "12px",
           }}
         >
-          <span style={{ fontWeight: 700 }}>合計金額</span>
-          <span style={{ fontSize: "20px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
-            {formatCurrency(total)}
-          </span>
-          <span style={{ fontSize: "11px", color: "#64748b" }}>（税込）</span>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
+            <span style={{ fontWeight: 700, fontSize: "13px" }}>合計金額</span>
+            <span style={{ fontSize: "22px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+              {formatCurrency(total)}
+            </span>
+            <span style={{ fontSize: "11px", color: "#64748b" }}>（税込）</span>
+          </div>
+          <div style={{ fontSize: "11px", color: "#475569" }}>
+            お支払期限：
+            <span style={{ color: "#0f172a", marginLeft: "6px" }}>
+              {dueDate ? formatDate(dueDate) : "月末日"}
+            </span>
+          </div>
         </div>
 
+        {/* Line items table — 5 cols (No / 摘要 / 数量 / 単価 / 金額) */}
         {(() => {
-          const MIN_ROWS = 10;
+          const MIN_ROWS = 17;
           const padded = items.length >= MIN_ROWS
             ? items
             : [
@@ -794,20 +812,84 @@ export default function VendorInvoiceNewPage() {
               ];
           const cellBase = {
             border: "1px solid #e2e8f0",
-            padding: "6px 8px",
+            padding: "4px 8px",
             fontVariantNumeric: "tabular-nums" as const,
+            fontSize: "11px",
+            height: "22px",
           };
           return (
-            <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "16px" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                marginBottom: "12px",
+                tableLayout: "fixed",
+              }}
+            >
+              <colgroup>
+                <col style={{ width: "36px" }} />
+                <col />
+                <col style={{ width: "60px" }} />
+                <col style={{ width: "100px" }} />
+                <col style={{ width: "110px" }} />
+              </colgroup>
               <thead>
                 <tr style={{ background: "#1f3a66", color: "#ffffff" }}>
-                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "40px", textAlign: "center", fontWeight: 500 }}>No.</th>
-                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", textAlign: "left", fontWeight: 500 }}>工事項目・摘要</th>
-                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "60px", textAlign: "center", fontWeight: 500 }}>単位</th>
-                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "60px", textAlign: "center", fontWeight: 500 }}>数量</th>
-                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "90px", textAlign: "right", fontWeight: 500 }}>単価</th>
-                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "100px", textAlign: "right", fontWeight: 500 }}>金額</th>
-                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "120px", textAlign: "left", fontWeight: 500 }}>備考</th>
+                  <th
+                    style={{
+                      border: "1px solid #1f3a66",
+                      padding: "6px 4px",
+                      textAlign: "center",
+                      fontWeight: 500,
+                      fontSize: "11px",
+                    }}
+                  >
+                    No.
+                  </th>
+                  <th
+                    style={{
+                      border: "1px solid #1f3a66",
+                      padding: "6px 8px",
+                      textAlign: "left",
+                      fontWeight: 500,
+                      fontSize: "11px",
+                    }}
+                  >
+                    摘要
+                  </th>
+                  <th
+                    style={{
+                      border: "1px solid #1f3a66",
+                      padding: "6px 4px",
+                      textAlign: "center",
+                      fontWeight: 500,
+                      fontSize: "11px",
+                    }}
+                  >
+                    数量
+                  </th>
+                  <th
+                    style={{
+                      border: "1px solid #1f3a66",
+                      padding: "6px 8px",
+                      textAlign: "center",
+                      fontWeight: 500,
+                      fontSize: "11px",
+                    }}
+                  >
+                    単価
+                  </th>
+                  <th
+                    style={{
+                      border: "1px solid #1f3a66",
+                      padding: "6px 8px",
+                      textAlign: "center",
+                      fontWeight: 500,
+                      fontSize: "11px",
+                    }}
+                  >
+                    金額
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -816,73 +898,147 @@ export default function VendorInvoiceNewPage() {
                   const amt = (it.quantity || 0) * (it.unitPrice || 0);
                   return (
                     <tr key={i} data-pdf-row="true">
-                      <td style={{ ...cellBase, textAlign: "center", color: "#64748b" }}>{has ? i + 1 : ""}</td>
-                      <td style={{ ...cellBase, textAlign: "left" }}>{has ? it.description : ""}</td>
-                      <td style={{ ...cellBase, textAlign: "center" }}>{has ? "式" : ""}</td>
-                      <td style={{ ...cellBase, textAlign: "center" }}>{has ? it.quantity : ""}</td>
-                      <td style={{ ...cellBase, textAlign: "right" }}>{has ? formatCurrency(it.unitPrice) : ""}</td>
-                      <td style={{ ...cellBase, textAlign: "right" }}>{has ? formatCurrency(amt) : ""}</td>
-                      <td style={{ ...cellBase, textAlign: "left" }}></td>
+                      <td style={{ ...cellBase, textAlign: "center", color: "#64748b" }}>
+                        {i + 1}
+                      </td>
+                      <td style={{ ...cellBase, textAlign: "left" }}>
+                        {has ? it.description : ""}
+                      </td>
+                      <td style={{ ...cellBase, textAlign: "center" }}>
+                        {has ? it.quantity : ""}
+                      </td>
+                      <td style={{ ...cellBase, textAlign: "right" }}>
+                        {has ? formatCurrency(it.unitPrice) : ""}
+                      </td>
+                      <td style={{ ...cellBase, textAlign: "right" }}>
+                        {has ? formatCurrency(amt) : ""}
+                      </td>
                     </tr>
                   );
                 })}
-                <tr>
-                  <td colSpan={4} style={{ borderLeft: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
-                  <td style={{ border: "1px solid #1f3a66", background: "#1f3a66", color: "#ffffff", padding: "6px 12px", fontWeight: 500, textAlign: "center" }}>小計</td>
-                  <td style={{ border: "1px solid #e2e8f0", padding: "6px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(subtotal)}</td>
-                  <td style={{ borderRight: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
-                </tr>
-                <tr>
-                  <td colSpan={4} style={{ borderLeft: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
-                  <td style={{ border: "1px solid #1f3a66", background: "#1f3a66", color: "#ffffff", padding: "6px 12px", fontWeight: 500, textAlign: "center" }}>消費税(10%)</td>
-                  <td style={{ border: "1px solid #e2e8f0", padding: "6px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(tax)}</td>
-                  <td style={{ borderRight: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
-                </tr>
-                <tr>
-                  <td colSpan={4} style={{ borderLeft: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
-                  <td style={{ border: "1px solid #1f3a66", background: "#1f3a66", color: "#ffffff", padding: "6px 12px", fontWeight: 700, textAlign: "center" }}>合計</td>
-                  <td style={{ border: "1px solid #e2e8f0", padding: "6px 12px", textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{formatCurrency(total)}</td>
-                  <td style={{ borderRight: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
-                </tr>
               </tbody>
             </table>
           );
         })()}
 
-        <div>
-          <div style={{ fontWeight: 500, color: "#64748b", marginBottom: "4px" }}>
-            お振込先
-          </div>
-          <div style={{ paddingLeft: "8px" }}>
-            {(defaults.bankName || defaults.branchName) && (
-              <div>
-                {defaults.bankName} {defaults.branchName}
+        {/* Bottom: bank info (left) + totals box (right) */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 280px",
+            gap: "16px",
+            alignItems: "start",
+          }}
+        >
+          <div style={{ fontSize: "11px" }}>
+            <div style={{ fontWeight: 500, color: "#64748b", marginBottom: "4px" }}>
+              お振込先
+            </div>
+            <div style={{ paddingLeft: "4px", lineHeight: 1.6 }}>
+              {(defaults.bankName || defaults.branchName) && (
+                <div>
+                  {defaults.bankName} {defaults.branchName}
+                </div>
+              )}
+              {defaults.accountType && <div>{defaults.accountType}</div>}
+              {defaults.accountNumber && <div>口座番号：{defaults.accountNumber}</div>}
+              {defaults.accountHolder && <div>{defaults.accountHolder}</div>}
+            </div>
+            {notes && (
+              <div style={{ marginTop: "8px", paddingTop: "6px", borderTop: "1px solid #e2e8f0" }}>
+                <div style={{ color: "#64748b", marginBottom: "2px" }}>備考</div>
+                <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{notes}</p>
               </div>
             )}
-            {defaults.accountType && <div>{defaults.accountType}</div>}
-            {defaults.accountNumber && (
-              <div>口座番号：{defaults.accountNumber}</div>
-            )}
-            {defaults.accountHolder && <div>{defaults.accountHolder}</div>}
           </div>
-        </div>
 
-        {notes && (
-          <div style={{ marginTop: "16px", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>
-            <div
-              style={{
-                display: "inline-block",
-                background: "#f1f5f9",
-                padding: "4px 12px",
-                fontWeight: 500,
-                marginBottom: "4px",
-              }}
-            >
-              備考
-            </div>
-            <p style={{ whiteSpace: "pre-wrap", paddingLeft: "4px" }}>{notes}</p>
-          </div>
-        )}
+          {/* Totals — navy left labels, white right values */}
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: "12px",
+            }}
+          >
+            <tbody>
+              <tr>
+                <td
+                  style={{
+                    background: "#1f3a66",
+                    color: "#ffffff",
+                    padding: "6px 12px",
+                    textAlign: "center",
+                    fontWeight: 500,
+                    width: "120px",
+                    border: "1px solid #1f3a66",
+                  }}
+                >
+                  小計
+                </td>
+                <td
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    padding: "6px 12px",
+                    textAlign: "right",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {formatCurrency(subtotal)}
+                </td>
+              </tr>
+              <tr>
+                <td
+                  style={{
+                    background: "#1f3a66",
+                    color: "#ffffff",
+                    padding: "6px 12px",
+                    textAlign: "center",
+                    fontWeight: 500,
+                    border: "1px solid #1f3a66",
+                  }}
+                >
+                  消費税(10%)
+                </td>
+                <td
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    padding: "6px 12px",
+                    textAlign: "right",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {formatCurrency(tax)}
+                </td>
+              </tr>
+              <tr>
+                <td
+                  style={{
+                    background: "#1f3a66",
+                    color: "#ffffff",
+                    padding: "8px 12px",
+                    textAlign: "center",
+                    fontWeight: 700,
+                    border: "1px solid #1f3a66",
+                  }}
+                >
+                  合計
+                </td>
+                <td
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    padding: "8px 12px",
+                    textAlign: "right",
+                    fontWeight: 700,
+                    fontSize: "14px",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {formatCurrency(total)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
       </div>
     </div>
