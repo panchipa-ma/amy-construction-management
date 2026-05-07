@@ -127,7 +127,7 @@ Page (`pages/commissions.tsx`): month picker (default = 当月) + 3 つの **ク
 
 ## Standalone pages
 
-- **工程表** (`/gantt`): 全案件を accordion で。`ProjectGantt` を再利用。Status (default 施工中・契約済) + 検索 (案件名・顧客名)。Phase dialog に 担当職人 dropdown — `project_phases.staffId` をセット。
+- **工程表** (`/gantt`): 全案件を accordion で。`ProjectGantt` を再利用。Status (default 施工中・契約済) + 検索 (案件名・顧客名)。Phase dialog に 担当職人 dropdown — `project_phases.staffId` をセット。`ProjectGantt` の CardHeader に「PDF出力」ボタン (案件単位、顧客提出用)。`isPrinting` state で印刷専用ヘッダ (案件名/顧客/号室/工期/作成日) を一時 render、timeline overflow を `visible` に切替、html2canvas-pro + jsPDF (landscape A4) で全幅キャプチャ → 高さ overflow 時は canvas を縦スライスで複数ページ。`useGetProject` で project info 取得。`windowWidth: target.scrollWidth` がフル幅キャプチャの肝。
 - **職人出面表** (`/staff-assignments`): 日別 職人×日付 matrix。`schedule_entries` + `project_phases` (with `staffId`) を merge。**Frontend で各 phase の `startDate`〜`endDate` 範囲のセルにのみ virtual entry を入れる** (範囲外は空)。Dedup by staffId+projectId+date。全案件工程スケジュールセクションは `GET /api/project-phases/overview` (date filter なし)。アサイン phase 青、未アサイン amber。Backend `getPhaseVirtualEntries` (`routes/schedule.ts`) は 90 日 cap で展開。
 - **スケジュール** (`/schedule`): 週次 職人×曜日 grid (工程表とは別 — 誰がどこで働くか)。
 
