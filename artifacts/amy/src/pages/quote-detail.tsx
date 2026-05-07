@@ -7,12 +7,15 @@ import {
   useConvertQuoteToInvoice,
   useImportQuoteToLedger,
   useGetProject,
+  useUpdateProject,
   getGetQuoteQueryKey,
   getListQuotesQueryKey,
   getListInvoicesQueryKey,
+  getListProjectsQueryKey,
   getGetProjectQueryKey,
   getGetProjectLedgerQueryKey,
   CostCategory,
+  ProjectStatus,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -106,6 +109,7 @@ export default function QuoteDetailPage() {
   const convertMut = useConvertQuoteToInvoice();
   const importMut = useImportQuoteToLedger();
   const updateMut = useUpdateQuote();
+  const updateProjectMut = useUpdateProject();
   const [askDelete, setAskDelete] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -224,13 +228,34 @@ export default function QuoteDetailPage() {
           dueDate: convertForm.dueDate || null,
         },
       });
+      // 案件を「竣工」に進めて請求済の方へ移動させる
+      try {
+        await updateProjectMut.mutateAsync({
+          id: inv.projectId,
+          data: { status: ProjectStatus.completed },
+        });
+      } catch {
+        // 補助的な更新なので失敗しても請求書作成は成功扱い
+      }
+      // 元の見積書は「請求」へ移行したので削除する
+      try {
+        await deleteMut.mutateAsync({ id });
+      } catch {
+        // 削除失敗時もそのまま続行
+      }
       await queryClient.invalidateQueries({
         queryKey: getListInvoicesQueryKey(),
       });
+      await queryClient.invalidateQueries({
+        queryKey: getListQuotesQueryKey(),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getListProjectsQueryKey(),
+      });
       await invalidateDashboard(queryClient);
-      toast({ title: "請求書を作成しました" });
+      toast({ title: "見積書を請求書へ移行しました" });
       setConvertOpen(false);
-      setLocation(`/invoices/${inv.id}`);
+      setLocation("/invoices");
     } catch (err) {
       toast({ title: apiErrorMessage(err), variant: "destructive" });
     }
