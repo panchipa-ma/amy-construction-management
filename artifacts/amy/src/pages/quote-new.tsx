@@ -330,7 +330,7 @@ export default function QuoteNewPage() {
       <form
         id="quote-form"
         onSubmit={submit}
-        className="quote-paper w-[210mm] min-h-[297mm] mx-auto px-[12mm] py-[10mm] text-[14px] text-foreground print:border-0 print:shadow-none"
+        className="quote-paper w-[210mm] min-h-[297mm] mx-auto px-[12mm] py-[10mm] text-[14px] text-foreground print:min-h-0 print:border-0 print:shadow-none"
       >
         {/* Title */}
         <div className="text-center mb-6 -mt-2">

@@ -266,11 +266,14 @@
     margin: 0 !important;
     min-height: 0 !important;
   }
-  /* The paper IS the page — keep its on-screen padding for WYSIWYG. */
+  /* The paper IS the page — keep its on-screen padding for WYSIWYG.
+     Force min-height to 0 so the paper shrinks to its actual content
+     (avoids a 1px overflow that pushes a near-empty page 2). */
   .quote-paper {
     box-shadow: none !important;
     border: 0 !important;
     margin: 0 !important;
+    min-height: 0 !important;
   }
   /* Avoid splitting an item row across pages */
   .quote-paper .grid {
