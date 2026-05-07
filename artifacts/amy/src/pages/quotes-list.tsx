@@ -98,7 +98,7 @@ export default function QuotesListPage() {
       return;
     }
     try {
-      const inv = await convertMut.mutateAsync({
+      await convertMut.mutateAsync({
         id: convertFor.id,
         data: {
           invoiceNumber: convertForm.invoiceNumber,
@@ -106,21 +106,7 @@ export default function QuotesListPage() {
           dueDate: convertForm.dueDate || null,
         },
       });
-      // 請求書を作成したら案件を「竣工」に進めて請求済の方へ移動させる
-      try {
-        await updateProjectMut.mutateAsync({
-          id: inv.projectId,
-          data: { status: ProjectStatus.completed },
-        });
-      } catch {
-        // 案件のステータス更新は補助的なものなので、失敗しても請求書作成自体は成功扱い
-      }
-      // 元の見積書は「請求」へ移行したので、見積一覧から削除して二重表示を避ける
-      try {
-        await deleteMut.mutateAsync({ id: convertFor.id });
-      } catch {
-        // 削除失敗時も請求書作成・案件更新は成功しているのでそのまま続行
-      }
+      // バックエンド側で案件の竣工化・元見積書の削除まで一括で実施されている。
       await queryClient.invalidateQueries({
         queryKey: getListInvoicesQueryKey(),
       });

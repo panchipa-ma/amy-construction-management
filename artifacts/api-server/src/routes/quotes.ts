@@ -233,6 +233,12 @@ router.post(
         items: invoiceItems,
       })
       .returning();
+    // 「請求」へ移行: 案件を竣工に進めて、元の見積書を削除する
+    await db
+      .update(projectsTable)
+      .set({ status: "completed" })
+      .where(eq(projectsTable.id, quote.projectId));
+    await db.delete(quotesTable).where(eq(quotesTable.id, quote.id));
     const { subtotal, tax, total } = computeTotals(invoiceItems);
     res.json(
       ConvertQuoteToInvoiceResponse.parse({

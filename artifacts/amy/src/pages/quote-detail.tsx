@@ -220,7 +220,7 @@ export default function QuoteDetailPage() {
       return;
     }
     try {
-      const inv = await convertMut.mutateAsync({
+      await convertMut.mutateAsync({
         id,
         data: {
           invoiceNumber: convertForm.invoiceNumber,
@@ -228,21 +228,7 @@ export default function QuoteDetailPage() {
           dueDate: convertForm.dueDate || null,
         },
       });
-      // 案件を「竣工」に進めて請求済の方へ移動させる
-      try {
-        await updateProjectMut.mutateAsync({
-          id: inv.projectId,
-          data: { status: ProjectStatus.completed },
-        });
-      } catch {
-        // 補助的な更新なので失敗しても請求書作成は成功扱い
-      }
-      // 元の見積書は「請求」へ移行したので削除する
-      try {
-        await deleteMut.mutateAsync({ id });
-      } catch {
-        // 削除失敗時もそのまま続行
-      }
+      // バックエンド側で案件の竣工化・元見積書の削除まで一括で実施されている。
       await queryClient.invalidateQueries({
         queryKey: getListInvoicesQueryKey(),
       });
