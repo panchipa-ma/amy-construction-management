@@ -1,5 +1,13 @@
 import { Link, useLocation } from "wouter";
 import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart } from "lucide-react";
+import { useRole, isPathAllowed, type Role } from "@/lib/role";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const navItems = [
   { name: "ダッシュボード", href: "/", icon: LayoutDashboard },
@@ -17,10 +25,12 @@ const navItems = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const { role, setRole } = useRole();
+  const visibleNav = navItems.filter((item) => isPathAllowed(role, item.href));
 
   return (
     <div className="min-h-screen flex bg-muted/30 print:block print:bg-white">
-      <aside className="w-64 border-r bg-sidebar flex-shrink-0 flex flex-col print:hidden">
+      <aside className="w-64 border-r bg-sidebar flex-shrink-0 flex flex-col print:hidden sticky top-0 h-screen self-start">
         <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg text-sidebar-foreground">
             <span className="bg-primary text-primary-foreground w-8 h-8 rounded-md flex items-center justify-center">A</span>
@@ -28,7 +38,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
         <nav className="flex-1 py-4 px-3 space-y-1">
-          {navItems.map((item) => {
+          {visibleNav.map((item) => {
             const isActive = item.href === "/" ? location === "/" : location.startsWith(item.href);
             return (
               <Link key={item.href} href={item.href}>
@@ -46,6 +56,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+        <div className="px-3 py-3 border-t border-sidebar-border">
+          <div className="text-[11px] text-sidebar-foreground/60 mb-1.5 px-1">
+            権限
+          </div>
+          <Select
+            value={role}
+            onValueChange={(v) => setRole(v as Role)}
+          >
+            <SelectTrigger className="bg-sidebar-accent/30 border-sidebar-border text-sidebar-foreground h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="internal">社内（全機能）</SelectItem>
+              <SelectItem value="external">社外（職人請求書・出面表のみ）</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </aside>
       <main className="flex-1 flex flex-col min-w-0">
         <div className="flex-1 p-8">

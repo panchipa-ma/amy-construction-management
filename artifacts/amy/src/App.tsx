@@ -1,9 +1,10 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { queryClient } from "@/lib/queryClient";
 import { AppShell } from "@/components/app-shell";
+import { RoleProvider, useRole, isPathAllowed } from "@/lib/role";
 import NotFound from "@/pages/not-found";
 import DashboardPage from "@/pages/dashboard";
 import ProjectsListPage from "@/pages/projects-list";
@@ -23,6 +24,15 @@ import ReceiptsPage from "@/pages/receipts";
 import LedgerPage from "@/pages/ledger";
 import StaffAssignmentsPage from "@/pages/staff-assignments";
 import GanttPage from "@/pages/gantt";
+
+function RoleGuard() {
+  const { role } = useRole();
+  const [location] = useLocation();
+  if (!isPathAllowed(role, location)) {
+    return <Redirect to="/vendor-invoices" />;
+  }
+  return null;
+}
 
 function Router() {
   return (
@@ -54,11 +64,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <AppShell>
-            <Router />
-          </AppShell>
-        </WouterRouter>
+        <RoleProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <AppShell>
+              <RoleGuard />
+              <Router />
+            </AppShell>
+          </WouterRouter>
+        </RoleProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

@@ -6,6 +6,14 @@ A Japanese interior contractor (内装屋) business management web app. The hero
 
 UI is entirely in Japanese. No authentication — single-tenant tool.
 
+## 権限分け (Role-based UI gating)
+
+Client-side role switching only (no server-side enforcement — single-tenant tool). `lib/role.tsx` exposes `RoleProvider` + `useRole()` and stores the active role in `localStorage` key `amy.role.v1`. Two roles:
+- `internal` (社内) — 全機能
+- `external` (社外) — 「職人請求書」 (`/vendor-invoices*`) と 「職人 出面表」 (`/staff-assignments`) のみ
+
+Sidebar in `app-shell.tsx` filters nav items via `isPathAllowed(role, href)` and renders a 権限 Select at the bottom. `RoleGuard` in `App.tsx` redirects external users to `/vendor-invoices` if they navigate to a restricted path. Sidebar is `sticky top-0 h-screen` so the role selector stays visible on long pages.
+
 ## Architecture
 
 pnpm monorepo with TypeScript project references.
