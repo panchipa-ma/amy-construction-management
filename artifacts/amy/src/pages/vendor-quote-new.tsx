@@ -201,7 +201,8 @@ export default function VendorQuoteNewPage() {
       let remaining = imgH;
       pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
       remaining -= pageH;
-      while (remaining > 0) {
+      // 1mm tolerance avoids spurious extra blank pages from rounding.
+      while (remaining > 1) {
         pdf.addPage();
         position -= pageH;
         pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
@@ -527,7 +528,6 @@ export default function VendorQuoteNewPage() {
         ref={printRef}
         style={{
           width: "210mm",
-          minHeight: "297mm",
           boxSizing: "border-box",
           padding: "32px",
           background: "#ffffff",

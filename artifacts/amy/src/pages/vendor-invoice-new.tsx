@@ -308,8 +308,9 @@ export default function VendorInvoiceNewPage() {
       // First page
       pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
       remaining -= pageH;
-      // Additional pages if content longer than one page
-      while (remaining > 0) {
+      // Additional pages only if content meaningfully exceeds one page.
+      // The 1mm tolerance avoids spurious extra blank pages from rounding.
+      while (remaining > 1) {
         pdf.addPage();
         position -= pageH;
         pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
@@ -656,7 +657,6 @@ export default function VendorInvoiceNewPage() {
         ref={printRef}
         style={{
           width: "210mm",
-          minHeight: "297mm",
           boxSizing: "border-box",
           padding: "32px",
           background: "#ffffff",
