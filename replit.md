@@ -39,7 +39,9 @@ Keys auto-provisioned (`CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `VITE_CLERK_
 
 **Tailwind v4 gotcha**: `@layer theme, base, clerk, components, utilities;` BEFORE `@import 'tailwindcss';` in `src/index.css`, and `tailwindcss({ optimize: false })` in `vite.config.ts`. Otherwise Clerk renders fine in dev but breaks in prod.
 
-**Backend** (`artifacts/api-server/src/app.ts`): `clerkProxyMiddleware` at `/api/__clerk` BEFORE body parsers (prod only). `clerkMiddleware()` from `@clerk/express` after CORS+json. `routes/index.ts` mounts `requireAuth` (checks `getAuth(req).userId`) AFTER `healthRouter` — so `/api/health` is public, every other `/api/*` requires sign-in. Web cookies authenticate browser requests automatically.
+**Backend** (`artifacts/api-server/src/app.ts`): `clerkProxyMiddleware` at `/api/__clerk` BEFORE body parsers (prod only — Clerk dev tenants reject proxied requests). `clerkMiddleware()` from `@clerk/express` after CORS+json. `routes/index.ts` mounts `requireAuth` (checks `getAuth(req).userId`) AFTER `healthRouter` — so `/api/health` is public, every other `/api/*` requires sign-in. `clerkMiddleware` accepts both Clerk session cookies AND `Authorization: Bearer <jwt>` headers — useful for environments where third-party cookies are blocked.
+
+**iframe / cross-site cookie workaround**: `App.tsx` `<ClerkBearerTokenBridge>` (rendered inside `<ClerkProvider>`/`<QueryClientProvider>`) calls `useAuth().getToken()` and registers it via `setAuthTokenGetter()` from `@workspace/api-client-react`. `lib/api-client-react/src/custom-fetch.ts` `customFetch` then attaches `Authorization: Bearer <token>` to every API request. This makes the app work inside the Replit workspace iframe on iOS Safari / iOS Chrome where Clerk's session cookie would otherwise be blocked by ITP. Cookies still work where the browser allows them; the bearer header is purely additive.
 
 ## プロフィール (per-user, Clerk unsafeMetadata)
 
