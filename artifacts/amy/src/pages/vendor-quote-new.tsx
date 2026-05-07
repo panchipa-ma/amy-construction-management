@@ -600,14 +600,6 @@ export default function VendorQuoteNewPage() {
           >
             御見積書
           </h1>
-          <div
-            style={{
-              width: "80px",
-              height: "2px",
-              background: "#1f3a66",
-              margin: "10px auto 0",
-            }}
-          />
         </div>
 
         {/* Customer + Meta */}
