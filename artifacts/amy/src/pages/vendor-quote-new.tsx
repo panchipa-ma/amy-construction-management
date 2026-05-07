@@ -259,19 +259,19 @@ export default function VendorQuoteNewPage() {
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      const imgW = pageW;
-      const imgH = (canvas.height * imgW) / canvas.width;
-      let position = 0;
-      let remaining = imgH;
-      pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
-      remaining -= pageH;
-      // 1mm tolerance avoids spurious extra blank pages from rounding.
-      while (remaining > 1) {
-        pdf.addPage();
-        position -= pageH;
-        pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
-        remaining -= pageH;
+      // Always render on a SINGLE page: if the captured image is taller than
+      // A4, scale it down proportionally so it fits — never split the bitmap
+      // (which would tear text in half). The on-screen preview is sized to
+      // one A4 page, so the saved PDF should match.
+      let imgW = pageW;
+      let imgH = (canvas.height * imgW) / canvas.width;
+      if (imgH > pageH) {
+        const scale = pageH / imgH;
+        imgH = pageH;
+        imgW = imgW * scale;
       }
+      const offsetX = (pageW - imgW) / 2;
+      pdf.addImage(imgData, "JPEG", offsetX, 0, imgW, imgH);
       const pdfBlob = pdf.output("blob");
 
       const fileName = `見積書_${defaults.companyName || "vendor"}_${issueDate}.pdf`;
