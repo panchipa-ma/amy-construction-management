@@ -51,7 +51,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
-import { EditableText, EditableNumber } from "@/components/editable-cell";
+import { EditableText } from "@/components/editable-cell";
 import { Plus, Trash2, Briefcase } from "lucide-react";
 import { apiErrorMessage } from "@/lib/api-error";
 
@@ -62,7 +62,6 @@ const empty = {
   role: "営業",
   phone: "",
   email: "",
-  otherSalesBonusRate: "",
   notes: "",
 };
 
@@ -90,7 +89,6 @@ export default function EmployeesPage() {
       role: string;
       phone: string | null;
       email: string | null;
-      otherSalesBonusRate: number | null;
       notes: string | null;
     }>,
   ) => {
@@ -102,10 +100,6 @@ export default function EmployeesPage() {
           role: patch.role ?? e.role,
           phone: patch.phone !== undefined ? patch.phone : (e.phone ?? null),
           email: patch.email !== undefined ? patch.email : (e.email ?? null),
-          otherSalesBonusRate:
-            patch.otherSalesBonusRate !== undefined
-              ? patch.otherSalesBonusRate
-              : (e.otherSalesBonusRate ?? null),
           notes: patch.notes !== undefined ? patch.notes : (e.notes ?? null),
         },
       });
@@ -128,9 +122,6 @@ export default function EmployeesPage() {
       role: form.role,
       phone: form.phone || null,
       email: form.email || null,
-      otherSalesBonusRate: form.otherSalesBonusRate
-        ? Number(form.otherSalesBonusRate)
-        : null,
       notes: form.notes || null,
     };
     try {
@@ -204,7 +195,6 @@ export default function EmployeesPage() {
                   <TableHead>役割</TableHead>
                   <TableHead>電話</TableHead>
                   <TableHead>メール</TableHead>
-                  <TableHead className="text-right">他人売上ボーナス %</TableHead>
                   <TableHead>備考</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
@@ -241,18 +231,6 @@ export default function EmployeesPage() {
                         onSave={(v) => inlineUpdate(e, { email: v || null })}
                         placeholder="メール"
                       />
-                    </TableCell>
-                    <TableCell className="text-right p-1 tabular-nums">
-                      <div className="flex items-center justify-end gap-1">
-                        <EditableNumber
-                          value={e.otherSalesBonusRate ?? 0}
-                          onSave={(v) =>
-                            inlineUpdate(e, { otherSalesBonusRate: v || null })
-                          }
-                          placeholder="0"
-                        />
-                        <span className="text-muted-foreground text-xs">%</span>
-                      </div>
                     </TableCell>
                     <TableCell className="p-1">
                       <EditableText
@@ -350,22 +328,6 @@ export default function EmployeesPage() {
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
-              </div>
-              <div className="col-span-2">
-                <Label htmlFor="ebonus">他人売上ボーナス率 (%)</Label>
-                <Input
-                  id="ebonus"
-                  type="number"
-                  step="0.1"
-                  placeholder="例: 亘 → 2.5 (空欄なら対象外)"
-                  value={form.otherSalesBonusRate}
-                  onChange={(e) =>
-                    setForm({ ...form, otherSalesBonusRate: e.target.value })
-                  }
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  自分以外の営業が獲得した売上から受け取る歩合率
-                </p>
               </div>
               <div className="col-span-2">
                 <Label htmlFor="enotes">備考</Label>

@@ -68,6 +68,7 @@ async function serializeProject(p: ProjectRow) {
           ? n(customer.defaultProfitRate)
           : 20,
     supervisorCommissionRate: n(p.supervisorCommissionRate),
+    otherSalesBonusRecipient: p.otherSalesBonusRecipient,
     otherSalesBonusRate:
       p.otherSalesBonusRate == null ? null : n(p.otherSalesBonusRate),
     salesRep: p.salesRep,
@@ -132,6 +133,7 @@ router.post("/projects", async (req, res): Promise<void> => {
         parsed.data.supervisorCommissionRate == null
           ? "30"
           : String(parsed.data.supervisorCommissionRate),
+      otherSalesBonusRecipient: parsed.data.otherSalesBonusRecipient ?? null,
       otherSalesBonusRate:
         parsed.data.otherSalesBonusRate == null
           ? null
@@ -194,6 +196,10 @@ router.patch("/projects/:id", async (req, res): Promise<void> => {
       parsed.data.otherSalesBonusRate == null
         ? null
         : String(parsed.data.otherSalesBonusRate);
+  }
+  if ("otherSalesBonusRecipient" in parsed.data) {
+    data.otherSalesBonusRecipient =
+      parsed.data.otherSalesBonusRecipient || null;
   }
   if ("startDate" in parsed.data) data.startDate = isoDate(parsed.data.startDate);
   if ("endDate" in parsed.data) data.endDate = isoDate(parsed.data.endDate);

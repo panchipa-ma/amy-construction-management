@@ -58,6 +58,7 @@ export default function ProjectNewPage() {
     standardProfitRate: "20",
     salesCommissionRate: "5",
     supervisorCommissionRate: "30",
+    otherSalesBonusRecipient: "",
     otherSalesBonusRate: "",
     salesRep: "",
     siteSupervisor: "",
@@ -86,6 +87,7 @@ export default function ProjectNewPage() {
           salesCommissionRate: Number(form.salesCommissionRate) || 5,
           supervisorCommissionRate:
             Number(form.supervisorCommissionRate) || 30,
+          otherSalesBonusRecipient: form.otherSalesBonusRecipient || null,
           otherSalesBonusRate:
             form.otherSalesBonusRate === ""
               ? null
@@ -364,9 +366,34 @@ export default function ProjectNewPage() {
                   顧客の規定値が自動入力されます (顧客マスタで変更可)
                 </p>
               </div>
-              <div className="col-span-2">
+              <div>
+                <Label htmlFor="otherSalesBonusRecipient">
+                  他人売上ボーナス 受取人
+                </Label>
+                <Input
+                  id="otherSalesBonusRecipient"
+                  list="bonusRecipientList"
+                  value={form.otherSalesBonusRecipient}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      otherSalesBonusRecipient: e.target.value,
+                    })
+                  }
+                  placeholder="例: 亘 (空欄ならボーナスなし)"
+                />
+                <datalist id="bonusRecipientList">
+                  {(employeesQ.data ?? []).map((e) => (
+                    <option key={e.id} value={e.name} />
+                  ))}
+                </datalist>
+                <p className="text-xs text-muted-foreground mt-1">
+                  自分の売上の一部を分ける相手を社員から選択
+                </p>
+              </div>
+              <div>
                 <Label htmlFor="otherSalesBonusRate">
-                  他人売上ボーナス率 (%) ※この案件のみオーバーライド
+                  他人売上ボーナス率 (%)
                 </Label>
                 <Input
                   id="otherSalesBonusRate"
@@ -381,10 +408,11 @@ export default function ProjectNewPage() {
                       otherSalesBonusRate: e.target.value,
                     })
                   }
-                  placeholder="空欄なら職人マスタの率 (例: 亘 2.5%) を使用"
+                  placeholder="例: 2.5"
+                  disabled={!form.otherSalesBonusRecipient}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  通常は空欄でOK。例外的にこの案件だけ別の率にしたい場合のみ入力 (0 でこの案件は対象外)
+                  営業歩合からこの率分を差し引いて受取人へ渡す
                 </p>
               </div>
               <div className="col-span-2">

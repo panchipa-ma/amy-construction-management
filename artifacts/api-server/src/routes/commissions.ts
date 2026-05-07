@@ -165,11 +165,8 @@ router.get("/commissions", async (req, res): Promise<void> => {
     );
   }
 
-  // 社員マスタ (営業/現場監督/事務) — 他人売上ボーナス対象者と人物マッチ用
+  // 社員マスタ (営業/現場監督/事務) — 人物マッチ用
   const allEmployees = await db.select().from(employeesTable);
-  const bonusEmployees = allEmployees.filter(
-    (e) => e.otherSalesBonusRate != null && n(e.otherSalesBonusRate) > 0,
-  );
   // 職人マスタは表示用フォールバック (人物名が社員になければ職人を見る)
   const allStaff = await db.select().from(staffTable);
 
@@ -205,23 +202,21 @@ router.get("/commissions", async (req, res): Promise<void> => {
 
   let totalInvoiceAmount = 0;
 
-  // 案件ごとの「他人に渡る他人売上ボーナス率合計」を先に計算する。
-  // エディ (営業歩合 7.5%) の案件で 亘 (2.5%) が他人売上ボーナス対象なら、
+  // 案件ごとに「他人売上ボーナスの受取人」と「率」が直接設定される。
+  // エディ (営業歩合 7.5%) の案件で 亘を受取人 / 2.5% に設定 →
   // エディの実効営業歩合率は 7.5% - 2.5% = 5%。亘が 2.5% を別途受け取る。
   // 営業歩合の支払い総額は変わらず、内訳だけが変わる。
-  function bonusRateTakenFromSalesRep(project: typeof projects[number]): number {
+  function bonusForProject(
+    project: typeof projects[number],
+  ): { recipient: string; rate: number } | null {
+    const recipient = project.otherSalesBonusRecipient?.trim();
+    if (!recipient) return null;
+    const rate =
+      project.otherSalesBonusRate == null ? 0 : n(project.otherSalesBonusRate);
+    if (rate <= 0) return null;
     const salesRep = project.salesRep?.trim() || null;
-    let sum = 0;
-    for (const emp of bonusEmployees) {
-      const name = emp.name.trim();
-      if (salesRep === name) continue; // 自分の売上はボーナス対象外
-      const rate =
-        project.otherSalesBonusRate != null
-          ? n(project.otherSalesBonusRate)
-          : n(emp.otherSalesBonusRate);
-      if (rate > 0) sum += rate;
-    }
-    return sum;
+    if (salesRep && salesRep === recipient) return null; // 自分には渡さない
+    return { recipient, rate };
   }
 
   // 1) 営業歩合 (請求書ごと)
@@ -237,7 +232,8 @@ router.get("/commissions", async (req, res): Promise<void> => {
 
     if (salesRep && total > 0) {
       const rate = n(project.salesCommissionRate);
-      const bonusOut = bonusRateTakenFromSalesRep(project);
+      const bonus = bonusForProject(project);
+      const bonusOut = bonus?.rate ?? 0;
       const effectiveRate = Math.max(0, rate - bonusOut);
       const amount = Math.round((total * effectiveRate) / 100);
       if (amount > 0) {
@@ -320,47 +316,35 @@ router.get("/commissions", async (req, res): Promise<void> => {
   }
 
   // 3) 他人売上ボーナス (亘ルール)
-  // 案件ごとに otherSalesBonusRate を上書き可能。NULL なら社員マスタのデフォルト率。
-  for (const emp of bonusEmployees) {
-    const defaultRate = n(emp.otherSalesBonusRate);
-    const name = emp.name.trim();
-    for (const inv of monthInvoices) {
-      const project = projectMap.get(inv.projectId);
-      if (!project) continue;
-      const salesRep = project.salesRep?.trim() || null;
-      // 自分が獲得した売上は対象外
-      if (salesRep === name) continue;
-      const items = (inv.items ?? []) as LineItemJson[];
-      const { total } = computeTotals(items);
-      if (total <= 0) continue;
-      // 案件側に率が指定されていればそちらを優先 (0 を含む — 0 はその案件で対象外を意味する)
-      const rate =
-        project.otherSalesBonusRate != null
-          ? n(project.otherSalesBonusRate)
-          : defaultRate;
-      if (rate <= 0) continue;
-      const amount = Math.round((total * rate) / 100);
-      if (amount <= 0) continue;
-      const p = getPerson(name);
-      p.otherSalesBonus += amount;
-      p.lines.push({
-        invoiceId: inv.id,
-        invoiceNumber: inv.invoiceNumber,
-        projectId: project.id,
-        projectName: project.name,
-        salesRep,
-        siteSupervisor: project.siteSupervisor?.trim() || null,
-        sentAt: isoDate(inv.sentAt)!,
-        invoiceTotal: total,
-        kind: "other_sales_bonus",
-        amount,
-        rate,
-        baseAmount: total,
-        note: salesRep
-          ? `${salesRep} 獲得分${project.otherSalesBonusRate != null ? " (案件率)" : ""}`
-          : "担当営業未設定",
-      });
-    }
+  // 案件ごとに recipient + rate が指定されていれば、その案件の各請求書から計上する。
+  for (const inv of monthInvoices) {
+    const project = projectMap.get(inv.projectId);
+    if (!project) continue;
+    const bonus = bonusForProject(project);
+    if (!bonus) continue;
+    const items = (inv.items ?? []) as LineItemJson[];
+    const { total } = computeTotals(items);
+    if (total <= 0) continue;
+    const amount = Math.round((total * bonus.rate) / 100);
+    if (amount <= 0) continue;
+    const salesRep = project.salesRep?.trim() || null;
+    const p = getPerson(bonus.recipient);
+    p.otherSalesBonus += amount;
+    p.lines.push({
+      invoiceId: inv.id,
+      invoiceNumber: inv.invoiceNumber,
+      projectId: project.id,
+      projectName: project.name,
+      salesRep,
+      siteSupervisor: project.siteSupervisor?.trim() || null,
+      sentAt: isoDate(inv.sentAt)!,
+      invoiceTotal: total,
+      kind: "other_sales_bonus",
+      amount,
+      rate: bonus.rate,
+      baseAmount: total,
+      note: salesRep ? `${salesRep} 獲得分から ${bonus.rate}%` : `${bonus.rate}%`,
+    });
   }
 
   const peopleArr = [...people.values()]

@@ -13,7 +13,7 @@ export interface Employee {
   role: string;
   phone?: string | null;
   email?: string | null;
-  /** 他人売上ボーナス率 (%) — 例: 亘=2.5 */
+  /** (レガシー / 未使用) */
   otherSalesBonusRate?: number | null;
   notes?: string | null;
   createdAt: Date;

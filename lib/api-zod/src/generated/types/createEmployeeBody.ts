@@ -11,6 +11,5 @@ export interface CreateEmployeeBody {
   role: string;
   phone?: string | null;
   email?: string | null;
-  otherSalesBonusRate?: number | null;
   notes?: string | null;
 }

@@ -32,7 +32,9 @@ export interface Project {
   standardProfitRate?: number;
   /** 現場監督歩合 (%, 規定超過粗利に対する配分率) */
   supervisorCommissionRate?: number;
-  /** 他人売上ボーナス率 (%, この案件のオーバーライド)。NULL時は職人マスタの率を使用 */
+  /** 他人売上ボーナスの受取人 (社員名)。空欄なら対象外 */
+  otherSalesBonusRecipient?: string | null;
+  /** 他人売上ボーナス率 (%) — 受取人が指定されているときのみ有効 */
   otherSalesBonusRate?: number | null;
   /** 担当営業 */
   salesRep?: string | null;

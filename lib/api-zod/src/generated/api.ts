@@ -143,12 +143,14 @@ export const ListProjectsResponseItem = zod.object({
     .number()
     .optional()
     .describe("現場監督歩合 (%, 規定超過粗利に対する配分率)"),
+  otherSalesBonusRecipient: zod
+    .string()
+    .nullish()
+    .describe("他人売上ボーナスの受取人 (社員名)。空欄なら対象外"),
   otherSalesBonusRate: zod
     .number()
     .nullish()
-    .describe(
-      "他人売上ボーナス率 (%, この案件のオーバーライド)。NULL時は職人マスタの率を使用",
-    ),
+    .describe("他人売上ボーナス率 (%) — 受取人が指定されているときのみ有効"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -175,6 +177,7 @@ export const CreateProjectBody = zod.object({
   salesCommissionRate: zod.number().nullish(),
   standardProfitRate: zod.number().nullish(),
   supervisorCommissionRate: zod.number().nullish(),
+  otherSalesBonusRecipient: zod.string().nullish(),
   otherSalesBonusRate: zod.number().nullish(),
   salesRep: zod.string().nullish(),
   siteSupervisor: zod.string().nullish(),
@@ -216,12 +219,14 @@ export const CreateProjectResponse = zod.object({
     .number()
     .optional()
     .describe("現場監督歩合 (%, 規定超過粗利に対する配分率)"),
+  otherSalesBonusRecipient: zod
+    .string()
+    .nullish()
+    .describe("他人売上ボーナスの受取人 (社員名)。空欄なら対象外"),
   otherSalesBonusRate: zod
     .number()
     .nullish()
-    .describe(
-      "他人売上ボーナス率 (%, この案件のオーバーライド)。NULL時は職人マスタの率を使用",
-    ),
+    .describe("他人売上ボーナス率 (%) — 受取人が指定されているときのみ有効"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -267,12 +272,14 @@ export const GetProjectResponse = zod.object({
     .number()
     .optional()
     .describe("現場監督歩合 (%, 規定超過粗利に対する配分率)"),
+  otherSalesBonusRecipient: zod
+    .string()
+    .nullish()
+    .describe("他人売上ボーナスの受取人 (社員名)。空欄なら対象外"),
   otherSalesBonusRate: zod
     .number()
     .nullish()
-    .describe(
-      "他人売上ボーナス率 (%, この案件のオーバーライド)。NULL時は職人マスタの率を使用",
-    ),
+    .describe("他人売上ボーナス率 (%) — 受取人が指定されているときのみ有効"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -298,6 +305,7 @@ export const UpdateProjectBody = zod.object({
   salesCommissionRate: zod.number().nullish(),
   standardProfitRate: zod.number().nullish(),
   supervisorCommissionRate: zod.number().nullish(),
+  otherSalesBonusRecipient: zod.string().nullish(),
   otherSalesBonusRate: zod.number().nullish(),
   salesRep: zod.string().nullish(),
   siteSupervisor: zod.string().nullish(),
@@ -339,12 +347,14 @@ export const UpdateProjectResponse = zod.object({
     .number()
     .optional()
     .describe("現場監督歩合 (%, 規定超過粗利に対する配分率)"),
+  otherSalesBonusRecipient: zod
+    .string()
+    .nullish()
+    .describe("他人売上ボーナスの受取人 (社員名)。空欄なら対象外"),
   otherSalesBonusRate: zod
     .number()
     .nullish()
-    .describe(
-      "他人売上ボーナス率 (%, この案件のオーバーライド)。NULL時は職人マスタの率を使用",
-    ),
+    .describe("他人売上ボーナス率 (%) — 受取人が指定されているときのみ有効"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -568,10 +578,7 @@ export const ListEmployeesResponseItem = zod.object({
   role: zod.string().describe("営業 \/ 現場監督 \/ 事務 (自由入力可)"),
   phone: zod.string().nullish(),
   email: zod.string().nullish(),
-  otherSalesBonusRate: zod
-    .number()
-    .nullish()
-    .describe("他人売上ボーナス率 (%) — 例: 亘=2.5"),
+  otherSalesBonusRate: zod.number().nullish().describe("(レガシー \/ 未使用)"),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -582,7 +589,6 @@ export const CreateEmployeeBody = zod.object({
   role: zod.string(),
   phone: zod.string().nullish(),
   email: zod.string().nullish(),
-  otherSalesBonusRate: zod.number().nullish(),
   notes: zod.string().nullish(),
 });
 
@@ -592,10 +598,7 @@ export const CreateEmployeeResponse = zod.object({
   role: zod.string().describe("営業 \/ 現場監督 \/ 事務 (自由入力可)"),
   phone: zod.string().nullish(),
   email: zod.string().nullish(),
-  otherSalesBonusRate: zod
-    .number()
-    .nullish()
-    .describe("他人売上ボーナス率 (%) — 例: 亘=2.5"),
+  otherSalesBonusRate: zod.number().nullish().describe("(レガシー \/ 未使用)"),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
@@ -609,7 +612,6 @@ export const UpdateEmployeeBody = zod.object({
   role: zod.string(),
   phone: zod.string().nullish(),
   email: zod.string().nullish(),
-  otherSalesBonusRate: zod.number().nullish(),
   notes: zod.string().nullish(),
 });
 
@@ -619,10 +621,7 @@ export const UpdateEmployeeResponse = zod.object({
   role: zod.string().describe("営業 \/ 現場監督 \/ 事務 (自由入力可)"),
   phone: zod.string().nullish(),
   email: zod.string().nullish(),
-  otherSalesBonusRate: zod
-    .number()
-    .nullish()
-    .describe("他人売上ボーナス率 (%) — 例: 亘=2.5"),
+  otherSalesBonusRate: zod.number().nullish().describe("(レガシー \/ 未使用)"),
   notes: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });

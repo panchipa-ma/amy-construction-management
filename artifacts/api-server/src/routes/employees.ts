@@ -42,14 +42,7 @@ router.post("/employees", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const data = {
-    ...parsed.data,
-    otherSalesBonusRate:
-      parsed.data.otherSalesBonusRate == null
-        ? null
-        : String(parsed.data.otherSalesBonusRate),
-  };
-  const [row] = await db.insert(employeesTable).values(data).returning();
+  const [row] = await db.insert(employeesTable).values(parsed.data).returning();
   res.json(CreateEmployeeResponse.parse(serialize(row)));
 });
 
@@ -64,16 +57,9 @@ router.patch("/employees/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const data: Record<string, unknown> = { ...parsed.data };
-  if ("otherSalesBonusRate" in parsed.data) {
-    data.otherSalesBonusRate =
-      parsed.data.otherSalesBonusRate == null
-        ? null
-        : String(parsed.data.otherSalesBonusRate);
-  }
   const [row] = await db
     .update(employeesTable)
-    .set(data)
+    .set(parsed.data)
     .where(eq(employeesTable.id, params.data.id))
     .returning();
   if (!row) {

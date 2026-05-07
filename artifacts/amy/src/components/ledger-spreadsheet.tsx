@@ -64,6 +64,7 @@ type Project = {
   salesCommissionRate?: number | null;
   standardProfitRate?: number | null;
   supervisorCommissionRate?: number | null;
+  otherSalesBonusRecipient?: string | null;
   otherSalesBonusRate?: number | null;
   salesRep?: string | null;
   siteSupervisor?: string | null;
@@ -94,6 +95,7 @@ export type ProjectPatch = Partial<{
   salesCommissionRate: number | null;
   standardProfitRate: number | null;
   supervisorCommissionRate: number | null;
+  otherSalesBonusRecipient: string | null;
   otherSalesBonusRate: number | null;
   salesRep: string | null;
   siteSupervisor: string | null;
@@ -285,10 +287,22 @@ export function LedgerSpreadsheet({
                 </td>
               </tr>
               <tr>
-                <th>他人売上ボーナス率</th>
-                <td className="tabular-nums" colSpan={3}>
+                <th>他人売上ボーナス</th>
+                <td colSpan={3}>
                   {editable ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground">受取人:</span>
+                      <EditableText
+                        value={project.otherSalesBonusRecipient ?? ""}
+                        onSave={(v) =>
+                          onProjectUpdate!({
+                            otherSalesBonusRecipient: v || null,
+                          })
+                        }
+                        placeholder="例: 亘 (空欄でボーナスなし)"
+                        inputClassName="max-w-32"
+                      />
+                      <span className="text-xs text-muted-foreground ml-2">率:</span>
                       <EditableNumber
                         value={project.otherSalesBonusRate ?? 0}
                         onSave={(v) =>
@@ -299,15 +313,13 @@ export function LedgerSpreadsheet({
                       />
                       <span className="text-muted-foreground">%</span>
                       <span className="text-xs text-muted-foreground">
-                        {project.otherSalesBonusRate == null
-                          ? "(空欄: 職人マスタの率を使用 — 例: 亘 2.5%)"
-                          : "(この案件のみオーバーライド / 0 でこの案件は対象外)"}
+                        (営業歩合から差し引かれます)
                       </span>
                     </div>
-                  ) : project.otherSalesBonusRate != null ? (
-                    `${project.otherSalesBonusRate.toFixed(1)}% (案件オーバーライド)`
+                  ) : project.otherSalesBonusRecipient && project.otherSalesBonusRate ? (
+                    `${project.otherSalesBonusRecipient} へ ${project.otherSalesBonusRate.toFixed(1)}%`
                   ) : (
-                    "職人マスタ既定値"
+                    "—"
                   )}
                 </td>
               </tr>
