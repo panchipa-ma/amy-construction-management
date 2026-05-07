@@ -680,28 +680,34 @@ export default function VendorInvoiceNewPage() {
           boxSizing: "border-box",
         }}
       >
+      {/*
+        Printable area styled to match invoice-detail.tsx exactly:
+          navy = hsl(220,50%,25%) ≈ #204180  (header bar / totals labels)
+          cell border = #e2e8f0  (slate-200, equivalent to "border-border")
+          zebra row = rgba(239,246,255,0.4)  (equivalent to "bg-blue-50/40")
+      */}
       <div
         ref={printRef}
         className="quote-paper"
         style={{
           width: "210mm",
           boxSizing: "border-box",
-          padding: "12mm 14mm",
+          padding: "10mm 12mm",
           background: "#ffffff",
           color: "#0f172a",
           fontFamily:
             "-apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif",
-          fontSize: "12px",
-          lineHeight: 1.45,
+          fontSize: "13px",
+          lineHeight: 1.5,
         }}
       >
         <h1
           style={{
             textAlign: "center",
-            fontSize: "26px",
+            fontSize: "24px",
             fontWeight: 700,
-            letterSpacing: "0.6em",
-            margin: "0 0 18px 0",
+            letterSpacing: "0.5em",
+            margin: "0 0 24px 0",
           }}
         >
           請　求　書
@@ -711,105 +717,122 @@ export default function VendorInvoiceNewPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 240px",
-            gap: "20px",
-            marginBottom: "14px",
+            gridTemplateColumns: "1fr auto",
+            gap: "24px",
+            marginBottom: "16px",
           }}
         >
           <div>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: "8px" }}>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: "4px" }}>
               <span
                 style={{
                   fontSize: "18px",
                   fontWeight: 700,
-                  borderBottom: "1.5px solid #0f172a",
+                  borderBottom: "1px solid #0f172a",
                   paddingBottom: "2px",
-                  minWidth: "240px",
+                  minWidth: "200px",
                   display: "inline-block",
                 }}
               >
                 {defaults.recipientName || "—"}
               </span>
-              <span style={{ fontSize: "14px", fontWeight: 500, paddingBottom: "2px" }}>
+              <span style={{ fontSize: "16px", fontWeight: 500, paddingBottom: "2px", marginLeft: "8px" }}>
                 御中
               </span>
             </div>
-            <div style={{ marginTop: "14px", fontSize: "11px", color: "#334155" }}>
-              ご担当：
+            <div style={{ marginTop: "12px", fontSize: "13px" }}>
+              <span style={{ color: "#64748b" }}>ご担当：</span>
             </div>
-            <div style={{ marginTop: "10px" }}>
-              <span style={{ color: "#334155" }}>件名：</span>
+            <div style={{ marginTop: "8px", fontSize: "13px" }}>
+              <span style={{ color: "#64748b" }}>件名：</span>
               <span style={{ fontWeight: 500, marginLeft: "4px" }}>
                 {project ? projectLabel(project) : ""}
               </span>
             </div>
-            <p style={{ margin: "10px 0 0 0", fontSize: "11px" }}>
+            <p style={{ margin: "12px 0 0 0", fontSize: "13px" }}>
               下記の通り、ご請求申し上げます。
             </p>
           </div>
-          <div style={{ fontSize: "11px" }}>
-            {/* 請求No / 請求日 */}
+          <div style={{ fontSize: "13px", minWidth: "240px" }}>
+            {/* 請求No / 請求日 — right-aligned */}
             <div
               style={{
                 display: "grid",
                 gridTemplateColumns: "auto 1fr",
-                columnGap: "10px",
-                rowGap: "3px",
+                columnGap: "16px",
+                rowGap: "2px",
+                textAlign: "right",
               }}
             >
-              <span style={{ color: "#334155" }}>請求No.</span>
-              <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{invoiceNo}</span>
-              <span style={{ color: "#334155" }}>請求日</span>
-              <span style={{ textAlign: "right" }}>{issueDate ? formatDate(issueDate) : ""}</span>
+              <span style={{ color: "#64748b" }}>請求No.</span>
+              <span style={{ fontVariantNumeric: "tabular-nums" }}>{invoiceNo}</span>
+              <span style={{ color: "#64748b" }}>請求日</span>
+              <span>{issueDate ? formatDate(issueDate) : ""}</span>
             </div>
-            {/* Issuer card */}
-            <div style={{ marginTop: "12px" }}>
-              <div style={{ fontSize: "13px", fontWeight: 700, marginBottom: "4px" }}>
-                {defaults.companyName || "—"}
-              </div>
+            {/* Issuer card with border-top separator */}
+            <div
+              style={{
+                marginTop: "12px",
+                paddingTop: "12px",
+                borderTop: "1px solid #e2e8f0",
+                textAlign: "left",
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>{defaults.companyName || "—"}</div>
               {defaults.postalCode && (
-                <div style={{ color: "#1e293b" }}>〒{defaults.postalCode}</div>
+                <div style={{ fontSize: "11px", color: "#64748b" }}>
+                  〒{defaults.postalCode}
+                </div>
               )}
-              {defaults.address && <div>{defaults.address}</div>}
+              {defaults.address && (
+                <div style={{ fontSize: "11px" }}>{defaults.address}</div>
+              )}
               {defaults.registrationNumber && (
-                <div style={{ color: "#1e293b" }}>
+                <div style={{ fontSize: "11px", color: "#64748b" }}>
                   登録番号：T{defaults.registrationNumber.replace(/^T/i, "")}
                 </div>
               )}
               <div style={{ marginTop: "4px" }}>
-                {defaults.tel && <div>TEL：{defaults.tel}</div>}
-                {defaults.fax && <div>FAX：{defaults.fax}</div>}
-                {defaults.email && <div>E-Mail：{defaults.email}</div>}
+                {defaults.tel && (
+                  <div style={{ fontSize: "11px" }}>TEL：{defaults.tel}</div>
+                )}
+                {defaults.fax && (
+                  <div style={{ fontSize: "11px" }}>FAX：{defaults.fax}</div>
+                )}
+                {defaults.email && (
+                  <div style={{ fontSize: "11px" }}>E-Mail：{defaults.email}</div>
+                )}
               </div>
               {defaults.authorName && (
-                <div style={{ marginTop: "4px" }}>担当：{defaults.authorName}</div>
+                <div style={{ fontSize: "11px", marginTop: "4px" }}>
+                  担当：{defaults.authorName}
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* 合計金額 hero + お支払期限 */}
+        {/* 合計金額 hero — border-y-2 (top + bottom) like invoice-detail */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
             borderTop: "2px solid #0f172a",
-            borderBottom: "1px solid #475569",
+            borderBottom: "2px solid #0f172a",
             padding: "8px 4px",
-            marginBottom: "12px",
+            marginBottom: "16px",
           }}
         >
           <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
-            <span style={{ fontWeight: 700, fontSize: "13px" }}>合計金額</span>
+            <span style={{ fontWeight: 700, fontSize: "14px" }}>合計金額</span>
             <span style={{ fontSize: "22px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
               {formatCurrency(total)}
             </span>
-            <span style={{ fontSize: "11px", color: "#334155" }}>（税込）</span>
+            <span style={{ fontSize: "12px", color: "#64748b" }}>（税込）</span>
           </div>
-          <div style={{ fontSize: "11px", color: "#1e293b" }}>
-            お支払期限：
-            <span style={{ color: "#0f172a", marginLeft: "6px" }}>
+          <div style={{ marginLeft: "auto", fontSize: "13px" }}>
+            <span style={{ color: "#64748b" }}>お支払期限：</span>
+            <span style={{ fontWeight: 500, marginLeft: "6px" }}>
               {dueDate ? formatDate(dueDate) : "月末日"}
             </span>
           </div>
@@ -828,95 +851,54 @@ export default function VendorInvoiceNewPage() {
                   unitPrice: 0,
                 })),
               ];
-          const cellBase = {
-            border: "1px solid #94a3b8",
+          const headBase = {
+            border: "1px solid #204180",
             padding: "5px 8px",
+            textAlign: "center" as const,
+            fontWeight: 500,
+            fontSize: "12px",
+          };
+          const cellBase = {
+            border: "1px solid #e2e8f0",
+            padding: "4px 8px",
             fontVariantNumeric: "tabular-nums" as const,
-            fontSize: "11px",
-            height: "24px",
+            fontSize: "12px",
+            height: "22px",
           };
           return (
             <table
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                marginBottom: "12px",
+                marginBottom: "16px",
                 tableLayout: "fixed",
               }}
             >
               <colgroup>
-                <col style={{ width: "36px" }} />
+                <col style={{ width: "40px" }} />
                 <col />
-                <col style={{ width: "60px" }} />
-                <col style={{ width: "100px" }} />
-                <col style={{ width: "110px" }} />
+                <col style={{ width: "64px" }} />
+                <col style={{ width: "96px" }} />
+                <col style={{ width: "112px" }} />
               </colgroup>
               <thead>
-                <tr style={{ background: "#1f3a66", color: "#ffffff" }}>
-                  <th
-                    style={{
-                      border: "1px solid #1f3a66",
-                      padding: "6px 4px",
-                      textAlign: "center",
-                      fontWeight: 500,
-                      fontSize: "11px",
-                    }}
-                  >
-                    No.
-                  </th>
-                  <th
-                    style={{
-                      border: "1px solid #1f3a66",
-                      padding: "6px 8px",
-                      textAlign: "left",
-                      fontWeight: 500,
-                      fontSize: "11px",
-                    }}
-                  >
-                    摘要
-                  </th>
-                  <th
-                    style={{
-                      border: "1px solid #1f3a66",
-                      padding: "6px 4px",
-                      textAlign: "center",
-                      fontWeight: 500,
-                      fontSize: "11px",
-                    }}
-                  >
-                    数量
-                  </th>
-                  <th
-                    style={{
-                      border: "1px solid #1f3a66",
-                      padding: "6px 8px",
-                      textAlign: "center",
-                      fontWeight: 500,
-                      fontSize: "11px",
-                    }}
-                  >
-                    単価
-                  </th>
-                  <th
-                    style={{
-                      border: "1px solid #1f3a66",
-                      padding: "6px 8px",
-                      textAlign: "center",
-                      fontWeight: 500,
-                      fontSize: "11px",
-                    }}
-                  >
-                    金額
-                  </th>
+                <tr style={{ background: "#204180", color: "#ffffff" }}>
+                  <th style={headBase}>No.</th>
+                  <th style={{ ...headBase, textAlign: "left" }}>摘要</th>
+                  <th style={headBase}>数量</th>
+                  <th style={{ ...headBase, textAlign: "right" }}>単価</th>
+                  <th style={{ ...headBase, textAlign: "right" }}>金額</th>
                 </tr>
               </thead>
               <tbody>
                 {padded.map((it, i) => {
                   const has = it.description.trim();
                   const amt = (it.quantity || 0) * (it.unitPrice || 0);
+                  // Zebra striping — bg-blue-50/40 equivalent on even rows
+                  const rowBg = i % 2 === 0 ? "rgba(239, 246, 255, 0.4)" : "transparent";
                   return (
-                    <tr key={i} data-pdf-row="true">
-                      <td style={{ ...cellBase, textAlign: "center", color: "#334155" }}>
+                    <tr key={i} data-pdf-row="true" style={{ background: rowBg }}>
+                      <td style={{ ...cellBase, textAlign: "center", color: "#64748b" }}>
                         {i + 1}
                       </td>
                       <td style={{ ...cellBase, textAlign: "left" }}>
@@ -939,23 +921,23 @@ export default function VendorInvoiceNewPage() {
           );
         })()}
 
-        {/* Bottom: bank info (left) + totals box (right) */}
+        {/* Bottom: bank info (left) + totals box (right, w-256) */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 280px",
-            gap: "16px",
+            gridTemplateColumns: "1fr 256px",
+            gap: "24px",
             alignItems: "start",
           }}
         >
-          <div style={{ fontSize: "11px" }}>
-            <div style={{ fontWeight: 500, color: "#334155", marginBottom: "4px" }}>
+          <div style={{ fontSize: "13px" }}>
+            <div style={{ fontWeight: 500, color: "#64748b", marginBottom: "4px" }}>
               お振込先
             </div>
-            <div style={{ paddingLeft: "4px", lineHeight: 1.6 }}>
+            <div style={{ paddingLeft: "8px", lineHeight: 1.6 }}>
               {(defaults.bankName || defaults.branchName) && (
                 <div>
-                  {defaults.bankName} {defaults.branchName}
+                  {defaults.bankName}　{defaults.branchName}
                 </div>
               )}
               {defaults.accountType && <div>{defaults.accountType}</div>}
@@ -964,40 +946,41 @@ export default function VendorInvoiceNewPage() {
               {defaults.accountHolder && <div>{defaults.accountHolder}</div>}
             </div>
             {notes && (
-              <div style={{ marginTop: "8px", paddingTop: "6px", borderTop: "1px solid #e2e8f0" }}>
-                <div style={{ color: "#334155", marginBottom: "2px" }}>備考</div>
+              <div style={{ marginTop: "12px", paddingTop: "8px", borderTop: "1px solid #e2e8f0" }}>
+                <div style={{ color: "#64748b", marginBottom: "2px" }}>備考</div>
                 <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{notes}</p>
               </div>
             )}
           </div>
 
-          {/* Totals — navy left labels, white right values */}
+          {/* Totals — navy label + white-bg value (matches invoice-detail) */}
           <table
             style={{
               width: "100%",
               borderCollapse: "collapse",
-              fontSize: "12px",
+              fontSize: "13px",
             }}
           >
             <tbody>
               <tr>
                 <td
                   style={{
-                    background: "#1f3a66",
+                    background: "#204180",
                     color: "#ffffff",
-                    padding: "6px 12px",
+                    padding: "5px 12px",
                     textAlign: "center",
                     fontWeight: 500,
-                    width: "120px",
-                    border: "1px solid #1f3a66",
+                    border: "1px solid #204180",
                   }}
                 >
                   小計
                 </td>
                 <td
                   style={{
-                    border: "1px solid #94a3b8",
-                    padding: "6px 12px",
+                    background: "#ffffff",
+                    color: "#0f172a",
+                    border: "1px solid #204180",
+                    padding: "5px 12px",
                     textAlign: "right",
                     fontVariantNumeric: "tabular-nums",
                   }}
@@ -1008,20 +991,22 @@ export default function VendorInvoiceNewPage() {
               <tr>
                 <td
                   style={{
-                    background: "#1f3a66",
+                    background: "#204180",
                     color: "#ffffff",
-                    padding: "6px 12px",
+                    padding: "5px 12px",
                     textAlign: "center",
                     fontWeight: 500,
-                    border: "1px solid #1f3a66",
+                    border: "1px solid #204180",
                   }}
                 >
                   消費税(10%)
                 </td>
                 <td
                   style={{
-                    border: "1px solid #94a3b8",
-                    padding: "6px 12px",
+                    background: "#ffffff",
+                    color: "#0f172a",
+                    border: "1px solid #204180",
+                    padding: "5px 12px",
                     textAlign: "right",
                     fontVariantNumeric: "tabular-nums",
                   }}
@@ -1032,23 +1017,24 @@ export default function VendorInvoiceNewPage() {
               <tr>
                 <td
                   style={{
-                    background: "#1f3a66",
+                    background: "#204180",
                     color: "#ffffff",
-                    padding: "8px 12px",
+                    padding: "5px 12px",
                     textAlign: "center",
                     fontWeight: 700,
-                    border: "1px solid #1f3a66",
+                    border: "1px solid #204180",
                   }}
                 >
                   合計
                 </td>
                 <td
                   style={{
-                    border: "1px solid #94a3b8",
-                    padding: "8px 12px",
+                    background: "#ffffff",
+                    color: "#0f172a",
+                    border: "1px solid #204180",
+                    padding: "5px 12px",
                     textAlign: "right",
                     fontWeight: 700,
-                    fontSize: "14px",
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
