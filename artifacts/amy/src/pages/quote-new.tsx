@@ -289,7 +289,11 @@ export default function QuoteNewPage() {
   };
 
   const filteredProjects = (projectsQ.data ?? []).filter(
-    (p) => !customerId || p.customerId === customerId,
+    (p) =>
+      (!customerId || p.customerId === customerId) &&
+      // 竣工(completed)・アーカイブ案件は新規見積では選択不可。
+      // 既に選択中の案件は引き続き表示する(編集中の状態を壊さないため)。
+      (p.status !== "completed" && p.status !== "archived" || p.id === projectId),
   );
 
   // Column template — description gets the widest space

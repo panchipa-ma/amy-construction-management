@@ -438,11 +438,19 @@ export default function VendorQuoteNewPage() {
                   <SelectValue placeholder="案件を選択" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(projectsQ.data ?? []).map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {projectLabel(p)}
-                    </SelectItem>
-                  ))}
+                  {(projectsQ.data ?? [])
+                    .filter(
+                      (p) =>
+                        // 竣工・アーカイブ案件は職人見積書の対象外。
+                        // 既に選択中の案件は表示を維持。
+                        (p.status !== "completed" && p.status !== "archived") ||
+                        p.id === projectId,
+                    )
+                    .map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {projectLabel(p)}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
