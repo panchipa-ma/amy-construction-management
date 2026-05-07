@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useCreateProject,
   useListCustomers,
-  useListStaff,
+  useListEmployees,
   ProjectStatus,
   getListProjectsQueryKey,
 } from "@workspace/api-client-react";
@@ -36,12 +36,12 @@ export default function ProjectNewPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const customersQ = useListCustomers();
-  const staffQ = useListStaff();
-  const salesRepOptions = (staffQ.data ?? []).filter((s) =>
-    /営業|sales/i.test(s.role ?? ""),
+  const employeesQ = useListEmployees();
+  const salesRepOptions = (employeesQ.data ?? []).filter((e) =>
+    /営業|sales/i.test(e.role ?? ""),
   );
-  const supervisorOptions = (staffQ.data ?? []).filter((s) =>
-    /現場|監督|supervisor/i.test(s.role ?? ""),
+  const supervisorOptions = (employeesQ.data ?? []).filter((e) =>
+    /現場|監督|supervisor/i.test(e.role ?? ""),
   );
   const createMut = useCreateProject();
 
@@ -295,12 +295,12 @@ export default function ProjectNewPage() {
                   placeholder="例: 亘 / 筒井 / 山下 / 峯本"
                 />
                 <datalist id="salesRepList">
-                  {salesRepOptions.map((s) => (
-                    <option key={s.id} value={s.name} />
+                  {salesRepOptions.map((e) => (
+                    <option key={e.id} value={e.name} />
                   ))}
                 </datalist>
                 <p className="text-xs text-muted-foreground mt-1">
-                  選択肢は職人ページで職種に「営業」を含めて登録してください
+                  選択肢は社員ページで役割「営業」で登録してください
                 </p>
               </div>
               <div>
@@ -333,12 +333,12 @@ export default function ProjectNewPage() {
                   placeholder="例: 野村 / 畑 / 森"
                 />
                 <datalist id="supervisorList">
-                  {supervisorOptions.map((s) => (
-                    <option key={s.id} value={s.name} />
+                  {supervisorOptions.map((e) => (
+                    <option key={e.id} value={e.name} />
                   ))}
                 </datalist>
                 <p className="text-xs text-muted-foreground mt-1">
-                  選択肢は職人ページで職種に「現場監督」を含めて登録してください
+                  選択肢は社員ページで役割「現場監督」で登録してください
                 </p>
               </div>
               <div>

@@ -6,7 +6,7 @@ Japanese interior contractor (内装屋) business app. Hero feature: **施工台
 
 pnpm monorepo, TypeScript project references.
 
-- `lib/db` — Drizzle ORM, Postgres (10 tables incl. `customers`, `staff`, `projects`, `quotes`, `invoices`, `cost_entries`, `schedule_entries`, `progress_logs`, `vendor_invoices`, `vendor_quotes`, `project_phases`, `app_users`). `projects.unitNumber` (マンション号室) drives auto-routing of vendor docs.
+- `lib/db` — Drizzle ORM, Postgres. Tables incl. `customers`, `staff` (職人/外注), `employees` (社員: 営業/現場監督/事務), `projects`, `quotes`, `invoices`, `cost_entries`, `schedule_entries`, `progress_logs`, `vendor_invoices`, `vendor_quotes`, `project_phases`, `app_users`. `projects.unitNumber` (マンション号室) drives auto-routing of vendor docs.
 - `lib/object-storage-web` — Uppy `<ObjectUploader>` for presigned PUT. React is a peer dep only.
 - `lib/api-spec` — OpenAPI 3 source of truth.
 - `lib/api-zod`, `lib/api-client-react` — orval-generated Zod validators + react-query hooks.
@@ -89,7 +89,13 @@ Page (`pages/commissions.tsx`): month picker (defaults to current), 3 **clickabl
 - 「現場監督歩合」 — `supervisor` のみ
 選択中タイルは tone 色のリングでハイライト。Expandable per-person table with kind-tagged invoice lines linking to the project. Sidebar entry "月次歩合" with `Calculator` icon, `internalOnly: true`. Staff page exposes `otherSalesBonusRate` as both a dialog field and inline-editable column ("他人売上ボーナス %"). 案件作成フォーム (`project-new.tsx`) と 施工台帳 (`ledger-spreadsheet.tsx` 基本情報セクション) で per-project `otherSalesBonusRate` を編集可能 (空欄/0 の挙動は上記)。
 
-**営業・現場監督マスタ**: `staffTable.role` (free text) を流用。職人ページで職種に「営業」または「現場監督」を含めて登録すると、案件作成フォームの「担当営業」「担当現場監督」入力で `<datalist>` オートコンプリート候補に出る (project-new.tsx は `useListStaff()` を呼び `/営業|sales/i`・`/現場|監督|supervisor/i` で正規表現フィルタ)。free text 入力は引き続き可能 — マスタにない名前を直接入力しても保存される。追加・削除・名前編集はすべて職人ページから。
+**社員マスタ (営業/現場監督/事務)**: `employees` テーブルで管理 (職人 `staff` とは別)。`/employees` (社内のみ、`Briefcase` icon) で CRUD + インライン編集。フィールド: name / role (営業/現場監督/事務 + free text 自由追加可) / phone / email / `otherSalesBonusRate` (亘=2.5% など) / notes。バックエンド: `routes/employees.ts` (`requireInternal`)。
+
+案件作成フォーム (`project-new.tsx`) の「担当営業」「担当現場監督」入力は `useListEmployees()` を呼び `/営業|sales/i`・`/現場|監督|supervisor/i` で役割フィルタした候補を `<datalist>` で表示 (プルダウン選択 + 自由入力どちらも可)。マスタにない名前を直接入力しても保存される。
+
+**他人売上ボーナス率の所在**: 移行前は `staff.otherSalesBonusRate` だったが、亘は社員 (営業) なので `employees.otherSalesBonusRate` に集約。`commissions.ts` のボーナス対象者ループは `employeesTable` を読む。`staff.otherSalesBonusRate` 列は既存データ保持のため残置 (UI/集計からは参照しない)。**移行作業**: 旧 staff 側で 亘 等にボーナス率を入れていた場合、社員ページから登録し直すこと。
+
+**人物マッチング (commissions.ts `getPerson`)**: salesRep / siteSupervisor の文字列を `employees.name` → `staff.name` の順で検索。社員が一級市民 (見つかればその id を `staffId` として返す)。両方になければ「職人/社員未登録」バッジ表示。
 
 ## Cross-document workflows
 

@@ -562,6 +562,75 @@ export const DeleteUserParams = zod.object({
   id: zod.coerce.string(),
 });
 
+export const ListEmployeesResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  role: zod.string().describe("営業 \/ 現場監督 \/ 事務 (自由入力可)"),
+  phone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  otherSalesBonusRate: zod
+    .number()
+    .nullish()
+    .describe("他人売上ボーナス率 (%) — 例: 亘=2.5"),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListEmployeesResponse = zod.array(ListEmployeesResponseItem);
+
+export const CreateEmployeeBody = zod.object({
+  name: zod.string(),
+  role: zod.string(),
+  phone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  otherSalesBonusRate: zod.number().nullish(),
+  notes: zod.string().nullish(),
+});
+
+export const CreateEmployeeResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  role: zod.string().describe("営業 \/ 現場監督 \/ 事務 (自由入力可)"),
+  phone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  otherSalesBonusRate: zod
+    .number()
+    .nullish()
+    .describe("他人売上ボーナス率 (%) — 例: 亘=2.5"),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+export const UpdateEmployeeParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateEmployeeBody = zod.object({
+  name: zod.string(),
+  role: zod.string(),
+  phone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  otherSalesBonusRate: zod.number().nullish(),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateEmployeeResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  role: zod.string().describe("営業 \/ 現場監督 \/ 事務 (自由入力可)"),
+  phone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  otherSalesBonusRate: zod
+    .number()
+    .nullish()
+    .describe("他人売上ボーナス率 (%) — 例: 亘=2.5"),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+export const DeleteEmployeeParams = zod.object({
+  id: zod.coerce.string(),
+});
+
 export const ListStaffResponseItem = zod.object({
   id: zod.string(),
   name: zod.string(),
@@ -572,9 +641,7 @@ export const ListStaffResponseItem = zod.object({
   otherSalesBonusRate: zod
     .number()
     .nullish()
-    .describe(
-      "他人売上ボーナス率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5)",
-    ),
+    .describe("(レガシー) 社員テーブルに移行済"),
   createdAt: zod.coerce.date(),
 });
 export const ListStaffResponse = zod.array(ListStaffResponseItem);
@@ -598,9 +665,7 @@ export const CreateStaffResponse = zod.object({
   otherSalesBonusRate: zod
     .number()
     .nullish()
-    .describe(
-      "他人売上ボーナス率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5)",
-    ),
+    .describe("(レガシー) 社員テーブルに移行済"),
   createdAt: zod.coerce.date(),
 });
 
@@ -627,9 +692,7 @@ export const UpdateStaffResponse = zod.object({
   otherSalesBonusRate: zod
     .number()
     .nullish()
-    .describe(
-      "他人売上ボーナス率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5)",
-    ),
+    .describe("(レガシー) 社員テーブルに移行済"),
   createdAt: zod.coerce.date(),
 });
 

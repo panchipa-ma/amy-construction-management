@@ -7,6 +7,7 @@ import {
   customersTable,
   costEntriesTable,
   staffTable,
+  employeesTable,
 } from "@workspace/db";
 import type { LineItemJson } from "@workspace/db";
 import { GetCommissionsResponse } from "@workspace/api-zod";
@@ -164,11 +165,13 @@ router.get("/commissions", async (req, res): Promise<void> => {
     );
   }
 
-  // 職員マスタ — 他人売上ボーナス対象者と staffId マッチ用
-  const allStaff = await db.select().from(staffTable);
-  const bonusStaff = allStaff.filter(
-    (s) => s.otherSalesBonusRate != null && n(s.otherSalesBonusRate) > 0,
+  // 社員マスタ (営業/現場監督/事務) — 他人売上ボーナス対象者と人物マッチ用
+  const allEmployees = await db.select().from(employeesTable);
+  const bonusEmployees = allEmployees.filter(
+    (e) => e.otherSalesBonusRate != null && n(e.otherSalesBonusRate) > 0,
   );
+  // 職人マスタは表示用フォールバック (人物名が社員になければ職人を見る)
+  const allStaff = await db.select().from(staffTable);
 
   // 担当者ごとに集計
   type Person = {
@@ -184,10 +187,12 @@ router.get("/commissions", async (req, res): Promise<void> => {
     const key = name.trim();
     let p = people.get(key);
     if (!p) {
-      const staff = allStaff.find((s) => s.name.trim() === key);
+      // 社員 → 職人 の順で検索 (社員が一級市民)
+      const emp = allEmployees.find((e) => e.name.trim() === key);
+      const staff = emp ? null : allStaff.find((s) => s.name.trim() === key);
       p = {
         name: key,
-        staffId: staff?.id ?? null,
+        staffId: emp?.id ?? staff?.id ?? null,
         salesCommission: 0,
         supervisorCommission: 0,
         otherSalesBonus: 0,
@@ -291,10 +296,10 @@ router.get("/commissions", async (req, res): Promise<void> => {
   }
 
   // 3) 他人売上ボーナス (亘ルール)
-  // 案件ごとに otherSalesBonusRate を上書き可能。NULL なら staff のデフォルト率。
-  for (const staff of bonusStaff) {
-    const defaultRate = n(staff.otherSalesBonusRate);
-    const name = staff.name.trim();
+  // 案件ごとに otherSalesBonusRate を上書き可能。NULL なら社員マスタのデフォルト率。
+  for (const emp of bonusEmployees) {
+    const defaultRate = n(emp.otherSalesBonusRate);
+    const name = emp.name.trim();
     for (const inv of monthInvoices) {
       const project = projectMap.get(inv.projectId);
       if (!project) continue;

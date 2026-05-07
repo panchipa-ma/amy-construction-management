@@ -115,7 +115,7 @@ export interface Staff {
   /** 日当 (円) */
   dailyRate?: number | null;
   company?: string | null;
-  /** 他人売上ボーナス率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5) */
+  /** (レガシー) 社員テーブルに移行済 */
   otherSalesBonusRate?: number | null;
   createdAt: string;
 }
@@ -127,6 +127,28 @@ export interface CreateStaffBody {
   dailyRate?: number | null;
   company?: string | null;
   otherSalesBonusRate?: number | null;
+}
+
+export interface Employee {
+  id: string;
+  name: string;
+  /** 営業 / 現場監督 / 事務 (自由入力可) */
+  role: string;
+  phone?: string | null;
+  email?: string | null;
+  /** 他人売上ボーナス率 (%) — 例: 亘=2.5 */
+  otherSalesBonusRate?: number | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface CreateEmployeeBody {
+  name: string;
+  role: string;
+  phone?: string | null;
+  email?: string | null;
+  otherSalesBonusRate?: number | null;
+  notes?: string | null;
 }
 
 export interface Project {

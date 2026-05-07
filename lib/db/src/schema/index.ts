@@ -53,9 +53,26 @@ export const staffTable = pgTable("staff", {
   phone: text("phone"),
   dailyRate: numeric("daily_rate"),
   company: text("company"),
-  // 他人売上ボーナス率 (%) — この職員が「自分以外の営業が獲得した売上」に対して
-  // 受け取る歩合の率。例: 亘=2.5%。月次歩合計算で監督歩合とは別建てで集計される。
+  // 他人売上ボーナス率 (%) — レガシー (社員テーブルに移行済)。
+  // 既存データ保持用に列は残すが、UI/集計は employeesTable.otherSalesBonusRate を参照する。
   otherSalesBonusRate: numeric("other_sales_bonus_rate"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// 社員 (営業 / 現場監督 / 事務) — 職人 (subcontractor) とは別管理。
+// 営業歩合 / 監督歩合 / 他人売上ボーナスの紐付け先。
+export const employeesTable = pgTable("employees", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  // 営業 / 現場監督 / 事務 (free text — 自由追加可)
+  role: text("role").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  // 他人売上ボーナス率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5%)
+  otherSalesBonusRate: numeric("other_sales_bonus_rate"),
+  notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

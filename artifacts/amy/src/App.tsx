@@ -31,6 +31,7 @@ import ProjectNewPage from "@/pages/project-new";
 import ProjectDetailPage from "@/pages/project-detail";
 import CustomersPage from "@/pages/customers";
 import StaffPage from "@/pages/staff";
+import EmployeesPage from "@/pages/employees";
 import QuotesListPage from "@/pages/quotes-list";
 import QuoteNewPage from "@/pages/quote-new";
 import QuoteDetailPage from "@/pages/quote-detail";
@@ -267,6 +268,7 @@ function ProtectedRoutes() {
         <Route path="/projects/:id" component={ProjectDetailPage} />
         <Route path="/customers" component={CustomersPage} />
         <Route path="/staff" component={StaffPage} />
+        <Route path="/employees" component={EmployeesPage} />
         <Route path="/quotes" component={QuotesListPage} />
         <Route path="/quotes/new" component={QuoteNewPage} />
         <Route path="/quotes/:id" component={QuoteDetailPage} />

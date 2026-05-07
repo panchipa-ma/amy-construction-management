@@ -6,16 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface Staff {
+export interface Employee {
   id: string;
   name: string;
-  /** 職種 (大工/クロス/電気 など) */
+  /** 営業 / 現場監督 / 事務 (自由入力可) */
   role: string;
   phone?: string | null;
-  /** 日当 (円) */
-  dailyRate?: number | null;
-  company?: string | null;
-  /** (レガシー) 社員テーブルに移行済 */
+  email?: string | null;
+  /** 他人売上ボーナス率 (%) — 例: 亘=2.5 */
   otherSalesBonusRate?: number | null;
+  notes?: string | null;
   createdAt: Date;
 }

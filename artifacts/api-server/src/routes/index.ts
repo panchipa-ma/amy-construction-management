@@ -3,6 +3,7 @@ import { getAuth } from "@clerk/express";
 import healthRouter from "./health";
 import customersRouter from "./customers";
 import staffRouter from "./staff";
+import employeesRouter from "./employees";
 import projectsRouter from "./projects";
 import quotesRouter from "./quotes";
 import invoicesRouter from "./invoices";
@@ -48,6 +49,8 @@ router.use(requireInternal, dashboardRouter);
 router.use(projectsRouter);
 router.use(customersRouter);
 router.use(staffRouter);
+// 社員 (営業/現場監督/事務) は社内マスタなので社内のみ
+router.use(requireInternal, employeesRouter);
 router.use(quotesRouter);
 router.use(invoicesRouter);
 router.use(costsRouter);

@@ -288,6 +288,65 @@ paths:
         "204":
           description: Deleted
 
+  /employees:
+    get:
+      operationId: listEmployees
+      tags: [employees]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Employee" }
+    post:
+      operationId: createEmployee
+      tags: [employees]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateEmployeeBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Employee" }
+
+  /employees/{id}:
+    patch:
+      operationId: updateEmployee
+      tags: [employees]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateEmployeeBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Employee" }
+    delete:
+      operationId: deleteEmployee
+      tags: [employees]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
   /staff:
     get:
       operationId: listStaff
@@ -1248,7 +1307,7 @@ components:
         phone: { type: string, nullable: true }
         dailyRate: { type: number, nullable: true, description: "日当 (円)" }
         company: { type: string, nullable: true }
-        otherSalesBonusRate: { type: number, nullable: true, description: "他人売上ボーナス率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5)" }
+        otherSalesBonusRate: { type: number, nullable: true, description: "(レガシー) 社員テーブルに移行済" }
         createdAt: { type: string, format: date-time }
 
     CreateStaffBody:
@@ -1261,6 +1320,30 @@ components:
         dailyRate: { type: number, nullable: true }
         company: { type: string, nullable: true }
         otherSalesBonusRate: { type: number, nullable: true }
+
+    Employee:
+      type: object
+      required: [id, name, role, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        role: { type: string, description: "営業 / 現場監督 / 事務 (自由入力可)" }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        otherSalesBonusRate: { type: number, nullable: true, description: "他人売上ボーナス率 (%) — 例: 亘=2.5" }
+        notes: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    CreateEmployeeBody:
+      type: object
+      required: [name, role]
+      properties:
+        name: { type: string }
+        role: { type: string }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        otherSalesBonusRate: { type: number, nullable: true }
+        notes: { type: string, nullable: true }
 
     Project:
       type: object
