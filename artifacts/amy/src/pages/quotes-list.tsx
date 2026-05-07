@@ -1,5 +1,12 @@
+import { useState } from "react";
 import { Link } from "wouter";
-import { useListQuotes } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useListQuotes,
+  useDeleteQuote,
+  getListQuotesQueryKey,
+  getListProjectsQueryKey,
+} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,12 +23,51 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, FileText } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, FileText, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { useToast } from "@/hooks/use-toast";
+import { invalidateDashboard } from "@/lib/invalidate";
+import { apiErrorMessage } from "@/lib/api-error";
 
 export default function QuotesListPage() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { data, isLoading } = useListQuotes();
+  const deleteMut = useDeleteQuote();
   const rows = data ?? [];
+
+  const [askDelete, setAskDelete] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
+
+  const handleDelete = async () => {
+    if (!askDelete) return;
+    try {
+      await deleteMut.mutateAsync({ id: askDelete.id });
+      await queryClient.invalidateQueries({
+        queryKey: getListQuotesQueryKey(),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getListProjectsQueryKey(),
+      });
+      await invalidateDashboard(queryClient);
+      toast({ title: "見積書を削除しました" });
+      setAskDelete(null);
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-[1200px]">
@@ -73,6 +119,7 @@ export default function QuotesListPage() {
                   <TableHead>発行日</TableHead>
                   <TableHead>有効期限</TableHead>
                   <TableHead className="text-right">金額 (税込)</TableHead>
+                  <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -92,6 +139,19 @@ export default function QuotesListPage() {
                     <TableCell className="text-right tabular-nums font-medium">
                       {formatCurrency(q.total)}
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          setAskDelete({ id: q.id, label: q.quoteNumber })
+                        }
+                        className="text-destructive hover:text-destructive"
+                        data-testid={`button-delete-quote-${q.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -99,6 +159,30 @@ export default function QuotesListPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={!!askDelete}
+        onOpenChange={(o) => !o && setAskDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>見積書を削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              「{askDelete?.label}」を削除します。削除すると、案件の売上（契約金額）が他の最新見積書を元に再計算されます（見積書がなくなった場合は0円になります）。この操作は取り消せません。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteMut.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              削除する
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

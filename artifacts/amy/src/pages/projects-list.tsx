@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProjects,
+  useDeleteProject,
+  getListProjectsQueryKey,
   ProjectStatus,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -27,17 +30,52 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ProjectStatusBadge } from "@/components/status-badge";
 import { PROJECT_STATUS_OPTIONS } from "@/components/project-status-select";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { Plus, FolderKanban } from "lucide-react";
+import { Plus, FolderKanban, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { invalidateDashboard } from "@/lib/invalidate";
+import { apiErrorMessage } from "@/lib/api-error";
 
 export default function ProjectsListPage() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [status, setStatus] = useState<string>("all");
   const params =
     status === "all" ? undefined : { status: status as ProjectStatus };
   const { data, isLoading } = useListProjects(params);
+  const deleteMut = useDeleteProject();
   const rows = data ?? [];
+
+  const [askDelete, setAskDelete] = useState<{ id: string; name: string } | null>(
+    null,
+  );
+
+  const handleDelete = async () => {
+    if (!askDelete) return;
+    try {
+      await deleteMut.mutateAsync({ id: askDelete.id });
+      await queryClient.invalidateQueries({
+        queryKey: getListProjectsQueryKey(),
+      });
+      await invalidateDashboard(queryClient);
+      toast({ title: "案件を削除しました" });
+      setAskDelete(null);
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-[1400px]">
@@ -109,6 +147,7 @@ export default function ProjectsListPage() {
                   <TableHead className="text-right">契約金額</TableHead>
                   <TableHead className="text-right">実績原価</TableHead>
                   <TableHead className="text-right">粗利</TableHead>
+                  <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -150,6 +189,20 @@ export default function ProjectsListPage() {
                       >
                         {formatCurrency(profit)}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAskDelete({ id: p.id, name: p.name });
+                          }}
+                          className="text-destructive hover:text-destructive"
+                          data-testid={`button-delete-project-${p.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -158,6 +211,30 @@ export default function ProjectsListPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={!!askDelete}
+        onOpenChange={(o) => !o && setAskDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>案件を削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              「{askDelete?.name}」を削除します。関連する見積書・請求書・施工台帳の原価エントリ・工程・進捗記録もすべて削除されます。この操作は取り消せません。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteMut.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              削除する
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

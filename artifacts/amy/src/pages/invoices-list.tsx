@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   useListInvoices,
   useUpdateInvoice,
+  useDeleteInvoice,
   getListInvoicesQueryKey,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +25,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Receipt } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Receipt, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
@@ -34,7 +46,13 @@ export default function InvoicesListPage() {
   const { toast } = useToast();
   const { data, isLoading } = useListInvoices();
   const updateMut = useUpdateInvoice();
+  const deleteMut = useDeleteInvoice();
   const rows = data ?? [];
+
+  const [askDelete, setAskDelete] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
 
   const togglePaid = async (
     id: string,
@@ -57,6 +75,21 @@ export default function InvoicesListPage() {
         queryKey: getListInvoicesQueryKey(),
       });
       await invalidateDashboard(queryClient);
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!askDelete) return;
+    try {
+      await deleteMut.mutateAsync({ id: askDelete.id });
+      await queryClient.invalidateQueries({
+        queryKey: getListInvoicesQueryKey(),
+      });
+      await invalidateDashboard(queryClient);
+      toast({ title: "請求書を削除しました" });
+      setAskDelete(null);
     } catch (err) {
       toast({ title: apiErrorMessage(err), variant: "destructive" });
     }
@@ -113,6 +146,7 @@ export default function InvoicesListPage() {
                   <TableHead>支払期限</TableHead>
                   <TableHead className="text-right">金額 (税込)</TableHead>
                   <TableHead>状態</TableHead>
+                  <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -150,6 +184,19 @@ export default function InvoicesListPage() {
                         </Badge>
                       </div>
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          setAskDelete({ id: inv.id, label: inv.invoiceNumber })
+                        }
+                        className="text-destructive hover:text-destructive"
+                        data-testid={`button-delete-invoice-${inv.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -157,6 +204,30 @@ export default function InvoicesListPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={!!askDelete}
+        onOpenChange={(o) => !o && setAskDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>請求書を削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              「{askDelete?.label}」を削除します。この操作は取り消せません。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteMut.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              削除する
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
