@@ -665,53 +665,74 @@ export default function VendorQuoteNewPage() {
           <span style={{ fontSize: "11px", color: "#64748b" }}>（税込）</span>
         </div>
 
-        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "16px" }}>
-          <thead>
-            <tr style={{ background: "#1f3a66", color: "#ffffff" }}>
-              <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "40px", textAlign: "center", fontWeight: 500 }}>No.</th>
-              <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", textAlign: "left", fontWeight: 500 }}>摘要</th>
-              <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "64px", textAlign: "center", fontWeight: 500 }}>数量</th>
-              <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "96px", textAlign: "right", fontWeight: 500 }}>単価</th>
-              <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "112px", textAlign: "right", fontWeight: 500 }}>金額</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((it, i) => {
-              const has = it.description.trim();
-              const amt = (it.quantity || 0) * (it.unitPrice || 0);
-              return (
-                <tr key={i} style={{ background: i % 2 === 0 ? "#eff6ff" : "#ffffff" }}>
-                  <td style={{ border: "1px solid #e2e8f0", padding: "4px 8px", textAlign: "center", color: "#64748b" }}>{i + 1}</td>
-                  <td style={{ border: "1px solid #e2e8f0", padding: "4px 8px" }}>{has ? it.description : ""}</td>
-                  <td style={{ border: "1px solid #e2e8f0", padding: "4px 8px", textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{has ? it.quantity : ""}</td>
-                  <td style={{ border: "1px solid #e2e8f0", padding: "4px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{has ? formatCurrency(it.unitPrice) : ""}</td>
-                  <td style={{ border: "1px solid #e2e8f0", padding: "4px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{has ? formatCurrency(amt) : ""}</td>
+        {(() => {
+          const MIN_ROWS = 10;
+          const padded = items.length >= MIN_ROWS
+            ? items
+            : [
+                ...items,
+                ...Array.from({ length: MIN_ROWS - items.length }, () => ({
+                  description: "",
+                  quantity: 0,
+                  unitPrice: 0,
+                })),
+              ];
+          const cellBase = {
+            border: "1px solid #e2e8f0",
+            padding: "6px 8px",
+            fontVariantNumeric: "tabular-nums" as const,
+          };
+          return (
+            <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "0" }}>
+              <thead>
+                <tr style={{ background: "#1f3a66", color: "#ffffff" }}>
+                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "40px", textAlign: "center", fontWeight: 500 }}>No.</th>
+                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", textAlign: "left", fontWeight: 500 }}>工事項目・摘要</th>
+                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "60px", textAlign: "center", fontWeight: 500 }}>単位</th>
+                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "60px", textAlign: "center", fontWeight: 500 }}>数量</th>
+                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "90px", textAlign: "right", fontWeight: 500 }}>単価</th>
+                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "100px", textAlign: "right", fontWeight: 500 }}>金額</th>
+                  <th style={{ border: "1px solid #1f3a66", padding: "6px 8px", width: "120px", textAlign: "left", fontWeight: 500 }}>備考</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <div style={{ width: "256px" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              </thead>
               <tbody>
+                {padded.map((it, i) => {
+                  const has = it.description.trim();
+                  const amt = (it.quantity || 0) * (it.unitPrice || 0);
+                  return (
+                    <tr key={i}>
+                      <td style={{ ...cellBase, textAlign: "center", color: "#64748b" }}>{has ? i + 1 : ""}</td>
+                      <td style={{ ...cellBase, textAlign: "left" }}>{has ? it.description : ""}</td>
+                      <td style={{ ...cellBase, textAlign: "center" }}>{has ? "式" : ""}</td>
+                      <td style={{ ...cellBase, textAlign: "center" }}>{has ? it.quantity : ""}</td>
+                      <td style={{ ...cellBase, textAlign: "right" }}>{has ? formatCurrency(it.unitPrice) : ""}</td>
+                      <td style={{ ...cellBase, textAlign: "right" }}>{has ? formatCurrency(amt) : ""}</td>
+                      <td style={{ ...cellBase, textAlign: "left" }}></td>
+                    </tr>
+                  );
+                })}
                 <tr>
+                  <td colSpan={4} style={{ borderLeft: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
                   <td style={{ border: "1px solid #1f3a66", background: "#1f3a66", color: "#ffffff", padding: "6px 12px", fontWeight: 500, textAlign: "center" }}>小計</td>
-                  <td style={{ border: "1px solid #1f3a66", background: "#ffffff", color: "#0f172a", padding: "6px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(subtotal)}</td>
+                  <td style={{ border: "1px solid #e2e8f0", padding: "6px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(subtotal)}</td>
+                  <td style={{ borderRight: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
                 </tr>
                 <tr>
+                  <td colSpan={4} style={{ borderLeft: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
                   <td style={{ border: "1px solid #1f3a66", background: "#1f3a66", color: "#ffffff", padding: "6px 12px", fontWeight: 500, textAlign: "center" }}>消費税(10%)</td>
-                  <td style={{ border: "1px solid #1f3a66", background: "#ffffff", color: "#0f172a", padding: "6px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(tax)}</td>
+                  <td style={{ border: "1px solid #e2e8f0", padding: "6px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(tax)}</td>
+                  <td style={{ borderRight: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
                 </tr>
                 <tr>
+                  <td colSpan={4} style={{ borderLeft: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
                   <td style={{ border: "1px solid #1f3a66", background: "#1f3a66", color: "#ffffff", padding: "6px 12px", fontWeight: 700, textAlign: "center" }}>合計</td>
-                  <td style={{ border: "1px solid #1f3a66", background: "#ffffff", color: "#0f172a", padding: "6px 12px", textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{formatCurrency(total)}</td>
+                  <td style={{ border: "1px solid #e2e8f0", padding: "6px 12px", textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{formatCurrency(total)}</td>
+                  <td style={{ borderRight: "1px solid transparent", borderBottom: "1px solid transparent" }}></td>
                 </tr>
               </tbody>
             </table>
-          </div>
-        </div>
+          );
+        })()}
 
         {notes && (
           <div style={{ marginTop: "16px", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>
