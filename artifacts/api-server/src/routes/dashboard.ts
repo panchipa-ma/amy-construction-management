@@ -104,17 +104,21 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   // 入金済 instead, so we get a real progress funnel (estimating → in_progress
   // → completed → billed → paid). contracted/archived are intentionally
   // omitted from the chart.
+  // Mirror the sidebar semantics: 「請求済」 link goes to /invoices?paid=true,
+  // so on the chart 入金済 = "this project has at least one paid invoice".
+  // 請求済 = "has invoices but none paid yet". A project with mixed paid +
+  // unpaid invoices counts as 入金済 (cash has come in for it).
   const invoicesByProject = new Map<
     string,
-    { hasAny: boolean; allPaid: boolean }
+    { hasAny: boolean; hasPaid: boolean }
   >();
   for (const inv of invoices) {
     const cur = invoicesByProject.get(inv.projectId) ?? {
       hasAny: false,
-      allPaid: true,
+      hasPaid: false,
     };
     cur.hasAny = true;
-    if (!inv.paid) cur.allPaid = false;
+    if (inv.paid) cur.hasPaid = true;
     invoicesByProject.set(inv.projectId, cur);
   }
   const buckets: Record<
@@ -133,7 +137,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
     if (p.status === "archived") continue;
     const inv = invoicesByProject.get(p.id);
     if (inv?.hasAny) {
-      if (inv.allPaid) buckets.paid += 1;
+      if (inv.hasPaid) buckets.paid += 1;
       else buckets.billed += 1;
       continue;
     }
