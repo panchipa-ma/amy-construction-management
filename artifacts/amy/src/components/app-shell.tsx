@@ -1,5 +1,5 @@
 import { Link, useLocation, useSearch } from "wouter";
-import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog, Shield, FileSignature, CheckCircle2, BadgeCheck } from "lucide-react";
+import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog, Shield, FileSignature, CheckCircle2, BadgeCheck, Building2 } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { useRole, isPathAllowed } from "@/lib/role";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ const navItems = [
   { name: "顧客", href: "/customers", icon: Users, internalOnly: false },
   { name: "職人", href: "/staff", icon: HardHat, internalOnly: false },
   { name: "ユーザー管理", href: "/users", icon: Shield, internalOnly: true },
+  { name: "会社プロフィール", href: "/company-profile", icon: Building2, internalOnly: true },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

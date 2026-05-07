@@ -247,6 +247,30 @@ export const projectPhasesTable = pgTable("project_phases", {
     .defaultNow(),
 });
 
+export const companyProfileTable = pgTable("company_profile", {
+  id: text("id").primaryKey().default("default"),
+  name: text("name").notNull().default(""),
+  postalCode: text("postal_code").notNull().default(""),
+  address: text("address").notNull().default(""),
+  registrationNumber: text("registration_number").notNull().default(""),
+  tel: text("tel").notNull().default(""),
+  fax: text("fax").notNull().default(""),
+  email: text("email").notNull().default(""),
+  contact: text("contact").notNull().default(""),
+  bankName: text("bank_name").notNull().default(""),
+  branchName: text("branch_name").notNull().default(""),
+  branchCode: text("branch_code").notNull().default(""),
+  accountType: text("account_type").notNull().default("普通"),
+  accountNumber: text("account_number").notNull().default(""),
+  accountHolder: text("account_holder").notNull().default(""),
+  termsDelivery: text("terms_delivery").notNull().default(""),
+  termsPayment: text("terms_payment").notNull().default(""),
+  termsValidity: text("terms_validity").notNull().default(""),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const progressLogsTable = pgTable("progress_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
   projectId: uuid("project_id")

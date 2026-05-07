@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { ArrowLeft, Save, Trash2, Plus } from "lucide-react";
 import { apiErrorMessage } from "@/lib/api-error";
-import { COMPANY_INFO, QUOTE_TERMS } from "@/lib/company-info";
+import { useCompanyInfo, useQuoteTerms } from "@/lib/company-info";
 import { formatCurrency } from "@/lib/format";
 import { UNIT_OPTIONS } from "@/lib/units";
 
@@ -84,6 +84,8 @@ function emptyItem(): LineItem {
 }
 
 export default function QuoteNewPage() {
+  const COMPANY_INFO = useCompanyInfo();
+  const QUOTE_TERMS = useQuoteTerms();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();

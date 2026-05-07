@@ -26,11 +26,13 @@ import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
-import { COMPANY_INFO, BANK_INFO } from "@/lib/company-info";
+import { useCompanyInfo, useBankInfo } from "@/lib/company-info";
 
 const ITEM_ROWS = 17;
 
 export default function InvoiceDetailPage() {
+  const COMPANY_INFO = useCompanyInfo();
+  const BANK_INFO = useBankInfo();
   const [, params] = useRoute("/invoices/:id");
   const id = params?.id ?? "";
   const [, setLocation] = useLocation();

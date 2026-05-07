@@ -63,7 +63,7 @@ import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, endOfNextMonthISO } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
-import { COMPANY_INFO, QUOTE_TERMS } from "@/lib/company-info";
+import { useCompanyInfo, useQuoteTerms } from "@/lib/company-info";
 
 const MIN_ROWS = 32;
 
@@ -90,6 +90,8 @@ function toISODate(v: string | Date | null | undefined): string {
 }
 
 export default function QuoteDetailPage() {
+  const COMPANY_INFO = useCompanyInfo();
+  const QUOTE_TERMS = useQuoteTerms();
   const [, params] = useRoute("/quotes/:id");
   const id = params?.id ?? "";
   const [, setLocation] = useLocation();

@@ -29,7 +29,7 @@ import { apiErrorMessage } from "@/lib/api-error";
 import { useUser } from "@clerk/react";
 import { readProfile } from "@/lib/profile";
 import { UNIT_OPTIONS } from "@/lib/units";
-import { QUOTE_TERMS } from "@/lib/company-info";
+import { useQuoteTerms } from "@/lib/company-info";
 import { addCanvasToPdfWithRowBreaks } from "@/lib/pdf-row-breaks";
 import { freezeInputsForCapture } from "@/lib/pdf-freeze-inputs";
 
@@ -117,6 +117,7 @@ function plus30DaysISO(base: string): string {
 }
 
 export default function VendorQuoteNewPage() {
+  const QUOTE_TERMS = useQuoteTerms();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
