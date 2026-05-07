@@ -4,7 +4,24 @@
 
 A Japanese interior contractor (内装屋) business management web app. The hero feature is the **施工台帳 (construction cost ledger / 原価管理)** showing planned vs actual cost with gross profit/rate per project. Other features: project lifecycle management (見積〜竣工), quotes/invoices with line items + 10% tax, customer/staff (職人) management, weekly schedule grid, and on-site progress logs (進捗記録).
 
-UI is entirely in Japanese. No authentication — single-tenant tool.
+UI is entirely in Japanese. Authentication is via **Replit-managed Clerk**.
+
+## 認証 (Clerk Auth)
+
+Replit-managed Clerk tenant — keys auto-provisioned (`CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`). Login providers (email/password, Google) are managed via the workspace **Auth pane** — there is no external Clerk dashboard. Production gets its own isolated user store; dev keys are `pk_test`/`sk_test` (expected — do NOT try to "fix").
+
+**Frontend wiring** (`src/App.tsx`):
+- `<ClerkProvider>` wraps the app inside `<WouterRouter base={basePath}>`. `proxyUrl` from `VITE_CLERK_PROXY_URL` (empty in dev, set in prod). `routerPush`/`routerReplace` strip basePath before calling `setLocation`.
+- Routes: `/sign-in/*?` and `/sign-up/*?` (optional wildcard required for Clerk's sub-routes like `/sign-in/sso-callback`). All other paths gated by `<Show when="signed-in">` showing `<ProtectedRoutes>` (RoleProvider + AppShell + existing routes), `<Show when="signed-out">` showing `LandingPage`.
+- `LandingPage` (`src/pages/landing.tsx`) is the public landing for unauthenticated users with サインイン / アカウントを作成 buttons (linking to `/sign-in` and `/sign-up`). Per Clerk skill: home must be publicly accessible — never auto-redirect to sign-in.
+- Custom `clerkAppearance` uses `theme: shadcn`, `cssLayerName: "clerk"`, primary color matches the navy `--primary` (hsl 222 65% 24%), Japanese localization for sign-in/sign-up titles. Logo at `/logo.svg`.
+- Tailwind v4 setup requires `@layer theme, base, clerk, components, utilities;` BEFORE `@import 'tailwindcss';` in `src/index.css`, and `tailwindcss({ optimize: false })` in `vite.config.ts` (otherwise Clerk renders correctly in dev but breaks in prod).
+- `app-shell.tsx` shows `useUser().fullName/email` + サインアウト button (`useClerk().signOut()`) at the bottom of the sidebar.
+
+**Backend wiring** (`artifacts/api-server/src/app.ts`):
+- `clerkProxyMiddleware` mounted at `/api/__clerk` BEFORE body parsers (proxies Clerk Frontend API in production only).
+- `clerkMiddleware()` from `@clerk/express` mounted after CORS+json. Resolves publishable key from request host via `publishableKeyFromHost(getClerkProxyHost(req), CLERK_PUBLISHABLE_KEY)` for custom-domain support.
+- `routes/index.ts` mounts `requireAuth` (checks `getAuth(req).userId`) globally AFTER `healthRouter` — so `/api/health` is public but every other `/api/*` requires a signed-in user. Web cookies authenticate browser requests automatically (no `setAuthTokenGetter` needed for web).
 
 ## 権限分け (Role-based UI gating)
 
