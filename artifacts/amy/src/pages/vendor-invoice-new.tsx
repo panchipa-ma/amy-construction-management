@@ -718,11 +718,11 @@ export default function VendorInvoiceNewPage() {
                 御中
               </span>
             </div>
-            <div style={{ marginTop: "14px", fontSize: "11px", color: "#64748b" }}>
+            <div style={{ marginTop: "14px", fontSize: "11px", color: "#334155" }}>
               ご担当：
             </div>
             <div style={{ marginTop: "10px" }}>
-              <span style={{ color: "#64748b" }}>件名：</span>
+              <span style={{ color: "#334155" }}>件名：</span>
               <span style={{ fontWeight: 500, marginLeft: "4px" }}>
                 {project ? projectLabel(project) : ""}
               </span>
@@ -741,9 +741,9 @@ export default function VendorInvoiceNewPage() {
                 rowGap: "3px",
               }}
             >
-              <span style={{ color: "#64748b" }}>請求No.</span>
+              <span style={{ color: "#334155" }}>請求No.</span>
               <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{invoiceNo}</span>
-              <span style={{ color: "#64748b" }}>請求日</span>
+              <span style={{ color: "#334155" }}>請求日</span>
               <span style={{ textAlign: "right" }}>{issueDate ? formatDate(issueDate) : ""}</span>
             </div>
             {/* Issuer card */}
@@ -752,11 +752,11 @@ export default function VendorInvoiceNewPage() {
                 {defaults.companyName || "—"}
               </div>
               {defaults.postalCode && (
-                <div style={{ color: "#475569" }}>〒{defaults.postalCode}</div>
+                <div style={{ color: "#1e293b" }}>〒{defaults.postalCode}</div>
               )}
               {defaults.address && <div>{defaults.address}</div>}
               {defaults.registrationNumber && (
-                <div style={{ color: "#475569" }}>
+                <div style={{ color: "#1e293b" }}>
                   登録番号：T{defaults.registrationNumber.replace(/^T/i, "")}
                 </div>
               )}
@@ -787,9 +787,9 @@ export default function VendorInvoiceNewPage() {
             <span style={{ fontSize: "22px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
               {formatCurrency(total)}
             </span>
-            <span style={{ fontSize: "11px", color: "#64748b" }}>（税込）</span>
+            <span style={{ fontSize: "11px", color: "#334155" }}>（税込）</span>
           </div>
-          <div style={{ fontSize: "11px", color: "#475569" }}>
+          <div style={{ fontSize: "11px", color: "#1e293b" }}>
             お支払期限：
             <span style={{ color: "#0f172a", marginLeft: "6px" }}>
               {dueDate ? formatDate(dueDate) : "月末日"}
@@ -898,7 +898,7 @@ export default function VendorInvoiceNewPage() {
                   const amt = (it.quantity || 0) * (it.unitPrice || 0);
                   return (
                     <tr key={i} data-pdf-row="true">
-                      <td style={{ ...cellBase, textAlign: "center", color: "#64748b" }}>
+                      <td style={{ ...cellBase, textAlign: "center", color: "#334155" }}>
                         {i + 1}
                       </td>
                       <td style={{ ...cellBase, textAlign: "left" }}>
@@ -931,7 +931,7 @@ export default function VendorInvoiceNewPage() {
           }}
         >
           <div style={{ fontSize: "11px" }}>
-            <div style={{ fontWeight: 500, color: "#64748b", marginBottom: "4px" }}>
+            <div style={{ fontWeight: 500, color: "#334155", marginBottom: "4px" }}>
               お振込先
             </div>
             <div style={{ paddingLeft: "4px", lineHeight: 1.6 }}>
@@ -946,7 +946,7 @@ export default function VendorInvoiceNewPage() {
             </div>
             {notes && (
               <div style={{ marginTop: "8px", paddingTop: "6px", borderTop: "1px solid #e2e8f0" }}>
-                <div style={{ color: "#64748b", marginBottom: "2px" }}>備考</div>
+                <div style={{ color: "#334155", marginBottom: "2px" }}>備考</div>
                 <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{notes}</p>
               </div>
             )}
