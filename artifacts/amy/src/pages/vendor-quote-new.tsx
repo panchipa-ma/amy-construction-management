@@ -505,21 +505,21 @@ export default function VendorQuoteNewPage() {
         style={{
           width: "210mm",
           boxSizing: "border-box",
-          padding: "16px 18px",
+          padding: "10px 14px",
           background: "#ffffff",
           color: "#0f172a",
           fontFamily:
             "-apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif",
-          fontSize: "13px",
-          lineHeight: 1.5,
+          fontSize: "12px",
+          lineHeight: 1.4,
         }}
       >
         {/* Title */}
-        <div style={{ textAlign: "center", marginBottom: "16px", marginTop: 0 }}>
+        <div style={{ textAlign: "center", marginBottom: "8px", marginTop: 0 }}>
           <h1
             style={{
               display: "inline-block",
-              fontSize: "34px",
+              fontSize: "24px",
               fontWeight: 600,
               letterSpacing: "0.5em",
               paddingLeft: "0.5em",
@@ -531,78 +531,69 @@ export default function VendorQuoteNewPage() {
         </div>
 
         {/* Customer + Meta */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "32px", marginBottom: "20px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "24px", marginBottom: "8px" }}>
           <div>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: "12px", borderBottom: "2px solid #0f172a", paddingBottom: "6px" }}>
-              <span style={{ fontSize: "22px", fontWeight: 700, flex: 1 }}>{defaults.recipientName || "—"}</span>
-              <span style={{ fontSize: "18px" }}>御中</span>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: "10px", borderBottom: "2px solid #0f172a", paddingBottom: "3px" }}>
+              <span style={{ fontSize: "18px", fontWeight: 700, flex: 1 }}>{defaults.recipientName || "—"}</span>
+              <span style={{ fontSize: "14px" }}>御中</span>
             </div>
             {defaults.authorName && (
-              <div style={{ display: "flex", gap: "12px", marginTop: "10px", alignItems: "center", fontSize: "13px" }}>
-                <span style={{ color: "#64748b", width: "56px" }}>ご担当</span>
-                <span style={{ flex: 1, borderBottom: "1px solid #e2e8f0", paddingBottom: "2px" }}>{defaults.authorName}</span>
+              <div style={{ display: "flex", gap: "10px", marginTop: "4px", alignItems: "center", fontSize: "11px" }}>
+                <span style={{ color: "#64748b", width: "48px" }}>ご担当</span>
+                <span style={{ flex: 1, borderBottom: "1px solid #e2e8f0", paddingBottom: "1px" }}>{defaults.authorName}</span>
                 <span>様</span>
               </div>
             )}
           </div>
-          <div style={{ border: "1px solid #0f172a", fontSize: "12px", alignSelf: "flex-start" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "78px 1fr", borderBottom: "1px solid #0f172a" }}>
-              <div style={{ padding: "6px 10px", background: "#f1f5f9", borderRight: "1px solid #0f172a" }}>見積日</div>
-              <div style={{ padding: "6px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{issueDate ? formatDate(issueDate) : ""}</div>
+          <div style={{ border: "1px solid #0f172a", fontSize: "11px", alignSelf: "flex-start" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "70px 1fr", borderBottom: "1px solid #0f172a" }}>
+              <div style={{ padding: "3px 8px", background: "#f1f5f9", borderRight: "1px solid #0f172a" }}>見積日</div>
+              <div style={{ padding: "3px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{issueDate ? formatDate(issueDate) : ""}</div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "78px 1fr" }}>
-              <div style={{ padding: "6px 10px", background: "#f1f5f9", borderRight: "1px solid #0f172a" }}>有効期限</div>
-              <div style={{ padding: "6px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{validUntil ? formatDate(validUntil) : ""}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "70px 1fr" }}>
+              <div style={{ padding: "3px 8px", background: "#f1f5f9", borderRight: "1px solid #0f172a" }}>有効期限</div>
+              <div style={{ padding: "3px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{validUntil ? formatDate(validUntil) : ""}</div>
             </div>
           </div>
         </div>
 
         {/* 件名 + Issuer card */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "32px", marginBottom: "20px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "24px", marginBottom: "6px" }}>
           <div>
-            {project && (
-              <div style={{ marginBottom: "12px" }}>
-                <div style={{ fontSize: "10px", letterSpacing: "0.3em", color: "#64748b", marginBottom: "4px" }}>案件</div>
-                <div style={{ borderBottom: "1px solid #e2e8f0", paddingBottom: "4px", fontSize: "14px" }}>{projectLabel(project)}</div>
-              </div>
-            )}
-            <div style={{ borderLeft: "4px solid #1f3a66", paddingLeft: "12px", paddingTop: "2px", paddingBottom: "2px" }}>
-              <div style={{ fontSize: "10px", letterSpacing: "0.3em", color: "#64748b" }}>件名</div>
-              <div style={{ fontSize: "16px", fontWeight: 600 }}>{project ? projectLabel(project) : "—"}</div>
+            <div style={{ borderLeft: "4px solid #1f3a66", paddingLeft: "10px", paddingTop: "1px", paddingBottom: "1px" }}>
+              <div style={{ fontSize: "9px", letterSpacing: "0.3em", color: "#64748b" }}>件名</div>
+              <div style={{ fontSize: "13px", fontWeight: 600 }}>{project ? projectLabel(project) : "—"}</div>
             </div>
-            <p style={{ fontSize: "12px", color: "#64748b", marginTop: "12px", lineHeight: 1.6 }}>下記のとおり、御見積もり申し上げます。</p>
+            <p style={{ fontSize: "10px", color: "#64748b", marginTop: "4px", marginBottom: 0, lineHeight: 1.4 }}>下記のとおり、御見積もり申し上げます。</p>
           </div>
 
-          <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "12px 16px", fontSize: "11.5px", lineHeight: 1.7 }}>
-            <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "2px" }}>{defaults.companyName || "—"}</div>
+          <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "5px 10px", fontSize: "10px", lineHeight: 1.4 }}>
+            <div style={{ fontSize: "12px", fontWeight: 700 }}>{defaults.companyName || "—"}</div>
             {(defaults.postalCode || defaults.address) && (
               <div style={{ color: "#64748b" }}>
-                {defaults.postalCode && <span style={{ marginRight: "6px" }}>{defaults.postalCode}</span>}
+                {defaults.postalCode && <span style={{ marginRight: "4px" }}>{defaults.postalCode}</span>}
                 {defaults.address}
               </div>
             )}
             {defaults.registrationNumber && (
-              <div><span style={{ color: "#64748b", marginRight: "4px" }}>登録番号</span>{defaults.registrationNumber}</div>
+              <div><span style={{ color: "#64748b", marginRight: "3px" }}>登録番号</span>{defaults.registrationNumber}</div>
             )}
             {defaults.email && (
-              <div><span style={{ color: "#64748b", marginRight: "4px" }}>E</span>{defaults.email}</div>
+              <div><span style={{ color: "#64748b", marginRight: "3px" }}>E</span>{defaults.email}</div>
             )}
             {defaults.authorName && (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "6px" }}>
-                <span><span style={{ color: "#64748b", marginRight: "4px" }}>担当</span>{defaults.authorName}</span>
-                <span style={{ width: "34px", height: "34px", border: "2px solid rgba(220,38,38,0.4)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(220,38,38,0.5)", fontSize: "11px", fontFamily: "serif" }}>印</span>
-              </div>
+              <div><span style={{ color: "#64748b", marginRight: "3px" }}>担当</span>{defaults.authorName}</div>
             )}
           </div>
         </div>
 
         {/* 合計金額 hero */}
-        <div style={{ display: "flex", border: "2px solid #1f3a66", marginBottom: "16px", background: "#fafbfd" }}>
-          <div style={{ width: "144px", padding: "10px 16px", background: "#1f3a66", color: "#ffffff", fontWeight: 600, borderRight: "2px solid #1f3a66", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", letterSpacing: "0.25em" }}>合 計 金 額</div>
-          <div style={{ flex: 1, padding: "10px 20px", display: "flex", alignItems: "baseline", justifyContent: "flex-end", gap: "8px" }}>
-            <span style={{ color: "#64748b", fontSize: "14px" }}>¥</span>
-            <span style={{ fontSize: "28px", fontWeight: 700, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{total.toLocaleString()}</span>
-            <span style={{ fontSize: "11px", color: "#64748b" }}>（税込）</span>
+        <div style={{ display: "flex", border: "2px solid #1f3a66", marginBottom: "6px", background: "#fafbfd" }}>
+          <div style={{ width: "120px", padding: "4px 12px", background: "#1f3a66", color: "#ffffff", fontWeight: 600, borderRight: "2px solid #1f3a66", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", letterSpacing: "0.2em" }}>合 計 金 額</div>
+          <div style={{ flex: 1, padding: "4px 16px", display: "flex", alignItems: "baseline", justifyContent: "flex-end", gap: "6px" }}>
+            <span style={{ color: "#64748b", fontSize: "12px" }}>¥</span>
+            <span style={{ fontSize: "20px", fontWeight: 700, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{total.toLocaleString()}</span>
+            <span style={{ fontSize: "10px", color: "#64748b" }}>（税込）</span>
           </div>
         </div>
 
@@ -640,9 +631,9 @@ export default function VendorQuoteNewPage() {
 
         {/* Items table */}
         {(() => {
-          const MIN_ROWS = 8;
+          const MIN_ROWS = 32;
           const visibleCount = Math.max(items.length, MIN_ROWS);
-          const cols = "32px 1fr 52px 60px 88px 108px 1fr";
+          const cols = "26px 1fr 44px 52px 80px 96px 1fr";
           const headBorder = "1px solid #d8dbe6";
           const rowBorder = "1px solid #cbd5e1";
           const rows = Array.from({ length: visibleCount }, (_, i) => ({
@@ -652,14 +643,14 @@ export default function VendorQuoteNewPage() {
           return (
             <div style={{ border: "2px solid #0f172a", marginBottom: "0", position: "relative" }}>
               {/* Header */}
-              <div style={{ display: "grid", gridTemplateColumns: cols, background: "#1f3a66", color: "#ffffff", fontSize: "11.5px", fontWeight: 600 }}>
-                <div style={{ padding: "8px 4px", textAlign: "center", borderRight: headBorder }}>No.</div>
-                <div style={{ padding: "8px 12px", borderRight: headBorder }}>工事項目・摘要</div>
-                <div style={{ padding: "8px 4px", textAlign: "center", borderRight: headBorder }}>単位</div>
-                <div style={{ padding: "8px 4px", textAlign: "right", borderRight: headBorder }}>数量</div>
-                <div style={{ padding: "8px", textAlign: "right", borderRight: headBorder }}>単価</div>
-                <div style={{ padding: "8px", textAlign: "right", borderRight: headBorder }}>金額</div>
-                <div style={{ padding: "8px 12px" }}>備考</div>
+              <div style={{ display: "grid", gridTemplateColumns: cols, background: "#1f3a66", color: "#ffffff", fontSize: "10px", fontWeight: 600 }}>
+                <div style={{ padding: "3px 2px", textAlign: "center", borderRight: headBorder }}>No.</div>
+                <div style={{ padding: "3px 8px", borderRight: headBorder }}>工事項目・摘要</div>
+                <div style={{ padding: "3px 2px", textAlign: "center", borderRight: headBorder }}>単位</div>
+                <div style={{ padding: "3px 2px", textAlign: "right", borderRight: headBorder }}>数量</div>
+                <div style={{ padding: "3px 4px", textAlign: "right", borderRight: headBorder }}>単価</div>
+                <div style={{ padding: "3px 4px", textAlign: "right", borderRight: headBorder }}>金額</div>
+                <div style={{ padding: "3px 8px" }}>備考</div>
               </div>
               {/* Rows */}
               {(() => {
@@ -683,9 +674,9 @@ export default function VendorQuoteNewPage() {
                     }
                   };
                   return (
-                  <div key={i} data-pdf-row="true" style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, fontSize: "13px", minHeight: "32px", position: "relative" }}>
-                    <div style={{ padding: "6px 4px", textAlign: "center", color: "#64748b", borderRight: rowBorder, fontVariantNumeric: "tabular-nums", fontSize: "12px" }}>{exists ? i + 1 : ""}</div>
-                    <div style={{ padding: "4px 8px", borderRight: rowBorder }}>
+                  <div key={i} data-pdf-row="true" style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, fontSize: "11px", minHeight: "18px", position: "relative" }}>
+                    <div style={{ padding: "2px 2px", textAlign: "center", color: "#64748b", borderRight: rowBorder, fontVariantNumeric: "tabular-nums", fontSize: "10px" }}>{exists ? i + 1 : ""}</div>
+                    <div style={{ padding: "1px 6px", borderRight: rowBorder }}>
                       <input
                         className="vq-cell-input"
                         data-cell={`r${i}-cdesc`}
@@ -696,7 +687,7 @@ export default function VendorQuoteNewPage() {
                         onKeyDown={(e) => handleEnterDown(e, i, "desc")}
                       />
                     </div>
-                    <div style={{ padding: "4px 0", borderRight: rowBorder, textAlign: "center" }}>
+                    <div style={{ padding: "1px 0", borderRight: rowBorder, textAlign: "center" }}>
                       <select
                         className="vq-cell-input"
                         data-cell={`r${i}-cunit`}
@@ -706,7 +697,7 @@ export default function VendorQuoteNewPage() {
                         style={{
                           textAlign: "center",
                           textAlignLast: "center",
-                          fontSize: "12px",
+                          fontSize: "10px",
                           cursor: "pointer",
                         }}
                       >
@@ -716,7 +707,7 @@ export default function VendorQuoteNewPage() {
                         ))}
                       </select>
                     </div>
-                    <div style={{ padding: "4px 4px", borderRight: rowBorder }}>
+                    <div style={{ padding: "1px 3px", borderRight: rowBorder }}>
                       <input
                         className="vq-cell-input"
                         data-cell={`r${i}-cqty`}
@@ -731,7 +722,7 @@ export default function VendorQuoteNewPage() {
                         style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
                       />
                     </div>
-                    <div style={{ padding: "4px 6px", borderRight: rowBorder }}>
+                    <div style={{ padding: "1px 4px", borderRight: rowBorder }}>
                       <input
                         className="vq-cell-input"
                         data-cell={`r${i}-cprice`}
@@ -746,10 +737,10 @@ export default function VendorQuoteNewPage() {
                         style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
                       />
                     </div>
-                    <div style={{ padding: "6px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums", borderRight: rowBorder, fontWeight: 500 }}>
+                    <div style={{ padding: "2px 4px", textAlign: "right", fontVariantNumeric: "tabular-nums", borderRight: rowBorder, fontWeight: 500 }}>
                       {exists && amt > 0 ? formatCurrency(amt) : ""}
                     </div>
-                    <div style={{ padding: "4px 8px" }}>
+                    <div style={{ padding: "1px 6px" }}>
                       <input
                         className="vq-cell-input"
                         data-cell={`r${i}-cnotes`}
@@ -758,7 +749,7 @@ export default function VendorQuoteNewPage() {
                         onFocus={ensureRow}
                         onChange={(e) => updateRow(i, { notes: e.target.value })}
                         onKeyDown={(e) => handleEnterDown(e, i, "notes")}
-                        style={{ fontSize: "12.5px" }}
+                        style={{ fontSize: "10.5px" }}
                       />
                     </div>
                     {/* Per-row delete button (hidden in PDF) */}
@@ -796,22 +787,22 @@ export default function VendorQuoteNewPage() {
                 });
               })()}
               {/* Totals footer */}
-              <div style={{ display: "grid", gridTemplateColumns: cols, borderTop: "2px solid #0f172a", background: "#f1f5f9", fontSize: "12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: cols, borderTop: "2px solid #0f172a", background: "#f1f5f9", fontSize: "10px" }}>
                 <div style={{ gridColumn: "1 / span 4" }}></div>
-                <div style={{ padding: "8px", borderLeft: rowBorder, textAlign: "right", fontWeight: 600 }}>小計</div>
-                <div style={{ padding: "8px", borderLeft: rowBorder, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(subtotal)}</div>
+                <div style={{ padding: "3px 6px", borderLeft: rowBorder, textAlign: "right", fontWeight: 600 }}>小計</div>
+                <div style={{ padding: "3px 6px", borderLeft: rowBorder, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(subtotal)}</div>
                 <div style={{ borderLeft: rowBorder }}></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, background: "#f1f5f9", fontSize: "12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, background: "#f1f5f9", fontSize: "10px" }}>
                 <div style={{ gridColumn: "1 / span 4" }}></div>
-                <div style={{ padding: "8px", borderLeft: rowBorder, textAlign: "right", fontWeight: 600 }}>消費税</div>
-                <div style={{ padding: "8px", borderLeft: rowBorder, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(tax)}</div>
+                <div style={{ padding: "3px 6px", borderLeft: rowBorder, textAlign: "right", fontWeight: 600 }}>消費税</div>
+                <div style={{ padding: "3px 6px", borderLeft: rowBorder, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(tax)}</div>
                 <div style={{ borderLeft: rowBorder }}></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, background: "#1f3a66", color: "#ffffff", fontSize: "13px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, background: "#1f3a66", color: "#ffffff", fontSize: "11px" }}>
                 <div style={{ gridColumn: "1 / span 4" }}></div>
-                <div style={{ padding: "10px 8px", borderLeft: headBorder, textAlign: "right", fontWeight: 700 }}>合計</div>
-                <div style={{ padding: "10px 8px", borderLeft: headBorder, textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>{formatCurrency(total)}</div>
+                <div style={{ padding: "4px 6px", borderLeft: headBorder, textAlign: "right", fontWeight: 700 }}>合計</div>
+                <div style={{ padding: "4px 6px", borderLeft: headBorder, textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>{formatCurrency(total)}</div>
                 <div style={{ borderLeft: headBorder }}></div>
               </div>
             </div>
@@ -848,35 +839,35 @@ export default function VendorQuoteNewPage() {
         </datalist>
 
         {/* Terms + Notes */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginTop: "16px", marginBottom: "8px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginTop: "6px", marginBottom: "4px" }}>
           <div>
-            <div style={{ fontSize: "10px", letterSpacing: "0.3em", color: "#64748b", marginBottom: "6px" }}>取引条件</div>
-            <div style={{ border: "1px solid #94a3b8", fontSize: "11.5px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "72px 1fr", borderBottom: "1px solid #cbd5e1" }}>
-                <div style={{ padding: "6px 10px", background: "#f1f5f9", borderRight: "1px solid #cbd5e1" }}>納期</div>
-                <div style={{ padding: "6px 10px" }}>{QUOTE_TERMS.delivery}</div>
+            <div style={{ fontSize: "9px", letterSpacing: "0.3em", color: "#64748b", marginBottom: "2px" }}>取引条件</div>
+            <div style={{ border: "1px solid #94a3b8", fontSize: "10px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "64px 1fr", borderBottom: "1px solid #cbd5e1" }}>
+                <div style={{ padding: "2px 8px", background: "#f1f5f9", borderRight: "1px solid #cbd5e1" }}>納期</div>
+                <div style={{ padding: "2px 8px" }}>{QUOTE_TERMS.delivery}</div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "72px 1fr" }}>
-                <div style={{ padding: "6px 10px", background: "#f1f5f9", borderRight: "1px solid #cbd5e1" }}>支払条件</div>
-                <div style={{ padding: "6px 10px" }}>{QUOTE_TERMS.payment}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "64px 1fr" }}>
+                <div style={{ padding: "2px 8px", background: "#f1f5f9", borderRight: "1px solid #cbd5e1" }}>支払条件</div>
+                <div style={{ padding: "2px 8px" }}>{QUOTE_TERMS.payment}</div>
               </div>
             </div>
           </div>
           <div>
-            <div style={{ fontSize: "10px", letterSpacing: "0.3em", color: "#64748b", marginBottom: "6px" }}>備考</div>
+            <div style={{ fontSize: "9px", letterSpacing: "0.3em", color: "#64748b", marginBottom: "2px" }}>備考</div>
             <textarea
               className="vq-cell-input vq-textarea"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="お客様への補足事項などを記入"
-              rows={3}
-              style={{ border: "1px solid #94a3b8", padding: "8px 10px", fontSize: "11.5px", minHeight: "60px", lineHeight: 1.6, width: "100%" }}
+              rows={2}
+              style={{ border: "1px solid #94a3b8", padding: "3px 8px", fontSize: "10px", minHeight: "32px", lineHeight: 1.4, width: "100%" }}
             />
           </div>
         </div>
 
         {/* Footer credit line */}
-        <div style={{ marginTop: "20px", paddingTop: "8px", borderTop: "1px solid #e2e8f0", textAlign: "center", fontSize: "10px", color: "#64748b", letterSpacing: "0.15em" }}>
+        <div style={{ marginTop: "6px", paddingTop: "3px", borderTop: "1px solid #e2e8f0", textAlign: "center", fontSize: "9px", color: "#64748b", letterSpacing: "0.15em" }}>
           {defaults.companyName || "—"}
         </div>
       </div>
