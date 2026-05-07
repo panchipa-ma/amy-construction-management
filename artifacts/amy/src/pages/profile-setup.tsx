@@ -141,6 +141,30 @@ export default function ProfileSetupPage({ mode = "setup" }: { mode?: Mode }) {
                   data-testid="input-address"
                 />
               </div>
+              <div className="space-y-2">
+                <Label>
+                  TEL{" "}
+                  <span className="text-muted-foreground text-xs">(任意)</span>
+                </Label>
+                <Input
+                  value={profile.tel}
+                  onChange={(e) => update("tel", e.target.value)}
+                  placeholder="例: 06-1234-5678"
+                  data-testid="input-tel"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>
+                  FAX{" "}
+                  <span className="text-muted-foreground text-xs">(任意)</span>
+                </Label>
+                <Input
+                  value={profile.fax}
+                  onChange={(e) => update("fax", e.target.value)}
+                  placeholder="例: 06-1234-5679"
+                  data-testid="input-fax"
+                />
+              </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>
                   会社メールアドレス <span className="text-destructive">*</span>
@@ -198,6 +222,18 @@ export default function ProfileSetupPage({ mode = "setup" }: { mode?: Mode }) {
                     <SelectItem value="貯蓄">貯蓄</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>
+                  店番号{" "}
+                  <span className="text-muted-foreground text-xs">(任意)</span>
+                </Label>
+                <Input
+                  value={profile.branchCode}
+                  onChange={(e) => update("branchCode", e.target.value)}
+                  placeholder="例: 197"
+                  data-testid="input-branch-code"
+                />
               </div>
               <div className="space-y-2">
                 <Label>

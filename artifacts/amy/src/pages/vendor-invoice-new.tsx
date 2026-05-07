@@ -46,9 +46,12 @@ type CreatorDefaults = {
   companyName: string;
   postalCode: string;
   address: string;
+  tel: string;
+  fax: string;
   email: string;
   bankName: string;
   branchName: string;
+  branchCode: string;
   accountType: string;
   accountNumber: string;
   accountHolder: string;
@@ -61,9 +64,12 @@ const EMPTY_DEFAULTS: CreatorDefaults = {
   companyName: "",
   postalCode: "",
   address: "",
+  tel: "",
+  fax: "",
   email: "",
   bankName: "",
   branchName: "",
+  branchCode: "",
   accountType: "普通",
   accountNumber: "",
   accountHolder: "",
@@ -517,6 +523,14 @@ export default function VendorInvoiceNewPage() {
                 <span className="text-muted-foreground">住所：</span>
                 <span className="font-medium">{defaults.address || "—"}</span>
               </div>
+              <div>
+                <span className="text-muted-foreground">TEL：</span>
+                <span className="font-medium">{defaults.tel || "—"}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">FAX：</span>
+                <span className="font-medium">{defaults.fax || "—"}</span>
+              </div>
               <div className="md:col-span-2">
                 <span className="text-muted-foreground">メール：</span>
                 <span className="font-medium">{defaults.email || "—"}</span>
@@ -531,9 +545,11 @@ export default function VendorInvoiceNewPage() {
                 </span>
               </div>
               <div>
-                <span className="text-muted-foreground">種別／口座番号：</span>
+                <span className="text-muted-foreground">店番号／口座番号：</span>
                 <span className="font-medium">
-                  {defaults.accountType} {defaults.accountNumber || "—"}
+                  {defaults.accountType}{" "}
+                  {defaults.branchCode ? `${defaults.branchCode} / ` : ""}
+                  {defaults.accountNumber || "—"}
                 </span>
               </div>
               <div className="md:col-span-2">
@@ -761,6 +777,8 @@ export default function VendorInvoiceNewPage() {
                 </div>
               )}
               <div style={{ marginTop: "4px" }}>
+                {defaults.tel && <div>TEL：{defaults.tel}</div>}
+                {defaults.fax && <div>FAX：{defaults.fax}</div>}
                 {defaults.email && <div>E-Mail：{defaults.email}</div>}
               </div>
               {defaults.authorName && (
@@ -941,6 +959,7 @@ export default function VendorInvoiceNewPage() {
                 </div>
               )}
               {defaults.accountType && <div>{defaults.accountType}</div>}
+              {defaults.branchCode && <div>店番号：{defaults.branchCode}</div>}
               {defaults.accountNumber && <div>口座番号：{defaults.accountNumber}</div>}
               {defaults.accountHolder && <div>{defaults.accountHolder}</div>}
             </div>

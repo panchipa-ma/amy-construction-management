@@ -8,9 +8,12 @@ export type UserProfile = {
   registrationNumber: string;
   postalCode: string;
   address: string;
+  tel: string;
+  fax: string;
   email: string;
   bankName: string;
   branchName: string;
+  branchCode: string;
   accountType: string;
   accountNumber: string;
   accountHolder: string;
@@ -21,9 +24,12 @@ export const EMPTY_PROFILE: UserProfile = {
   registrationNumber: "",
   postalCode: "",
   address: "",
+  tel: "",
+  fax: "",
   email: "",
   bankName: "",
   branchName: "",
+  branchCode: "",
   accountType: "普通",
   accountNumber: "",
   accountHolder: "",
