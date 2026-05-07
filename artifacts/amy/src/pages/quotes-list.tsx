@@ -115,16 +115,25 @@ export default function QuotesListPage() {
       } catch {
         // 案件のステータス更新は補助的なものなので、失敗しても請求書作成自体は成功扱い
       }
+      // 元の見積書は「請求」へ移行したので、見積一覧から削除して二重表示を避ける
+      try {
+        await deleteMut.mutateAsync({ id: convertFor.id });
+      } catch {
+        // 削除失敗時も請求書作成・案件更新は成功しているのでそのまま続行
+      }
       await queryClient.invalidateQueries({
         queryKey: getListInvoicesQueryKey(),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getListQuotesQueryKey(),
       });
       await queryClient.invalidateQueries({
         queryKey: getListProjectsQueryKey(),
       });
       await invalidateDashboard(queryClient);
-      toast({ title: "請求書を作成し、案件を請求済へ移動しました" });
+      toast({ title: "見積書を請求書へ移行しました" });
       setConvertFor(null);
-      setLocation(`/invoices/${inv.id}`);
+      setLocation("/invoices");
     } catch (err) {
       toast({ title: apiErrorMessage(err), variant: "destructive" });
     }
