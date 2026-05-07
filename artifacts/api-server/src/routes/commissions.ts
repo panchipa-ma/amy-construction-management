@@ -205,6 +205,25 @@ router.get("/commissions", async (req, res): Promise<void> => {
 
   let totalInvoiceAmount = 0;
 
+  // 案件ごとの「他人に渡る他人売上ボーナス率合計」を先に計算する。
+  // エディ (営業歩合 7.5%) の案件で 亘 (2.5%) が他人売上ボーナス対象なら、
+  // エディの実効営業歩合率は 7.5% - 2.5% = 5%。亘が 2.5% を別途受け取る。
+  // 営業歩合の支払い総額は変わらず、内訳だけが変わる。
+  function bonusRateTakenFromSalesRep(project: typeof projects[number]): number {
+    const salesRep = project.salesRep?.trim() || null;
+    let sum = 0;
+    for (const emp of bonusEmployees) {
+      const name = emp.name.trim();
+      if (salesRep === name) continue; // 自分の売上はボーナス対象外
+      const rate =
+        project.otherSalesBonusRate != null
+          ? n(project.otherSalesBonusRate)
+          : n(emp.otherSalesBonusRate);
+      if (rate > 0) sum += rate;
+    }
+    return sum;
+  }
+
   // 1) 営業歩合 (請求書ごと)
   for (const inv of monthInvoices) {
     const project = projectMap.get(inv.projectId);
@@ -218,7 +237,9 @@ router.get("/commissions", async (req, res): Promise<void> => {
 
     if (salesRep && total > 0) {
       const rate = n(project.salesCommissionRate);
-      const amount = Math.round((total * rate) / 100);
+      const bonusOut = bonusRateTakenFromSalesRep(project);
+      const effectiveRate = Math.max(0, rate - bonusOut);
+      const amount = Math.round((total * effectiveRate) / 100);
       if (amount > 0) {
         const p = getPerson(salesRep);
         p.salesCommission += amount;
@@ -233,9 +254,12 @@ router.get("/commissions", async (req, res): Promise<void> => {
           invoiceTotal: total,
           kind: "sales",
           amount,
-          rate,
+          rate: effectiveRate,
           baseAmount: total,
-          note: null,
+          note:
+            bonusOut > 0
+              ? `${rate}% − 他人売上ボーナス ${bonusOut}% = ${effectiveRate}%`
+              : null,
         });
       }
     }

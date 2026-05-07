@@ -79,9 +79,9 @@ Stored in `user.unsafeMetadata.profile` so each social member only sees their ow
 
 Three components per person:
 
-1. **営業歩合** — per invoice: `invoice税込合計 × project.salesCommissionRate%` → attributed to `project.salesRep`.
+1. **営業歩合** — per invoice: `invoice税込合計 × 実効営業歩合率%` → attributed to `project.salesRep`。**実効率 = `project.salesCommissionRate − Σ他人売上ボーナス率`** (salesRep 以外の bonusEmployees の率合計を引く)。例: エディ案件 (営業 7.5%) で 亘 (2.5%) が対象なら エディは 5%、亘は 2.5%。営業歩合の総支払額は変わらず、内訳だけが分かれる。差し引きが負になる場合は 0 でクリップ (亘は変わらず 2.5% を受け取る)。
 2. **現場監督歩合** — only for **completed** projects whose latest sent invoice falls in the target month (so each project is counted exactly once, in the month its final invoice goes out). Formula: `規定超過粗利 × project.supervisorCommissionRate%`, where `規定超過粗利 = max(0, sum(invoice税込) − 営業歩合 − sum(invoice税込) × standardProfitRate% − sum(actualAmount))`. Falls back to `customer.defaultProfitRate` when project has no `standardProfitRate`. Attributed to `project.siteSupervisor`.
-3. **他人売上ボーナス** — `staff.otherSalesBonusRate` (numeric, nullable, %) is the per-staff "亘ルール" default rate. Per-project override via `projects.otherSalesBonusRate` (numeric, nullable): NULL → fall back to staff default; explicit `0` → opt this project out. For each bonus staff, sum tax-incl invoice totals where `project.salesRep ≠ staff.name` and multiply by the effective rate. When the project rate is used, the line note appends ` (案件率)`. Excludes 監督歩合 by design (separate calc).
+3. **他人売上ボーナス** — `employees.otherSalesBonusRate` (%) is the per-employee "亘ルール" default rate. Per-project override via `projects.otherSalesBonusRate` (numeric, nullable): NULL → fall back to employee default; explicit `0` → opt this project out. For each bonus employee, sum tax-incl invoice totals where `project.salesRep ≠ employee.name` and multiply by the effective rate. When the project rate is used, the line note appends ` (案件率)`。**この金額は 営業歩合 から差し引かれた分** (上記 1) — 二重計上ではない。Excludes 監督歩合 by design (separate calc).
 
 Page (`pages/commissions.tsx`): month picker (defaults to current), 3 **clickable** summary tiles that filter the per-person table:
 - 「全体」 — 営業歩合 + 他人売上ボーナス + 監督歩合 (default view, 4 columns)
