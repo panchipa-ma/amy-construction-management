@@ -741,10 +741,10 @@ export default function VendorInvoiceNewPage() {
               </span>
             </div>
             <div style={{ marginTop: "12px", fontSize: "13px" }}>
-              <span style={{ color: "#64748b" }}>ご担当：</span>
+              <span>ご担当：</span>
             </div>
             <div style={{ marginTop: "8px", fontSize: "13px" }}>
-              <span style={{ color: "#64748b" }}>件名：</span>
+              <span>件名：</span>
               <span style={{ fontWeight: 500, marginLeft: "4px" }}>
                 {project ? projectLabel(project) : ""}
               </span>
@@ -764,9 +764,9 @@ export default function VendorInvoiceNewPage() {
                 textAlign: "right",
               }}
             >
-              <span style={{ color: "#64748b" }}>請求No.</span>
+              <span>請求No.</span>
               <span style={{ fontVariantNumeric: "tabular-nums" }}>{invoiceNo}</span>
-              <span style={{ color: "#64748b" }}>請求日</span>
+              <span>請求日</span>
               <span>{issueDate ? formatDate(issueDate) : ""}</span>
             </div>
             {/* Issuer card with border-top separator */}
@@ -780,31 +780,31 @@ export default function VendorInvoiceNewPage() {
             >
               <div style={{ fontWeight: 700 }}>{defaults.companyName || "—"}</div>
               {defaults.postalCode && (
-                <div style={{ fontSize: "11px", color: "#64748b" }}>
+                <div style={{ fontSize: "12px" }}>
                   〒{defaults.postalCode}
                 </div>
               )}
               {defaults.address && (
-                <div style={{ fontSize: "11px" }}>{defaults.address}</div>
+                <div style={{ fontSize: "12px" }}>{defaults.address}</div>
               )}
               {defaults.registrationNumber && (
-                <div style={{ fontSize: "11px", color: "#64748b" }}>
+                <div style={{ fontSize: "12px" }}>
                   登録番号：T{defaults.registrationNumber.replace(/^T/i, "")}
                 </div>
               )}
               <div style={{ marginTop: "4px" }}>
                 {defaults.tel && (
-                  <div style={{ fontSize: "11px" }}>TEL：{defaults.tel}</div>
+                  <div style={{ fontSize: "12px" }}>TEL：{defaults.tel}</div>
                 )}
                 {defaults.fax && (
-                  <div style={{ fontSize: "11px" }}>FAX：{defaults.fax}</div>
+                  <div style={{ fontSize: "12px" }}>FAX：{defaults.fax}</div>
                 )}
                 {defaults.email && (
-                  <div style={{ fontSize: "11px" }}>E-Mail：{defaults.email}</div>
+                  <div style={{ fontSize: "12px" }}>E-Mail：{defaults.email}</div>
                 )}
               </div>
               {defaults.authorName && (
-                <div style={{ fontSize: "11px", marginTop: "4px" }}>
+                <div style={{ fontSize: "12px", marginTop: "4px" }}>
                   担当：{defaults.authorName}
                 </div>
               )}
@@ -828,10 +828,10 @@ export default function VendorInvoiceNewPage() {
             <span style={{ fontSize: "22px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
               {formatCurrency(total)}
             </span>
-            <span style={{ fontSize: "12px", color: "#64748b" }}>（税込）</span>
+            <span style={{ fontSize: "12px" }}>（税込）</span>
           </div>
           <div style={{ marginLeft: "auto", fontSize: "13px" }}>
-            <span style={{ color: "#64748b" }}>お支払期限：</span>
+            <span>お支払期限：</span>
             <span style={{ fontWeight: 500, marginLeft: "6px" }}>
               {dueDate ? formatDate(dueDate) : "月末日"}
             </span>
@@ -898,7 +898,7 @@ export default function VendorInvoiceNewPage() {
                   const rowBg = i % 2 === 0 ? "rgba(239, 246, 255, 0.4)" : "transparent";
                   return (
                     <tr key={i} data-pdf-row="true" style={{ background: rowBg }}>
-                      <td style={{ ...cellBase, textAlign: "center", color: "#64748b" }}>
+                      <td style={{ ...cellBase, textAlign: "center" }}>
                         {i + 1}
                       </td>
                       <td style={{ ...cellBase, textAlign: "left" }}>
@@ -931,7 +931,7 @@ export default function VendorInvoiceNewPage() {
           }}
         >
           <div style={{ fontSize: "13px" }}>
-            <div style={{ fontWeight: 500, color: "#64748b", marginBottom: "4px" }}>
+            <div style={{ fontWeight: 500, marginBottom: "4px" }}>
               お振込先
             </div>
             <div style={{ paddingLeft: "8px", lineHeight: 1.6 }}>
@@ -947,7 +947,7 @@ export default function VendorInvoiceNewPage() {
             </div>
             {notes && (
               <div style={{ marginTop: "12px", paddingTop: "8px", borderTop: "1px solid #e2e8f0" }}>
-                <div style={{ color: "#64748b", marginBottom: "2px" }}>備考</div>
+                <div style={{ marginBottom: "2px" }}>備考</div>
                 <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{notes}</p>
               </div>
             )}
@@ -982,6 +982,7 @@ export default function VendorInvoiceNewPage() {
                     border: "1px solid #204180",
                     padding: "5px 12px",
                     textAlign: "right",
+                    fontWeight: 500,
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
@@ -1008,6 +1009,7 @@ export default function VendorInvoiceNewPage() {
                     border: "1px solid #204180",
                     padding: "5px 12px",
                     textAlign: "right",
+                    fontWeight: 500,
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
