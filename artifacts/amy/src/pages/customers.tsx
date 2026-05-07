@@ -458,7 +458,7 @@ export default function CustomersPage() {
               </div>
               <div>
                 <Label htmlFor="defaultOtherSalesBonusRecipient">
-                  他人売上ボーナス 受取人
+                  マネジメント報酬 受取人
                 </Label>
                 <Input
                   id="defaultOtherSalesBonusRecipient"
@@ -483,7 +483,7 @@ export default function CustomersPage() {
               </div>
               <div>
                 <Label htmlFor="defaultOtherSalesBonusRate">
-                  他人売上ボーナス率 (%)
+                  マネジメント報酬率 (%)
                 </Label>
                 <Input
                   id="defaultOtherSalesBonusRate"

@@ -45,9 +45,9 @@ export interface Customer {
   defaultSupervisorCommissionRate: number;
   /** 担当営業の規定値 */
   defaultSalesRep?: string | null;
-  /** 他人売上ボーナス受取人の規定値 */
+  /** マネジメント報酬受取人の規定値 */
   defaultOtherSalesBonusRecipient?: string | null;
-  /** 他人売上ボーナス率の規定値 (%) */
+  /** マネジメント報酬率の規定値 (%) */
   defaultOtherSalesBonusRate?: number | null;
   createdAt: string;
 }
@@ -184,9 +184,9 @@ export interface Project {
   standardProfitRate?: number;
   /** 現場監督歩合 (%, 規定超過粗利に対する配分率) */
   supervisorCommissionRate?: number;
-  /** 他人売上ボーナスの受取人 (社員名)。空欄なら対象外 */
+  /** マネジメント報酬の受取人 (社員名)。空欄なら対象外 */
   otherSalesBonusRecipient?: string | null;
-  /** 他人売上ボーナス率 (%) — 受取人が指定されているときのみ有効 */
+  /** マネジメント報酬率 (%) — 受取人が指定されているときのみ有効 */
   otherSalesBonusRate?: number | null;
   /** 担当営業 */
   salesRep?: string | null;
@@ -688,7 +688,7 @@ export interface CommissionPersonRow {
   salesCommission: number;
   /** 現場監督歩合 合計 */
   supervisorCommission: number;
-  /** 他人売上ボーナス 合計 */
+  /** マネジメント報酬 合計 */
   otherSalesBonus: number;
   total: number;
   lines: CommissionInvoiceLine[];

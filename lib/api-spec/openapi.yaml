@@ -564,7 +564,7 @@ paths:
     get:
       operationId: getCommissions
       tags: [commissions]
-      summary: 月次の営業歩合・現場監督歩合・他人売上ボーナスを担当者ごとに集計
+      summary: 月次の営業歩合・現場監督歩合・マネジメント報酬を担当者ごとに集計
       parameters:
         - in: query
           name: month
@@ -1261,8 +1261,8 @@ components:
         defaultSalesCommissionRate: { type: number, description: "営業歩合の規定値 (%, 案件作成時にプリフィル)" }
         defaultSupervisorCommissionRate: { type: number, description: "現場監督歩合の規定値 (%, 規定超過粗利に対する配分率)" }
         defaultSalesRep: { type: string, nullable: true, description: "担当営業の規定値" }
-        defaultOtherSalesBonusRecipient: { type: string, nullable: true, description: "他人売上ボーナス受取人の規定値" }
-        defaultOtherSalesBonusRate: { type: number, nullable: true, description: "他人売上ボーナス率の規定値 (%)" }
+        defaultOtherSalesBonusRecipient: { type: string, nullable: true, description: "マネジメント報酬受取人の規定値" }
+        defaultOtherSalesBonusRate: { type: number, nullable: true, description: "マネジメント報酬率の規定値 (%)" }
         createdAt: { type: string, format: date-time }
 
     CreateCustomerBody:
@@ -1370,8 +1370,8 @@ components:
         salesCommissionRate: { type: number, description: "営業歩合率 (%, 売上に対して)" }
         standardProfitRate: { type: number, description: "規定利率 (%, NULL時は顧客マスタから取得)" }
         supervisorCommissionRate: { type: number, description: "現場監督歩合 (%, 規定超過粗利に対する配分率)" }
-        otherSalesBonusRecipient: { type: string, nullable: true, description: "他人売上ボーナスの受取人 (社員名)。空欄なら対象外" }
-        otherSalesBonusRate: { type: number, nullable: true, description: "他人売上ボーナス率 (%) — 受取人が指定されているときのみ有効" }
+        otherSalesBonusRecipient: { type: string, nullable: true, description: "マネジメント報酬の受取人 (社員名)。空欄なら対象外" }
+        otherSalesBonusRate: { type: number, nullable: true, description: "マネジメント報酬率 (%) — 受取人が指定されているときのみ有効" }
         salesRep: { type: string, nullable: true, description: "担当営業" }
         siteSupervisor: { type: string, nullable: true, description: "担当現場監督" }
         notes: { type: string, nullable: true }
@@ -1823,7 +1823,7 @@ components:
         staffId: { type: string, nullable: true, description: "staff マスタに一致した場合のみ" }
         salesCommission: { type: number, description: "営業歩合 合計" }
         supervisorCommission: { type: number, description: "現場監督歩合 合計" }
-        otherSalesBonus: { type: number, description: "他人売上ボーナス 合計" }
+        otherSalesBonus: { type: number, description: "マネジメント報酬 合計" }
         total: { type: number }
         lines:
           type: array

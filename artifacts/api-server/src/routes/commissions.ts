@@ -202,7 +202,7 @@ router.get("/commissions", async (req, res): Promise<void> => {
 
   let totalInvoiceAmount = 0;
 
-  // 案件ごとに「他人売上ボーナスの受取人」と「率」が直接設定される。
+  // 案件ごとに「マネジメント報酬の受取人」と「率」が直接設定される。
   // エディ (営業歩合 7.5%) の案件で 亘を受取人 / 2.5% に設定 →
   // エディの実効営業歩合率は 7.5% - 2.5% = 5%。亘が 2.5% を別途受け取る。
   // 営業歩合の支払い総額は変わらず、内訳だけが変わる。
@@ -254,7 +254,7 @@ router.get("/commissions", async (req, res): Promise<void> => {
           baseAmount: total,
           note:
             bonusOut > 0
-              ? `${rate}% − 他人売上ボーナス ${bonusOut}% = ${effectiveRate}%`
+              ? `${rate}% − マネジメント報酬 ${bonusOut}% = ${effectiveRate}%`
               : null,
         });
       }
@@ -315,7 +315,7 @@ router.get("/commissions", async (req, res): Promise<void> => {
     });
   }
 
-  // 3) 他人売上ボーナス (亘ルール)
+  // 3) マネジメント報酬 (亘ルール)
   // 案件ごとに recipient + rate が指定されていれば、その案件の各請求書から計上する。
   for (const inv of monthInvoices) {
     const project = projectMap.get(inv.projectId);

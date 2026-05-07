@@ -16,7 +16,7 @@ export interface CommissionPersonRow {
   salesCommission: number;
   /** 現場監督歩合 合計 */
   supervisorCommission: number;
-  /** 他人売上ボーナス 合計 */
+  /** マネジメント報酬 合計 */
   otherSalesBonus: number;
   total: number;
   lines: CommissionInvoiceLine[];

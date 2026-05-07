@@ -43,9 +43,9 @@ export const customersTable = pgTable("customers", {
     .default("30"),
   // 担当営業の規定値 — 案件作成時に salesRep のプリフィルに使用。
   defaultSalesRep: text("default_sales_rep"),
-  // 他人売上ボーナス受取人の規定値 — 案件作成時に otherSalesBonusRecipient のプリフィル。
+  // マネジメント報酬受取人の規定値 — 案件作成時に otherSalesBonusRecipient のプリフィル。
   defaultOtherSalesBonusRecipient: text("default_other_sales_bonus_recipient"),
-  // 他人売上ボーナス率の規定値 (%) — 案件作成時に otherSalesBonusRate のプリフィル。
+  // マネジメント報酬率の規定値 (%) — 案件作成時に otherSalesBonusRate のプリフィル。
   defaultOtherSalesBonusRate: numeric("default_other_sales_bonus_rate"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -59,7 +59,7 @@ export const staffTable = pgTable("staff", {
   phone: text("phone"),
   dailyRate: numeric("daily_rate"),
   company: text("company"),
-  // 他人売上ボーナス率 (%) — レガシー (社員テーブルに移行済)。
+  // マネジメント報酬率 (%) — レガシー (社員テーブルに移行済)。
   // 既存データ保持用に列は残すが、UI/集計は employeesTable.otherSalesBonusRate を参照する。
   otherSalesBonusRate: numeric("other_sales_bonus_rate"),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -68,7 +68,7 @@ export const staffTable = pgTable("staff", {
 });
 
 // 社員 (営業 / 現場監督 / 事務) — 職人 (subcontractor) とは別管理。
-// 営業歩合 / 監督歩合 / 他人売上ボーナスの紐付け先。
+// 営業歩合 / 監督歩合 / マネジメント報酬の紐付け先。
 export const employeesTable = pgTable("employees", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
@@ -76,7 +76,7 @@ export const employeesTable = pgTable("employees", {
   role: text("role").notNull(),
   phone: text("phone"),
   email: text("email"),
-  // 他人売上ボーナス率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5%)
+  // マネジメント報酬率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5%)
   otherSalesBonusRate: numeric("other_sales_bonus_rate"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -104,10 +104,10 @@ export const projectsTable = pgTable("projects", {
   supervisorCommissionRate: numeric("supervisor_commission_rate")
     .notNull()
     .default("30"),
-  // 他人売上ボーナスの受取人 (社員 employees.name)。空欄ならこの案件は他人売上ボーナス対象外。
+  // マネジメント報酬の受取人 (社員 employees.name)。空欄ならこの案件はマネジメント報酬対象外。
   // 担当営業 (salesRep) が「自分の売上の一部を誰に分けるか」を選ぶ。
   otherSalesBonusRecipient: text("other_sales_bonus_recipient"),
-  // 他人売上ボーナスの率 (%)。recipient が指定されているときのみ有効。
+  // マネジメント報酬の率 (%)。recipient が指定されているときのみ有効。
   otherSalesBonusRate: numeric("other_sales_bonus_rate"),
   salesRep: text("sales_rep"),
   siteSupervisor: text("site_supervisor"),

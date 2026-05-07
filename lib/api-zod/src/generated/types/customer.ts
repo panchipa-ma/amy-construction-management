@@ -22,9 +22,9 @@ export interface Customer {
   defaultSupervisorCommissionRate: number;
   /** 担当営業の規定値 */
   defaultSalesRep?: string | null;
-  /** 他人売上ボーナス受取人の規定値 */
+  /** マネジメント報酬受取人の規定値 */
   defaultOtherSalesBonusRecipient?: string | null;
-  /** 他人売上ボーナス率の規定値 (%) */
+  /** マネジメント報酬率の規定値 (%) */
   defaultOtherSalesBonusRate?: number | null;
   createdAt: Date;
 }

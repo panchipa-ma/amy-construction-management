@@ -39,7 +39,7 @@ function shiftMonth(month: string, delta: number): string {
 const KIND_LABEL: Record<CommissionInvoiceLine["kind"], string> = {
   sales: "営業歩合",
   supervisor: "監督歩合",
-  other_sales_bonus: "他人売上ボーナス",
+  other_sales_bonus: "マネジメント報酬",
 };
 
 const KIND_COLOR: Record<CommissionInvoiceLine["kind"], string> = {
@@ -59,7 +59,7 @@ export default function CommissionsPage() {
   const totals = data?.totals;
   const peopleAll = data?.people ?? [];
 
-  // 営業ビューでは「営業歩合 + 他人売上ボーナス」を合算した方が
+  // 営業ビューでは「営業歩合 + マネジメント報酬」を合算した方が
   // 「亘がその月にいくらもらうか」が一目でわかるため、ビュー別に列を切り替える
   const people = peopleAll
     .filter((p) => {
@@ -97,7 +97,7 @@ export default function CommissionsPage() {
             月次歩合
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            請求書の <strong>送付月</strong> を基準に、営業歩合・現場監督歩合・他人売上ボーナス
+            請求書の <strong>送付月</strong> を基準に、営業歩合・現場監督歩合・マネジメント報酬
             (亘ルールなど) を担当者ごとに自動集計します。
           </p>
         </div>
@@ -160,7 +160,7 @@ export default function CommissionsPage() {
                   onClick={() => setFilter("all")}
                 />
                 <SummaryTile
-                  label="営業 (含む他人売上ボーナス)"
+                  label="営業 (含むマネジメント報酬)"
                   value={formatCurrency(salesSideTotal)}
                   tone="blue"
                   hint={`営業歩合 ¥${(totals?.salesCommission ?? 0).toLocaleString()} + 他人売上 ¥${(totals?.otherSalesBonus ?? 0).toLocaleString()}`}
@@ -194,7 +194,7 @@ export default function CommissionsPage() {
             担当者別 内訳
             {filter === "sales" && (
               <span className="ml-2 text-xs font-normal text-muted-foreground">
-                (営業ビュー: 営業歩合 + 他人売上ボーナスを合算)
+                (営業ビュー: 営業歩合 + マネジメント報酬を合算)
               </span>
             )}
             {filter === "supervisor" && (
@@ -228,7 +228,7 @@ export default function CommissionsPage() {
                       <TableHead className="text-right">営業歩合</TableHead>
                       <TableHead className="text-right">監督歩合</TableHead>
                       <TableHead className="text-right">
-                        他人売上ボーナス
+                        マネジメント報酬
                       </TableHead>
                     </>
                   )}
@@ -236,7 +236,7 @@ export default function CommissionsPage() {
                     <>
                       <TableHead className="text-right">営業歩合</TableHead>
                       <TableHead className="text-right">
-                        他人売上ボーナス
+                        マネジメント報酬
                       </TableHead>
                     </>
                   )}
@@ -412,7 +412,7 @@ export default function CommissionsPage() {
               <strong>竣工済案件のみ</strong>対象 (案件の最終請求書が当月送付の場合に1回計上)。
             </li>
             <li>
-              <strong>他人売上ボーナス</strong> = 自分以外の営業が獲得した売上(税込) × 職人マスタの「他人売上ボーナス率」。
+              <strong>マネジメント報酬</strong> = 自分以外の営業が獲得した売上(税込) × 職人マスタの「マネジメント報酬率」。
               職人ページで設定 (例: 亘 2.5%)。監督歩合分は含みません。
             </li>
             <li>

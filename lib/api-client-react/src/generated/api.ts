@@ -2904,7 +2904,7 @@ export const useDeleteInvoice = <
 };
 
 /**
- * @summary 月次の営業歩合・現場監督歩合・他人売上ボーナスを担当者ごとに集計
+ * @summary 月次の営業歩合・現場監督歩合・マネジメント報酬を担当者ごとに集計
  */
 export const getGetCommissionsUrl = (params: GetCommissionsParams) => {
   const normalizedParams = new URLSearchParams();
@@ -2971,7 +2971,7 @@ export type GetCommissionsQueryResult = NonNullable<
 export type GetCommissionsQueryError = ErrorType<unknown>;
 
 /**
- * @summary 月次の営業歩合・現場監督歩合・他人売上ボーナスを担当者ごとに集計
+ * @summary 月次の営業歩合・現場監督歩合・マネジメント報酬を担当者ごとに集計
  */
 
 export function useGetCommissions<

@@ -146,11 +146,11 @@ export const ListProjectsResponseItem = zod.object({
   otherSalesBonusRecipient: zod
     .string()
     .nullish()
-    .describe("他人売上ボーナスの受取人 (社員名)。空欄なら対象外"),
+    .describe("マネジメント報酬の受取人 (社員名)。空欄なら対象外"),
   otherSalesBonusRate: zod
     .number()
     .nullish()
-    .describe("他人売上ボーナス率 (%) — 受取人が指定されているときのみ有効"),
+    .describe("マネジメント報酬率 (%) — 受取人が指定されているときのみ有効"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -222,11 +222,11 @@ export const CreateProjectResponse = zod.object({
   otherSalesBonusRecipient: zod
     .string()
     .nullish()
-    .describe("他人売上ボーナスの受取人 (社員名)。空欄なら対象外"),
+    .describe("マネジメント報酬の受取人 (社員名)。空欄なら対象外"),
   otherSalesBonusRate: zod
     .number()
     .nullish()
-    .describe("他人売上ボーナス率 (%) — 受取人が指定されているときのみ有効"),
+    .describe("マネジメント報酬率 (%) — 受取人が指定されているときのみ有効"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -275,11 +275,11 @@ export const GetProjectResponse = zod.object({
   otherSalesBonusRecipient: zod
     .string()
     .nullish()
-    .describe("他人売上ボーナスの受取人 (社員名)。空欄なら対象外"),
+    .describe("マネジメント報酬の受取人 (社員名)。空欄なら対象外"),
   otherSalesBonusRate: zod
     .number()
     .nullish()
-    .describe("他人売上ボーナス率 (%) — 受取人が指定されているときのみ有効"),
+    .describe("マネジメント報酬率 (%) — 受取人が指定されているときのみ有効"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -350,11 +350,11 @@ export const UpdateProjectResponse = zod.object({
   otherSalesBonusRecipient: zod
     .string()
     .nullish()
-    .describe("他人売上ボーナスの受取人 (社員名)。空欄なら対象外"),
+    .describe("マネジメント報酬の受取人 (社員名)。空欄なら対象外"),
   otherSalesBonusRate: zod
     .number()
     .nullish()
-    .describe("他人売上ボーナス率 (%) — 受取人が指定されているときのみ有効"),
+    .describe("マネジメント報酬率 (%) — 受取人が指定されているときのみ有効"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -437,11 +437,11 @@ export const ListCustomersResponseItem = zod.object({
   defaultOtherSalesBonusRecipient: zod
     .string()
     .nullish()
-    .describe("他人売上ボーナス受取人の規定値"),
+    .describe("マネジメント報酬受取人の規定値"),
   defaultOtherSalesBonusRate: zod
     .number()
     .nullish()
-    .describe("他人売上ボーナス率の規定値 (%)"),
+    .describe("マネジメント報酬率の規定値 (%)"),
   createdAt: zod.coerce.date(),
 });
 export const ListCustomersResponse = zod.array(ListCustomersResponseItem);
@@ -482,11 +482,11 @@ export const CreateCustomerResponse = zod.object({
   defaultOtherSalesBonusRecipient: zod
     .string()
     .nullish()
-    .describe("他人売上ボーナス受取人の規定値"),
+    .describe("マネジメント報酬受取人の規定値"),
   defaultOtherSalesBonusRate: zod
     .number()
     .nullish()
-    .describe("他人売上ボーナス率の規定値 (%)"),
+    .describe("マネジメント報酬率の規定値 (%)"),
   createdAt: zod.coerce.date(),
 });
 
@@ -530,11 +530,11 @@ export const UpdateCustomerResponse = zod.object({
   defaultOtherSalesBonusRecipient: zod
     .string()
     .nullish()
-    .describe("他人売上ボーナス受取人の規定値"),
+    .describe("マネジメント報酬受取人の規定値"),
   defaultOtherSalesBonusRate: zod
     .number()
     .nullish()
-    .describe("他人売上ボーナス率の規定値 (%)"),
+    .describe("マネジメント報酬率の規定値 (%)"),
   createdAt: zod.coerce.date(),
 });
 
@@ -1095,7 +1095,7 @@ export const DeleteInvoiceParams = zod.object({
 });
 
 /**
- * @summary 月次の営業歩合・現場監督歩合・他人売上ボーナスを担当者ごとに集計
+ * @summary 月次の営業歩合・現場監督歩合・マネジメント報酬を担当者ごとに集計
  */
 export const GetCommissionsQueryParams = zod.object({
   month: zod.coerce
@@ -1128,7 +1128,7 @@ export const GetCommissionsResponse = zod.object({
         .describe("staff マスタに一致した場合のみ"),
       salesCommission: zod.number().describe("営業歩合 合計"),
       supervisorCommission: zod.number().describe("現場監督歩合 合計"),
-      otherSalesBonus: zod.number().describe("他人売上ボーナス 合計"),
+      otherSalesBonus: zod.number().describe("マネジメント報酬 合計"),
       total: zod.number(),
       lines: zod.array(
         zod.object({

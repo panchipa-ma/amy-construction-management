@@ -79,13 +79,13 @@ Stored in `user.unsafeMetadata.profile` so each social member only sees their ow
 
 Three components per person:
 
-1. **営業歩合** — per invoice: `invoice税込合計 × 実効営業歩合率%` → attributed to `project.salesRep`。**実効率 = `project.salesCommissionRate − Σ他人売上ボーナス率`** (salesRep 以外の bonusEmployees の率合計を引く)。例: エディ案件 (営業 7.5%) で 亘 (2.5%) が対象なら エディは 5%、亘は 2.5%。営業歩合の総支払額は変わらず、内訳だけが分かれる。差し引きが負になる場合は 0 でクリップ (亘は変わらず 2.5% を受け取る)。
+1. **営業歩合** — per invoice: `invoice税込合計 × 実効営業歩合率%` → attributed to `project.salesRep`。**実効率 = `project.salesCommissionRate − Σマネジメント報酬率`** (salesRep 以外の bonusEmployees の率合計を引く)。例: エディ案件 (営業 7.5%) で 亘 (2.5%) が対象なら エディは 5%、亘は 2.5%。営業歩合の総支払額は変わらず、内訳だけが分かれる。差し引きが負になる場合は 0 でクリップ (亘は変わらず 2.5% を受け取る)。
 2. **現場監督歩合** — only for **completed** projects whose latest sent invoice falls in the target month (so each project is counted exactly once, in the month its final invoice goes out). Formula: `規定超過粗利 × project.supervisorCommissionRate%`, where `規定超過粗利 = max(0, sum(invoice税込) − 営業歩合 − sum(invoice税込) × standardProfitRate% − sum(actualAmount))`. Falls back to `customer.defaultProfitRate` when project has no `standardProfitRate`. Attributed to `project.siteSupervisor`.
-3. **他人売上ボーナス** — **giver-driven, per-project**. 担当営業 (salesRep) が「この案件の売上の一部を誰に渡すか」を選ぶ。`projects.otherSalesBonusRecipient` (text, 社員名) + `projects.otherSalesBonusRate` (numeric, %)。両方セット & recipient ≠ salesRep のときのみ有効。各請求書の税込合計 × rate% を recipient に計上。**この金額は同じ案件の 営業歩合 から差し引かれた分** (上記 1) — 二重計上ではない。Excludes 監督歩合 by design. 旧モデル (`employees.otherSalesBonusRate` を受取人側で設定) は廃止 — DB列は残置 (back-compat)。
+3. **マネジメント報酬** — **giver-driven, per-project**. 担当営業 (salesRep) が「この案件の売上の一部を誰に渡すか」を選ぶ。`projects.otherSalesBonusRecipient` (text, 社員名) + `projects.otherSalesBonusRate` (numeric, %)。両方セット & recipient ≠ salesRep のときのみ有効。各請求書の税込合計 × rate% を recipient に計上。**この金額は同じ案件の 営業歩合 から差し引かれた分** (上記 1) — 二重計上ではない。Excludes 監督歩合 by design. 旧モデル (`employees.otherSalesBonusRate` を受取人側で設定) は廃止 — DB列は残置 (back-compat)。
 
 Page (`pages/commissions.tsx`): month picker (defaults to current), 3 **clickable** summary tiles that filter the per-person table:
-- 「全体」 — 営業歩合 + 他人売上ボーナス + 監督歩合 (default view, 4 columns)
-- 「営業 (含む他人売上ボーナス)」 — `salesCommission + otherSalesBonus`。亘の月次受取総額 (自身の営業 + 他人売上分) が一目で見える。表は営業歩合 + 他人売上ボーナス 2列に絞り、人物の合計列も両者の合算。展開明細も `sales` + `other_sales_bonus` のみ。
+- 「全体」 — 営業歩合 + マネジメント報酬 + 監督歩合 (default view, 4 columns)
+- 「営業 (含むマネジメント報酬)」 — `salesCommission + otherSalesBonus`。亘の月次受取総額 (自身の営業 + 他人売上分) が一目で見える。表は営業歩合 + マネジメント報酬 2列に絞り、人物の合計列も両者の合算。展開明細も `sales` + `other_sales_bonus` のみ。
 - 「現場監督歩合」 — `supervisor` のみ
 選択中タイルは tone 色のリングでハイライト。Expandable per-person table with kind-tagged invoice lines linking to the project. Sidebar entry "月次歩合" with `Calculator` icon, `internalOnly: true`. 案件作成フォーム (`project-new.tsx`) と 施工台帳 (`ledger-spreadsheet.tsx` 基本情報セクション) で per-project `otherSalesBonusRecipient` (社員 datalist) + `otherSalesBonusRate` を編集可能。受取人が空欄ならその案件は対象外。
 
@@ -93,7 +93,7 @@ Page (`pages/commissions.tsx`): month picker (defaults to current), 3 **clickabl
 
 案件作成フォーム (`project-new.tsx`) の「担当営業」「担当現場監督」入力は `useListEmployees()` を呼び `/営業|sales/i`・`/現場|監督|supervisor/i` で役割フィルタした候補を `<datalist>` で表示 (プルダウン選択 + 自由入力どちらも可)。マスタにない名前を直接入力しても保存される。
 
-**他人売上ボーナスの所在 (現行)**: `projects.otherSalesBonusRecipient` (社員名) + `projects.otherSalesBonusRate` (%) を案件ごとに設定。担当営業が画面 (案件作成フォーム / 施工台帳 基本情報) から受取人と率を選ぶ giver-driven モデル。`commissions.ts` の `bonusForProject(project)` がこの 2 列を読み、recipient ≠ salesRep のときだけ採用。`employees.otherSalesBonusRate` / `staff.otherSalesBonusRate` 列は廃止 (DB残置のみ、UI・集計から非参照)。
+**マネジメント報酬の所在 (現行)**: `projects.otherSalesBonusRecipient` (社員名) + `projects.otherSalesBonusRate` (%) を案件ごとに設定。担当営業が画面 (案件作成フォーム / 施工台帳 基本情報) から受取人と率を選ぶ giver-driven モデル。`commissions.ts` の `bonusForProject(project)` がこの 2 列を読み、recipient ≠ salesRep のときだけ採用。`employees.otherSalesBonusRate` / `staff.otherSalesBonusRate` 列は廃止 (DB残置のみ、UI・集計から非参照)。
 
 **人物マッチング (commissions.ts `getPerson`)**: salesRep / siteSupervisor の文字列を `employees.name` → `staff.name` の順で検索。社員が一級市民 (見つかればその id を `staffId` として返す)。両方になければ「職人/社員未登録」バッジ表示。
 

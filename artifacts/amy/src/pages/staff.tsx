@@ -316,7 +316,7 @@ export default function StaffPage() {
                   <TableHead className="min-w-[260px]">現状況 (発注の参考)</TableHead>
                   <TableHead>電話</TableHead>
                   <TableHead className="text-right">日当</TableHead>
-                  <TableHead className="text-right">他人売上ボーナス</TableHead>
+                  <TableHead className="text-right">マネジメント報酬</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -458,7 +458,7 @@ export default function StaffPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="bonus">他人売上ボーナス率 (%)</Label>
+                <Label htmlFor="bonus">マネジメント報酬率 (%)</Label>
                 <Input
                   id="bonus"
                   type="number"

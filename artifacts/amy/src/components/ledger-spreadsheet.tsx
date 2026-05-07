@@ -287,7 +287,7 @@ export function LedgerSpreadsheet({
                 </td>
               </tr>
               <tr>
-                <th>他人売上ボーナス</th>
+                <th>マネジメント報酬</th>
                 <td colSpan={3}>
                   {editable ? (
                     <div className="flex items-center gap-2 flex-wrap">

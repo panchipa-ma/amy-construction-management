@@ -376,7 +376,7 @@ export default function ProjectNewPage() {
               </div>
               <div>
                 <Label htmlFor="otherSalesBonusRecipient">
-                  他人売上ボーナス 受取人
+                  マネジメント報酬 受取人
                 </Label>
                 <Input
                   id="otherSalesBonusRecipient"
@@ -401,7 +401,7 @@ export default function ProjectNewPage() {
               </div>
               <div>
                 <Label htmlFor="otherSalesBonusRate">
-                  他人売上ボーナス率 (%)
+                  マネジメント報酬率 (%)
                 </Label>
                 <Input
                   id="otherSalesBonusRate"
