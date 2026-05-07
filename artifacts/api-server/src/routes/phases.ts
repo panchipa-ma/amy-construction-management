@@ -14,6 +14,7 @@ import {
   DeleteProjectPhaseParams,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime, n } from "../lib/serializers";
+import { getOrCreateAppUser } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -129,6 +130,14 @@ router.post(
 );
 
 router.get("/project-phases/overview", async (req, res): Promise<void> => {
+  const me = await getOrCreateAppUser(req);
+  // External users must not see other accounts' phase assignments on
+  // 職人出面表 — return an empty overview so they only see their own
+  // schedule_entries (filtered in /schedule).
+  if (me.role === "external") {
+    res.json(ListAllProjectPhasesResponse.parse([]));
+    return;
+  }
   const from = typeof req.query.from === "string" ? req.query.from : undefined;
   const to = typeof req.query.to === "string" ? req.query.to : undefined;
   if ((from && !isValidISODate(from)) || (to && !isValidISODate(to))) {

@@ -21,6 +21,7 @@ import {
   AssignVendorInvoiceStaffResponse,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime, n } from "../lib/serializers";
+import { getOrCreateAppUser } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -149,11 +150,15 @@ router.get("/vendor-invoices", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const me = await getOrCreateAppUser(req);
   const { projectId, staffId, status } = parsed.data;
   const conds = [];
   if (projectId) conds.push(eq(vendorInvoicesTable.projectId, projectId));
   if (staffId) conds.push(eq(vendorInvoicesTable.staffId, staffId));
   if (status) conds.push(eq(vendorInvoicesTable.status, status));
+  if (me.role === "external") {
+    conds.push(eq(vendorInvoicesTable.createdBy, me.clerkUserId));
+  }
   const rows =
     conds.length > 0
       ? await db
@@ -209,6 +214,7 @@ router.post("/vendor-invoices", async (req, res): Promise<void> => {
       unitNumber: parsed.data.unitNumber,
     });
   }
+  const me = await getOrCreateAppUser(req);
   const [row] = await db
     .insert(vendorInvoicesTable)
     .values({
@@ -223,6 +229,7 @@ router.post("/vendor-invoices", async (req, res): Promise<void> => {
       fileName: parsed.data.fileName,
       notes: parsed.data.notes ?? null,
       status: matched ? "matched" : "unmatched",
+      createdBy: me.clerkUserId,
     })
     .returning();
   res.json(CreateVendorInvoiceResponse.parse(await serialize(row)));
@@ -234,10 +241,15 @@ router.delete("/vendor-invoices/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const me = await getOrCreateAppUser(req);
   const [existing] = await db
     .select()
     .from(vendorInvoicesTable)
     .where(eq(vendorInvoicesTable.id, params.data.id));
+  if (me.role === "external" && existing && existing.createdBy !== me.clerkUserId) {
+    res.status(403).json({ error: "他のアカウントが作成した職人請求書は削除できません" });
+    return;
+  }
   if (existing?.costEntryId) {
     await db
       .delete(costEntriesTable)

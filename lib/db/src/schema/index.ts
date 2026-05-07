@@ -87,6 +87,7 @@ export const vendorInvoicesTable = pgTable("vendor_invoices", {
   fileName: text("file_name").notNull(),
   notes: text("notes"),
   status: text("status").notNull().default("unmatched"),
+  createdBy: text("created_by"),
   uploadedAt: timestamp("uploaded_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -110,6 +111,7 @@ export const vendorQuotesTable = pgTable("vendor_quotes", {
   fileName: text("file_name").notNull(),
   notes: text("notes"),
   status: text("status").notNull().default("unmatched"),
+  createdBy: text("created_by"),
   uploadedAt: timestamp("uploaded_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -208,6 +210,7 @@ export const scheduleEntriesTable = pgTable("schedule_entries", {
   startTime: text("start_time"),
   endTime: text("end_time"),
   notes: text("notes"),
+  createdBy: text("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

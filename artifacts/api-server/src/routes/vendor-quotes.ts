@@ -22,6 +22,7 @@ import {
   ConvertVendorQuoteToInvoiceResponse,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime, n } from "../lib/serializers";
+import { getOrCreateAppUser } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -163,11 +164,15 @@ router.get("/vendor-quotes", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const me = await getOrCreateAppUser(req);
   const { projectId, staffId, status } = parsed.data;
   const conds = [];
   if (projectId) conds.push(eq(vendorQuotesTable.projectId, projectId));
   if (staffId) conds.push(eq(vendorQuotesTable.staffId, staffId));
   if (status) conds.push(eq(vendorQuotesTable.status, status));
+  if (me.role === "external") {
+    conds.push(eq(vendorQuotesTable.createdBy, me.clerkUserId));
+  }
   const rows =
     conds.length > 0
       ? await db
@@ -212,6 +217,7 @@ router.post("/vendor-quotes", async (req, res): Promise<void> => {
       unitNumber: parsed.data.unitNumber,
     });
   }
+  const me = await getOrCreateAppUser(req);
   const [row] = await db
     .insert(vendorQuotesTable)
     .values({
@@ -227,6 +233,7 @@ router.post("/vendor-quotes", async (req, res): Promise<void> => {
       fileName: parsed.data.fileName,
       notes: parsed.data.notes ?? null,
       status: matched ? "matched" : "unmatched",
+      createdBy: me.clerkUserId,
     })
     .returning();
   res.json(CreateVendorQuoteResponse.parse(await serialize(row)));
@@ -238,10 +245,15 @@ router.delete("/vendor-quotes/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const me = await getOrCreateAppUser(req);
   const [existing] = await db
     .select()
     .from(vendorQuotesTable)
     .where(eq(vendorQuotesTable.id, params.data.id));
+  if (me.role === "external" && existing && existing.createdBy !== me.clerkUserId) {
+    res.status(403).json({ error: "他のアカウントが作成した職人見積書は削除できません" });
+    return;
+  }
   if (existing?.costEntryId) {
     await db
       .delete(costEntriesTable)
@@ -318,12 +330,17 @@ router.post(
       res.status(400).json({ error: parsed.error.message });
       return;
     }
+    const me = await getOrCreateAppUser(req);
     const [quote] = await db
       .select()
       .from(vendorQuotesTable)
       .where(eq(vendorQuotesTable.id, params.data.id));
     if (!quote) {
       res.status(404).json({ error: "Vendor quote not found" });
+      return;
+    }
+    if (me.role === "external" && quote.createdBy !== me.clerkUserId) {
+      res.status(403).json({ error: "他のアカウントが作成した職人見積書は変換できません" });
       return;
     }
 
@@ -365,6 +382,7 @@ router.post(
         fileName: quote.fileName.replace(/^見積書_/, "請求書_"),
         notes: `職人見積書から変換${quote.notes ? ` / ${quote.notes}` : ""}`,
         status: quote.projectId ? "matched" : "unmatched",
+        createdBy: me.clerkUserId,
       })
       .returning();
 

@@ -18,6 +18,7 @@ import {
   UpdateScheduleEntryResponse,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime } from "../lib/serializers";
+import { getOrCreateAppUser } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -135,6 +136,7 @@ router.get("/schedule", async (req, res): Promise<void> => {
     res.status(400).json({ error: "from/to must be YYYY-MM-DD" });
     return;
   }
+  const me = await getOrCreateAppUser(req);
   const filters = [];
   if (projectId) filters.push(eq(scheduleEntriesTable.projectId, projectId));
   if (from)
@@ -143,6 +145,9 @@ router.get("/schedule", async (req, res): Promise<void> => {
     );
   if (to)
     filters.push(lte(scheduleEntriesTable.date, to as unknown as string));
+  if (me.role === "external") {
+    filters.push(eq(scheduleEntriesTable.createdBy, me.clerkUserId));
+  }
   const rows =
     filters.length > 0
       ? await db
@@ -156,14 +161,17 @@ router.get("/schedule", async (req, res): Promise<void> => {
           .orderBy(sql`${scheduleEntriesTable.date} asc`);
   const serialized = await Promise.all(rows.map(serialize));
 
-  const phaseEntries = await getPhaseVirtualEntries({ projectId, from, to });
-
-  const existingKeys = new Set(
-    serialized.map((e) => `${e.staffId}:${e.projectId}:${e.date}`),
-  );
-  for (const ve of phaseEntries) {
-    if (!existingKeys.has(`${ve.staffId}:${ve.projectId}:${ve.date}`)) {
-      serialized.push(ve);
+  // External users only see their own entries — skip the global phase
+  // overview merge so they cannot see other accounts' assignments.
+  if (me.role !== "external") {
+    const phaseEntries = await getPhaseVirtualEntries({ projectId, from, to });
+    const existingKeys = new Set(
+      serialized.map((e) => `${e.staffId}:${e.projectId}:${e.date}`),
+    );
+    for (const ve of phaseEntries) {
+      if (!existingKeys.has(`${ve.staffId}:${ve.projectId}:${ve.date}`)) {
+        serialized.push(ve);
+      }
     }
   }
 
@@ -177,6 +185,7 @@ router.post("/schedule", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const me = await getOrCreateAppUser(req);
   const [row] = await db
     .insert(scheduleEntriesTable)
     .values({
@@ -187,6 +196,7 @@ router.post("/schedule", async (req, res): Promise<void> => {
       startTime: parsed.data.startTime ?? null,
       endTime: parsed.data.endTime ?? null,
       notes: parsed.data.notes ?? null,
+      createdBy: me.clerkUserId,
     })
     .returning();
   res.json(CreateScheduleEntryResponse.parse(await serialize(row)));
@@ -202,6 +212,17 @@ router.patch("/schedule/:id", async (req, res): Promise<void> => {
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
+  }
+  const me = await getOrCreateAppUser(req);
+  if (me.role === "external") {
+    const [existing] = await db
+      .select({ createdBy: scheduleEntriesTable.createdBy })
+      .from(scheduleEntriesTable)
+      .where(eq(scheduleEntriesTable.id, params.data.id));
+    if (existing && existing.createdBy !== me.clerkUserId) {
+      res.status(403).json({ error: "他のアカウントの予定は編集できません" });
+      return;
+    }
   }
   const [row] = await db
     .update(scheduleEntriesTable)
@@ -228,6 +249,17 @@ router.delete("/schedule/:id", async (req, res): Promise<void> => {
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
+  }
+  const me = await getOrCreateAppUser(req);
+  if (me.role === "external") {
+    const [existing] = await db
+      .select({ createdBy: scheduleEntriesTable.createdBy })
+      .from(scheduleEntriesTable)
+      .where(eq(scheduleEntriesTable.id, params.data.id));
+    if (existing && existing.createdBy !== me.clerkUserId) {
+      res.status(403).json({ error: "他のアカウントの予定は削除できません" });
+      return;
+    }
   }
   await db
     .delete(scheduleEntriesTable)

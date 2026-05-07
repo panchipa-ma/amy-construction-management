@@ -51,6 +51,15 @@ Roles and approval are now **server-managed** (no localStorage). The `app_users`
 
 External users still only see the same allowed paths via `EXTERNAL_ALLOWED_PREFIXES` (`/vendor-invoices`, `/staff-assignments`, `/profile`, `/profile-setup`). `RoleGuard` redirects external users to `/vendor-invoices` if they navigate to a restricted path.
 
+### 社外ユーザーのデータ分離 (per-account row visibility)
+
+To prevent external 職人 accounts seeing each other's submissions, three tables now carry a nullable `created_by` text column (Clerk userId): `vendor_invoices`, `vendor_quotes`, `schedule_entries`. The column is set automatically on POST from `getAuth(req).userId`.
+
+- **List endpoints** (`GET /api/vendor-invoices`, `GET /api/vendor-quotes`, `GET /api/schedule`): if caller is `role==='external'`, an extra `WHERE created_by = :clerkUserId` filter is added. Internal users always see all rows.
+- **GET /api/project-phases/overview**: external users get an empty array (so the 全案件工程スケジュール section on /staff-assignments only shows the user's own data). The `/api/schedule` endpoint also skips the project-phases virtual-entry merge for external users.
+- **Mutations** (`PATCH/DELETE /api/schedule/:id`, `DELETE /api/vendor-invoices/:id`, `DELETE /api/vendor-quotes/:id`, `POST /api/vendor-quotes/:id/convert-to-invoice`): if caller is external and the existing row's `created_by` differs, returns 403. Convert also stamps the new vendor_invoice's `created_by` to the caller (not the original quote creator).
+- Legacy rows with `created_by = NULL` are invisible to external users (only internal admins see them) — by design, so historical data isn't leaked when external users are added later.
+
 ## Architecture
 
 pnpm monorepo with TypeScript project references.
