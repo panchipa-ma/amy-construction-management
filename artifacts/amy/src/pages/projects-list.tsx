@@ -5,6 +5,7 @@ import {
   useListProjects,
   useListQuotes,
   useDeleteProject,
+  useUpdateProject,
   getListProjectsQueryKey,
   ProjectStatus,
 } from "@workspace/api-client-react";
@@ -51,8 +52,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useBulkSelection } from "@/lib/use-bulk-selection";
 import { BulkDeleteBar, runBulkDelete } from "@/components/bulk-delete-bar";
-import { ProjectStatusBadge } from "@/components/status-badge";
 import { PROJECT_STATUS_OPTIONS } from "@/components/project-status-select";
+import { EditableProjectStatusBadge } from "@/components/editable-project-status-badge";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Plus, FolderKanban, Trash2, Copy, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -92,6 +93,7 @@ export default function ProjectsListPage() {
     status === "active" ? undefined : { status: status as ProjectStatus };
   const { data, isLoading } = useListProjects(params);
   const deleteMut = useDeleteProject();
+  const updateProjectMut = useUpdateProject();
   // When showing "進行中" (active), explicitly drop completed in case the
   // server returns them with no filter.
   const rows = (data ?? []).filter((p) =>
@@ -268,8 +270,27 @@ export default function ProjectsListPage() {
                         )}
                       </TableCell>
                       <TableCell>{p.customerName}</TableCell>
-                      <TableCell>
-                        <ProjectStatusBadge status={p.status} />
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <EditableProjectStatusBadge
+                          status={p.status}
+                          onChange={async (next) => {
+                            try {
+                              await updateProjectMut.mutateAsync({
+                                id: p.id,
+                                data: { status: next as ProjectStatus },
+                              });
+                              await queryClient.invalidateQueries({
+                                queryKey: getListProjectsQueryKey(),
+                              });
+                              await invalidateDashboard(queryClient);
+                            } catch (err) {
+                              toast({
+                                title: apiErrorMessage(err),
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                        />
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                         {formatDate(p.startDate)} - {formatDate(p.endDate)}
