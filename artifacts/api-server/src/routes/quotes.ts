@@ -39,10 +39,10 @@ async function syncProjectContractAmount(projectId: string): Promise<void> {
     .orderBy(desc(quotesTable.createdAt))
     .limit(1);
   const items = (latest?.items ?? []) as LineItemJson[];
-  const { subtotal } = computeTotals(items);
+  const { total } = computeTotals(items);
   await db
     .update(projectsTable)
-    .set({ contractAmount: String(subtotal) })
+    .set({ contractAmount: String(total) })
     .where(eq(projectsTable.id, projectId));
 }
 
