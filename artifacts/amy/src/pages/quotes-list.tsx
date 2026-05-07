@@ -1,12 +1,23 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListQuotes,
   useDeleteQuote,
+  useConvertQuoteToInvoice,
   getListQuotesQueryKey,
   getListProjectsQueryKey,
+  getListInvoicesQueryKey,
 } from "@workspace/api-client-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,7 +45,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, FileText, Trash2 } from "lucide-react";
+import { Plus, FileText, Trash2, FileOutput } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
@@ -45,8 +56,10 @@ import { BulkDeleteBar, runBulkDelete } from "@/components/bulk-delete-bar";
 export default function QuotesListPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const { data, isLoading } = useListQuotes();
   const deleteMut = useDeleteQuote();
+  const convertMut = useConvertQuoteToInvoice();
   const rows = data ?? [];
   const sel = useBulkSelection(rows.map((q) => q.id));
 
@@ -54,6 +67,53 @@ export default function QuotesListPage() {
     id: string;
     label: string;
   } | null>(null);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const [convertFor, setConvertFor] = useState<{
+    id: string;
+    quoteNumber: string;
+  } | null>(null);
+  const [convertForm, setConvertForm] = useState({
+    invoiceNumber: "",
+    issueDate: today,
+    dueDate: "",
+  });
+
+  const openConvert = (q: { id: string; quoteNumber: string }) => {
+    setConvertForm({
+      invoiceNumber: q.quoteNumber.replace(/^Q/i, "INV"),
+      issueDate: today,
+      dueDate: "",
+    });
+    setConvertFor(q);
+  };
+
+  const handleConvert = async () => {
+    if (!convertFor) return;
+    if (!convertForm.invoiceNumber) {
+      toast({ title: "請求書番号は必須です", variant: "destructive" });
+      return;
+    }
+    try {
+      const inv = await convertMut.mutateAsync({
+        id: convertFor.id,
+        data: {
+          invoiceNumber: convertForm.invoiceNumber,
+          issueDate: convertForm.issueDate,
+          dueDate: convertForm.dueDate || null,
+        },
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getListInvoicesQueryKey(),
+      });
+      await invalidateDashboard(queryClient);
+      toast({ title: "請求書を作成しました" });
+      setConvertFor(null);
+      setLocation(`/invoices/${inv.id}`);
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+    }
+  };
 
   const handleBulkDelete = async () => {
     const ids = sel.selectedIds;
@@ -189,17 +249,31 @@ export default function QuotesListPage() {
                       {formatCurrency(q.total)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() =>
-                          setAskDelete({ id: q.id, label: q.quoteNumber })
-                        }
-                        className="text-destructive hover:text-destructive"
-                        data-testid={`button-delete-quote-${q.id}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            openConvert({ id: q.id, quoteNumber: q.quoteNumber })
+                          }
+                          className="gap-1.5 h-7 px-2 text-xs"
+                          data-testid={`button-convert-quote-${q.id}`}
+                        >
+                          <FileOutput className="w-3.5 h-3.5" />
+                          請求書に変換
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            setAskDelete({ id: q.id, label: q.quoteNumber })
+                          }
+                          className="text-destructive hover:text-destructive"
+                          data-testid={`button-delete-quote-${q.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -208,6 +282,74 @@ export default function QuotesListPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={!!convertFor}
+        onOpenChange={(o) => !o && setConvertFor(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>請求書に変換</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              「{convertFor?.quoteNumber}」の明細をコピーして新しい請求書を作成します。
+            </p>
+            <div>
+              <Label htmlFor="invoiceNumber">請求書番号 *</Label>
+              <Input
+                id="invoiceNumber"
+                value={convertForm.invoiceNumber}
+                onChange={(e) =>
+                  setConvertForm({
+                    ...convertForm,
+                    invoiceNumber: e.target.value,
+                  })
+                }
+                placeholder="例: INV-2026-001"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="cIssueDate">発行日</Label>
+                <Input
+                  id="cIssueDate"
+                  type="date"
+                  value={convertForm.issueDate}
+                  onChange={(e) =>
+                    setConvertForm({
+                      ...convertForm,
+                      issueDate: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <Label htmlFor="cDueDate">支払期日</Label>
+                <Input
+                  id="cDueDate"
+                  type="date"
+                  value={convertForm.dueDate}
+                  onChange={(e) =>
+                    setConvertForm({
+                      ...convertForm,
+                      dueDate: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConvertFor(null)}>
+              キャンセル
+            </Button>
+            <Button onClick={handleConvert} disabled={convertMut.isPending}>
+              請求書を作成
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={!!askDelete}
