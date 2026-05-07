@@ -135,16 +135,25 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
     // archived projects are excluded from the funnel entirely, even if they
     // happen to carry invoices.
     if (p.status === "archived") continue;
-    const inv = invoicesByProject.get(p.id);
-    if (inv?.hasAny) {
-      if (inv.hasPaid) buckets.paid += 1;
-      else buckets.billed += 1;
+    // estimating / in_progress are counted by their raw status — invoices
+    // attached to them don't promote them out of the bucket, since the user
+    // tracks them by where the project actually is in its lifecycle.
+    if (p.status === "estimating") {
+      buckets.estimating += 1;
       continue;
     }
-    if (p.status === "estimating") buckets.estimating += 1;
-    else if (p.status === "in_progress" || p.status === "contracted")
+    if (p.status === "in_progress" || p.status === "contracted") {
       buckets.in_progress += 1;
-    else if (p.status === "completed") buckets.completed += 1;
+      continue;
+    }
+    // completed projects get promoted by invoice state: 請求済 (any unpaid
+    // invoice) or 入金済 (any paid invoice). Mirror sidebar 「請求済」 link.
+    if (p.status === "completed") {
+      const inv = invoicesByProject.get(p.id);
+      if (inv?.hasPaid) buckets.paid += 1;
+      else if (inv?.hasAny) buckets.billed += 1;
+      else buckets.completed += 1;
+    }
   }
   const statusBreakdown = (
     ["estimating", "in_progress", "completed", "billed", "paid"] as const
