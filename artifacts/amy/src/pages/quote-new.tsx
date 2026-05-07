@@ -297,7 +297,7 @@ export default function QuoteNewPage() {
     "grid-cols-[32px_minmax(0,1fr)_52px_60px_88px_108px_minmax(0,1fr)_24px]";
 
   return (
-    <div className="quote-workbench -m-8 min-h-[calc(100vh-0px)] py-6 px-6">
+    <div className="quote-workbench -m-8 min-h-[calc(100vh-0px)] py-6 px-6 print:p-0 print:m-0 print:min-h-0">
       {/* Top toolbar */}
       <div className="max-w-[1040px] mx-auto flex items-center justify-between mb-4 print:hidden">
         <Link
@@ -330,7 +330,7 @@ export default function QuoteNewPage() {
       <form
         id="quote-form"
         onSubmit={submit}
-        className="quote-paper max-w-[1040px] mx-auto px-8 py-8 text-[14px] text-foreground"
+        className="quote-paper max-w-[1040px] mx-auto px-8 py-8 text-[14px] text-foreground print:border-0 print:p-0 print:max-w-none print:mx-0 print:shadow-none"
       >
         {/* Title */}
         <div className="text-center mb-6 -mt-2">

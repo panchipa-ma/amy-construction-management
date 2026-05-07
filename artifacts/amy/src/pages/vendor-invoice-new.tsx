@@ -671,10 +671,11 @@ export default function VendorInvoiceNewPage() {
       >
       <div
         ref={printRef}
+        className="quote-paper"
         style={{
           width: "210mm",
           boxSizing: "border-box",
-          padding: "32px",
+          padding: "16px 18px",
           background: "#ffffff",
           color: "#0f172a",
           fontFamily:

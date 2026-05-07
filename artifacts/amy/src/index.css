@@ -237,21 +237,52 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm;
+    margin: 6mm 7mm;
   }
   html, body {
     background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .print\:hidden {
     display: none !important;
   }
+  /* Hide editing chrome marked for PDF (delete buttons, "行を追加", etc.) */
+  [data-pdf-hide="true"] {
+    display: none !important;
+  }
+  /* Generic page wrappers — strip outer paddings/margins so the document
+     starts flush against the @page margin (no extra whitespace). */
   .quote-workbench {
     background: white !important;
     padding: 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
   }
   .quote-paper {
     box-shadow: none !important;
     background: white !important;
+    border: 0 !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    max-width: none !important;
+  }
+  /* Tighter title block in print only */
+  .quote-paper .quote-title {
+    font-size: 28px !important;
+  }
+  .quote-paper > .text-center:first-child {
+    margin-bottom: 12px !important;
+    margin-top: 0 !important;
+  }
+  /* Avoid splitting an item row across pages */
+  .quote-paper .grid {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 
   /* Schedule (工程表) print layout: landscape, full width */

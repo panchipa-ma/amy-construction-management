@@ -515,10 +515,11 @@ export default function VendorQuoteNewPage() {
       >
       <div
         ref={printRef}
+        className="quote-paper"
         style={{
           width: "210mm",
           boxSizing: "border-box",
-          padding: "32px",
+          padding: "16px 18px",
           background: "#ffffff",
           color: "#0f172a",
           fontFamily:
@@ -528,7 +529,7 @@ export default function VendorQuoteNewPage() {
         }}
       >
         {/* Title */}
-        <div style={{ textAlign: "center", marginBottom: "24px", marginTop: "-4px" }}>
+        <div style={{ textAlign: "center", marginBottom: "16px", marginTop: 0 }}>
           <h1
             style={{
               display: "inline-block",
