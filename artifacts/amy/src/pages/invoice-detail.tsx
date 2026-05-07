@@ -140,7 +140,7 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
-      <div className="bg-white border border-border shadow-sm p-8 print:shadow-none print:border-none print:p-0">
+      <div className="quote-paper bg-white border border-border shadow-sm w-[210mm] min-h-[297mm] mx-auto px-[12mm] py-[10mm] print:min-h-0 print:shadow-none print:border-none">
         <h1 className="text-center text-2xl font-bold tracking-[0.5em] mb-6">
           請　求　書
         </h1>
