@@ -123,7 +123,7 @@ export default function VendorQuoteNewPage() {
   const [validUntil, setValidUntil] = useState<string>(plus30DaysISO(todayISO()));
   const [notes, setNotes] = useState<string>("");
   const [items, setItems] = useState<LineRow[]>([
-    { description: "", unit: "式", quantity: 1, unitPrice: 0, notes: "" },
+    { description: "", unit: "", quantity: 0, unitPrice: 0, notes: "" },
   ]);
   const [submitting, setSubmitting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
@@ -157,21 +157,60 @@ export default function VendorQuoteNewPage() {
   const tax = Math.round(subtotal * 0.1);
   const total = subtotal + tax;
 
-  const addRow = () =>
-    setItems((rs) => [
-      ...rs,
-      { description: "", unit: "式", quantity: 1, unitPrice: 0, notes: "" },
-    ]);
+  const emptyRow = (): LineRow => ({
+    description: "",
+    unit: "",
+    quantity: 0,
+    unitPrice: 0,
+    notes: "",
+  });
+  const addRow = () => setItems((rs) => [...rs, emptyRow()]);
   const removeRow = (i: number) =>
     setItems((rs) => rs.filter((_, idx) => idx !== i));
   const updateRow = (i: number, patch: Partial<LineRow>) =>
     setItems((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
 
+  const focusCell = (rowIdx: number, col: string) => {
+    const sel = `[data-cell="r${rowIdx}-c${col}"]`;
+    const el = printRef.current?.querySelector<HTMLElement>(sel);
+    el?.focus();
+    if (el && (el as HTMLInputElement).select) {
+      (el as HTMLInputElement).select?.();
+    }
+  };
+
+  const handleEnterDown = (
+    e: React.KeyboardEvent,
+    currentRow: number,
+    col: string,
+  ) => {
+    if (
+      e.key !== "Enter" ||
+      e.shiftKey ||
+      e.altKey ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (e.nativeEvent as any).isComposing
+    )
+      return;
+    e.preventDefault();
+    setItems((prev) => {
+      // Ensure a row exists at currentRow + 1
+      if (currentRow >= prev.length - 1) {
+        return [...prev, emptyRow()];
+      }
+      return prev;
+    });
+    setTimeout(() => focusCell(currentRow + 1, col), 0);
+  };
+
   const validate = (): string | null => {
     if (!defaults.companyName.trim()) return "会社名を入力してください";
     if (!projectId) return "件名（案件）を選択してください";
-    const valid = items.filter((it) => it.description.trim() && it.unitPrice > 0);
-    if (valid.length === 0) return "明細を1行以上入力してください";
+    const valid = items.filter(
+      (it) => it.description.trim() && it.quantity > 0 && it.unitPrice > 0,
+    );
+    if (valid.length === 0)
+      return "明細を1行以上入力してください（摘要・数量・単価が必要です）";
     if (!issueDate) return "見積書発行日を入力してください";
     return null;
   };
@@ -603,6 +642,13 @@ export default function VendorQuoteNewPage() {
           .vq-cell-input:focus { background: #fff7d6; }
           .vq-cell-input::placeholder { color: #cbd5e1; }
           .vq-textarea { resize: none; overflow: hidden; line-height: 1.5; }
+          select.vq-cell-input {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 5'><path fill='%2364748b' d='M0 0l4 5 4-5z'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 4px center;
+            background-size: 7px 5px;
+            padding-right: 12px;
+          }
         `}</style>
 
         {/* Items table */}
@@ -629,47 +675,64 @@ export default function VendorQuoteNewPage() {
                 <div style={{ padding: "8px 12px" }}>備考</div>
               </div>
               {/* Rows */}
-              {rows.map(({ row, i }) => {
-                const exists = !!row;
-                const r: LineRow = row || { description: "", unit: "", quantity: 0, unitPrice: 0, notes: "" };
-                const amt = (r.quantity || 0) * (r.unitPrice || 0);
-                const ensureRow = () => {
-                  if (!exists) {
-                    setItems((rs) => {
-                      const next = [...rs];
-                      while (next.length <= i) {
-                        next.push({ description: "", unit: "式", quantity: 1, unitPrice: 0, notes: "" });
-                      }
-                      return next;
-                    });
-                  }
-                };
-                return (
+              {(() => {
+                const firstEmptyIdx = items.findIndex(
+                  (it) => !it.description.trim() && !it.unitPrice && !it.quantity,
+                );
+                return rows.map(({ row, i }) => {
+                  const exists = !!row;
+                  const r: LineRow = row || emptyRow();
+                  const amt = (r.quantity || 0) * (r.unitPrice || 0);
+                  const isFirstEmpty = exists ? i === firstEmptyIdx : i === items.length;
+                  const ensureRow = () => {
+                    if (!exists) {
+                      setItems((rs) => {
+                        const next = [...rs];
+                        while (next.length <= i) {
+                          next.push(emptyRow());
+                        }
+                        return next;
+                      });
+                    }
+                  };
+                  return (
                   <div key={i} style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, fontSize: "13px", minHeight: "32px", position: "relative" }}>
                     <div style={{ padding: "6px 4px", textAlign: "center", color: "#64748b", borderRight: rowBorder, fontVariantNumeric: "tabular-nums", fontSize: "12px" }}>{exists ? i + 1 : ""}</div>
                     <div style={{ padding: "4px 8px", borderRight: rowBorder }}>
                       <input
                         className="vq-cell-input"
+                        data-cell={`r${i}-cdesc`}
                         value={r.description}
-                        placeholder="例: クロス貼り工事"
+                        placeholder={isFirstEmpty ? "例: クロス貼り工事 (リビング・寝室)" : ""}
                         onFocus={ensureRow}
                         onChange={(e) => updateRow(i, { description: e.target.value })}
+                        onKeyDown={(e) => handleEnterDown(e, i, "desc")}
                       />
                     </div>
-                    <div style={{ padding: "4px 4px", borderRight: rowBorder, textAlign: "center" }}>
-                      <input
+                    <div style={{ padding: "4px 0", borderRight: rowBorder, textAlign: "center" }}>
+                      <select
                         className="vq-cell-input"
-                        list="vq-unit-options"
-                        value={r.unit}
-                        placeholder="—"
+                        data-cell={`r${i}-cunit`}
+                        value={r.unit ?? ""}
                         onFocus={ensureRow}
                         onChange={(e) => updateRow(i, { unit: e.target.value })}
-                        style={{ textAlign: "center", fontSize: "12px" }}
-                      />
+                        style={{
+                          textAlign: "center",
+                          textAlignLast: "center",
+                          fontSize: "12px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <option value="">—</option>
+                        {UNIT_OPTIONS.map((u) => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
                     </div>
                     <div style={{ padding: "4px 4px", borderRight: rowBorder }}>
                       <input
                         className="vq-cell-input"
+                        data-cell={`r${i}-cqty`}
                         type="number"
                         min="0"
                         step="any"
@@ -677,12 +740,14 @@ export default function VendorQuoteNewPage() {
                         placeholder=""
                         onFocus={ensureRow}
                         onChange={(e) => updateRow(i, { quantity: Number(e.target.value) || 0 })}
+                        onKeyDown={(e) => handleEnterDown(e, i, "qty")}
                         style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
                       />
                     </div>
                     <div style={{ padding: "4px 6px", borderRight: rowBorder }}>
                       <input
                         className="vq-cell-input"
+                        data-cell={`r${i}-cprice`}
                         type="number"
                         min="0"
                         step="any"
@@ -690,6 +755,7 @@ export default function VendorQuoteNewPage() {
                         placeholder=""
                         onFocus={ensureRow}
                         onChange={(e) => updateRow(i, { unitPrice: Number(e.target.value) || 0 })}
+                        onKeyDown={(e) => handleEnterDown(e, i, "price")}
                         style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
                       />
                     </div>
@@ -699,10 +765,12 @@ export default function VendorQuoteNewPage() {
                     <div style={{ padding: "4px 8px" }}>
                       <input
                         className="vq-cell-input"
+                        data-cell={`r${i}-cnotes`}
                         value={r.notes}
                         placeholder=""
                         onFocus={ensureRow}
                         onChange={(e) => updateRow(i, { notes: e.target.value })}
+                        onKeyDown={(e) => handleEnterDown(e, i, "notes")}
                         style={{ fontSize: "12.5px" }}
                       />
                     </div>
@@ -738,7 +806,8 @@ export default function VendorQuoteNewPage() {
                     )}
                   </div>
                 );
-              })}
+                });
+              })()}
               {/* Totals footer */}
               <div style={{ display: "grid", gridTemplateColumns: cols, borderTop: "2px solid #0f172a", background: "#f1f5f9", fontSize: "12px" }}>
                 <div style={{ gridColumn: "1 / span 4" }}></div>
