@@ -40,6 +40,10 @@ import { Plus, Pencil, Trash2, FileDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage } from "@/lib/api-error";
 import { formatDate, todayLocalISO } from "@/lib/format";
+import {
+  PrintGanttSheet,
+  getMonthsForPhases,
+} from "@/components/print-gantt-sheet";
 
 const STATUS_LABEL: Record<string, string> = {
   planned: "予定",
@@ -143,9 +147,10 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
   const overrideRef = useRef<Record<string, { s: string; e: string }>>({});
   const committingRef = useRef<Set<string>>(new Set());
   const timelineRef = useRef<HTMLDivElement | null>(null);
-  const printRef = useRef<HTMLDivElement | null>(null);
-  const ganttBoxRef = useRef<HTMLDivElement | null>(null);
-  const [isPrinting, setIsPrinting] = useState(false);
+  const sheetRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const [pdfMonths, setPdfMonths] = useState<
+    { year: number; month: number }[]
+  >([]);
   const [pdfBusy, setPdfBusy] = useState(false);
   const projectQ = useGetProject(projectId, {
     query: { queryKey: getGetProjectQueryKey(projectId) },
@@ -354,29 +359,25 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
   };
 
   const handleExportPdf = async () => {
-    if (!printRef.current || phases.length === 0) {
+    if (phases.length === 0) {
       toast({ title: "工程が登録されていません", variant: "destructive" });
       return;
     }
+    const months = getMonthsForPhases(phases).slice(0, 24);
+    if (months.length === 0) {
+      toast({ title: "工程の期間を取得できませんでした", variant: "destructive" });
+      return;
+    }
     setPdfBusy(true);
-    setIsPrinting(true);
-    // 1 frame 待って isPrinting className が反映されるのを待つ
+    setPdfMonths(months);
+    // sheets が DOM に挿入されてレイアウト確定するのを待つ
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
-    await new Promise<void>((r) => setTimeout(r, 30));
-    const tl = timelineRef.current;
-    const prevScroll = tl?.scrollLeft ?? 0;
-    if (tl) tl.scrollLeft = 0;
+    await new Promise<void>((r) => setTimeout(r, 80));
     try {
       const [{ default: jsPDF }, html2canvas] = await Promise.all([
         import("jspdf"),
         import("html2canvas-pro").then((m) => m.default),
       ]);
-      const target = printRef.current;
-      const canvas = await html2canvas(target, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        windowWidth: target.scrollWidth,
-      });
       const pdf = new jsPDF({
         orientation: "landscape",
         unit: "mm",
@@ -384,47 +385,33 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
       });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 8;
+      const margin = 6;
       const drawW = pageW - margin * 2;
-      const ratio = drawW / canvas.width;
-      const drawH = canvas.height * ratio;
-      const usableH = pageH - margin * 2;
-      if (drawH <= usableH) {
-        pdf.addImage(
-          canvas.toDataURL("image/png"),
-          "PNG",
-          margin,
-          margin,
-          drawW,
-          drawH,
-        );
-      } else {
-        // canvas を縦方向にスライスして複数ページ分割
-        const slicePx = Math.floor(usableH / ratio);
-        let yOffset = 0;
-        let firstPage = true;
-        while (yOffset < canvas.height) {
-          const h = Math.min(slicePx, canvas.height - yOffset);
-          const slice = document.createElement("canvas");
-          slice.width = canvas.width;
-          slice.height = h;
-          const ctx = slice.getContext("2d");
-          if (!ctx) break;
-          ctx.drawImage(canvas, 0, yOffset, canvas.width, h, 0, 0, canvas.width, h);
-          if (!firstPage) pdf.addPage();
-          firstPage = false;
-          pdf.addImage(
-            slice.toDataURL("image/png"),
-            "PNG",
-            margin,
-            margin,
-            drawW,
-            h * ratio,
-          );
-          yOffset += h;
-        }
+      const drawH = pageH - margin * 2;
+      let firstPage = true;
+      for (const { year, month } of months) {
+        const key = `${year}-${month}`;
+        const el = sheetRefs.current.get(key);
+        if (!el) continue;
+        const canvas = await html2canvas(el, {
+          scale: 2,
+          backgroundColor: "#ffffff",
+          windowWidth: el.scrollWidth,
+        });
+        // ページ内に縦横ともフィットさせる (アスペクト比維持)
+        const ratio = Math.min(drawW / canvas.width, drawH / canvas.height);
+        const w = canvas.width * ratio;
+        const h = canvas.height * ratio;
+        const x = margin + (drawW - w) / 2;
+        const y = margin;
+        if (!firstPage) pdf.addPage();
+        firstPage = false;
+        pdf.addImage(canvas.toDataURL("image/png"), "PNG", x, y, w, h);
       }
-      const safeName = (project?.name || "project").replace(/[\\/:*?"<>|]/g, "_");
+      const safeName = (project?.name || "project").replace(
+        /[\\/:*?"<>|]/g,
+        "_",
+      );
       pdf.save(`工程表_${safeName}_${todayLocalISO()}.pdf`);
     } catch (err) {
       toast({
@@ -433,8 +420,8 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
         variant: "destructive",
       });
     } finally {
-      if (tl) tl.scrollLeft = prevScroll;
-      setIsPrinting(false);
+      setPdfMonths([]);
+      sheetRefs.current.clear();
       setPdfBusy(false);
     }
   };
@@ -467,6 +454,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
   };
 
   return (
+    <>
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <div>
@@ -503,35 +491,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
             </p>
           </div>
         ) : (
-          <div ref={printRef} className="bg-white">
-            {isPrinting && (
-              <div className="px-4 py-3 mb-3 border-b">
-                <div className="flex items-baseline justify-between gap-4">
-                  <h2 className="text-lg font-bold">
-                    工程表 — {project?.name ?? ""}
-                  </h2>
-                  <div className="text-xs text-muted-foreground">
-                    作成日: {formatDate(todayLocalISO())}
-                  </div>
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground flex flex-wrap gap-x-6 gap-y-0.5">
-                  {project?.customerName && (
-                    <span>顧客: {project.customerName}</span>
-                  )}
-                  {project?.unitNumber && <span>号室: {project.unitNumber}</span>}
-                  {project?.startDate && (
-                    <span>
-                      工期: {formatDate(project.startDate)}
-                      {project.endDate ? ` 〜 ${formatDate(project.endDate)}` : ""}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-          <div
-            ref={ganttBoxRef}
-            className={`flex border rounded-md ${isPrinting ? "" : "overflow-hidden"}`}
-          >
+          <div className="flex border rounded-md overflow-hidden">
             {/* fixed left column */}
             <div className="w-56 flex-shrink-0 border-r bg-card">
               <div className="h-12 border-b bg-muted/30 flex items-end px-3 pb-1.5 text-xs font-semibold text-muted-foreground">
@@ -570,10 +530,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
             </div>
 
             {/* timeline scroll area */}
-            <div
-              ref={timelineRef}
-              className={`flex-1 ${isPrinting ? "overflow-visible" : "overflow-x-auto"}`}
-            >
+            <div ref={timelineRef} className="flex-1 overflow-x-auto">
               <div
                 className="relative"
                 style={{ width: (range.totalDays + 1) * DAY_PX }}
@@ -690,7 +647,6 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                 })}
               </div>
             </div>
-          </div>
           </div>
         )}
         <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
@@ -843,5 +799,45 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
         </DialogContent>
       </Dialog>
     </Card>
+    {pdfMonths.length > 0 && (
+      <div
+        style={{
+          position: "fixed",
+          left: -100000,
+          top: 0,
+          zIndex: -1,
+          pointerEvents: "none",
+        }}
+        aria-hidden
+      >
+        {pdfMonths.map(({ year, month }) => {
+          const key = `${year}-${month}`;
+          return (
+            <div
+              key={key}
+              ref={(el) => {
+                if (el) sheetRefs.current.set(key, el);
+                else sheetRefs.current.delete(key);
+              }}
+            >
+              <PrintGanttSheet
+                project={{
+                  name: project?.name ?? "",
+                  customerName: project?.customerName ?? null,
+                  unitNumber: project?.unitNumber ?? null,
+                  startDate: project?.startDate ?? null,
+                  endDate: project?.endDate ?? null,
+                  siteSupervisor: project?.siteSupervisor ?? null,
+                }}
+                phases={phases}
+                year={year}
+                month={month}
+              />
+            </div>
+          );
+        })}
+      </div>
+    )}
+    </>
   );
 }
