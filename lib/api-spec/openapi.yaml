@@ -835,6 +835,9 @@ paths:
         - in: query
           name: status
           schema: { type: string, enum: [matched, unmatched] }
+        - in: query
+          name: paid
+          schema: { type: boolean }
       responses:
         "200":
           description: OK
@@ -887,6 +890,28 @@ paths:
         content:
           application/json:
             schema: { $ref: "#/components/schemas/AssignVendorInvoiceStaffBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VendorInvoice" }
+
+  /vendor-invoices/{id}/mark-paid:
+    post:
+      operationId: markVendorInvoicePaid
+      tags: [vendorInvoices]
+      summary: 職人への振込済フラグを更新する
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MarkVendorInvoicePaidBody" }
       responses:
         "200":
           description: OK
@@ -1287,7 +1312,7 @@ components:
 
     VendorInvoice:
       type: object
-      required: [id, vendorName, unitNumber, amount, invoiceDate, fileUrl, fileName, status, uploadedAt]
+      required: [id, vendorName, unitNumber, amount, invoiceDate, fileUrl, fileName, status, paid, uploadedAt]
       properties:
         id: { type: string }
         staffId: { type: string, nullable: true }
@@ -1303,7 +1328,14 @@ components:
         fileName: { type: string }
         notes: { type: string, nullable: true }
         status: { type: string, enum: [matched, unmatched] }
+        paid: { type: boolean, description: "職人への振込済みかどうか" }
         uploadedAt: { type: string, format: date-time }
+
+    MarkVendorInvoicePaidBody:
+      type: object
+      required: [paid]
+      properties:
+        paid: { type: boolean }
 
     CreateVendorInvoiceBody:
       type: object

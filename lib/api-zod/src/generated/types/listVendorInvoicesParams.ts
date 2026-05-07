@@ -11,4 +11,5 @@ export type ListVendorInvoicesParams = {
   projectId?: string;
   staffId?: string;
   status?: ListVendorInvoicesStatus;
+  paid?: boolean;
 };

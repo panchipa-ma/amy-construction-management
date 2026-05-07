@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { Link } from "wouter";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListVendorInvoices,
@@ -7,6 +7,7 @@ import {
   useDeleteVendorInvoice,
   useMatchVendorInvoice,
   useAssignVendorInvoiceStaff,
+  useMarkVendorInvoicePaid,
   useRequestUploadUrl,
   useExtractOcr,
   useListProjects,
@@ -16,6 +17,7 @@ import {
   getGetProjectQueryKey,
   getListProjectsQueryKey,
 } from "@workspace/api-client-react";
+import { Switch } from "@/components/ui/switch";
 import { ObjectUploader } from "@workspace/object-storage-web";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,9 +68,21 @@ import { apiErrorMessage } from "@/lib/api-error";
 import { useBulkSelection } from "@/lib/use-bulk-selection";
 import { BulkDeleteBar, runBulkDelete } from "@/components/bulk-delete-bar";
 
+type PaidFilter = "paid" | "unpaid";
+
 export default function VendorInvoicesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const search = useSearch();
+  const isPaidView =
+    new URLSearchParams(search).get("paid") === "true";
+  const initialFilter: PaidFilter = isPaidView ? "paid" : "unpaid";
+  const [paidFilter, setPaidFilter] = useState<PaidFilter>(initialFilter);
+  useEffect(() => {
+    const v = new URLSearchParams(search).get("paid");
+    setPaidFilter(v === "true" ? "paid" : "unpaid");
+  }, [search]);
+
   const listQ = useListVendorInvoices();
   const projectsQ = useListProjects();
   const staffQ = useListStaff();
@@ -76,6 +90,7 @@ export default function VendorInvoicesPage() {
   const deleteMut = useDeleteVendorInvoice();
   const matchMut = useMatchVendorInvoice();
   const assignMut = useAssignVendorInvoiceStaff();
+  const markPaidMut = useMarkVendorInvoicePaid();
   const requestUrlMut = useRequestUploadUrl();
   const ocrMut = useExtractOcr();
 
@@ -92,8 +107,27 @@ export default function VendorInvoicesPage() {
   const lastObjectPathRef = useRef<string>("");
   const lastContentTypeRef = useRef<string>("");
 
-  const listRows = listQ.data ?? [];
+  const listRows = useMemo(() => {
+    const all = listQ.data ?? [];
+    return paidFilter === "paid"
+      ? all.filter((v) => v.paid)
+      : all.filter((v) => !v.paid);
+  }, [listQ.data, paidFilter]);
   const sel = useBulkSelection(listRows.map((v) => v.id));
+
+  const togglePaid = async (
+    id: string,
+    current: boolean,
+  ) => {
+    try {
+      await markPaidMut.mutateAsync({ id, data: { paid: !current } });
+      await queryClient.invalidateQueries({
+        queryKey: getListVendorInvoicesQueryKey(),
+      });
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+    }
+  };
 
   const handleBulkDelete = async () => {
     const ids = sel.selectedIds;
@@ -259,10 +293,18 @@ export default function VendorInvoicesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">職人請求書</h1>
+          <h1 className="text-2xl font-bold">
+            {isPaidView ? "職人振込済" : "職人請求書"}
+          </h1>
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            アップロードするだけで取引先・金額・日付を自動読み取りし、施工台帳に自動反映します。複数物件が混在していても明細ごとに自動振分けします。
+            {isPaidView ? (
+              "職人へ振込済の請求書はこちらに自動で移動します。"
+            ) : (
+              <>
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                アップロードするだけで取引先・金額・日付を自動読み取りし、施工台帳に自動反映します。複数物件が混在していても明細ごとに自動振分けします。（振込済はサイドバー「職人振込済」へ自動移動）
+              </>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -325,14 +367,18 @@ export default function VendorInvoicesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">請求書一覧</CardTitle>
+          <CardTitle className="text-base">
+            {isPaidView ? "振込済の職人請求書" : "未振込の職人請求書"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {listQ.isLoading ? (
             <Skeleton className="h-40 w-full" />
-          ) : (listQ.data ?? []).length === 0 ? (
+          ) : listRows.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
-              請求書はまだありません。右上のボタンからファイルをアップロードしてください。
+              {isPaidView
+                ? "振込済の請求書はまだありません。"
+                : "請求書はまだありません。右上のボタンからファイルをアップロードしてください。"}
             </p>
           ) : (
             <Table>
@@ -352,11 +398,12 @@ export default function VendorInvoicesPage() {
                   <TableHead className="text-right">金額</TableHead>
                   <TableHead>振分先案件</TableHead>
                   <TableHead>ファイル</TableHead>
+                  <TableHead>振込状態</TableHead>
                   <TableHead className="w-32"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(listQ.data ?? []).map((v) => (
+                {listRows.map((v) => (
                   <TableRow key={v.id} data-state={sel.isSelected(v.id) ? "selected" : undefined}>
                     <TableCell className="w-10">
                       <Checkbox
@@ -415,6 +462,26 @@ export default function VendorInvoicesPage() {
                       >
                         {v.fileName}
                       </a>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={v.paid}
+                          onCheckedChange={() => togglePaid(v.id, v.paid)}
+                          aria-label="職人振込済"
+                          data-testid={`switch-vendor-paid-${v.id}`}
+                        />
+                        <Badge
+                          variant="outline"
+                          className={
+                            v.paid
+                              ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                              : "bg-amber-100 text-amber-800 border-amber-200"
+                          }
+                        >
+                          {v.paid ? "振込済" : "未振込"}
+                        </Badge>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 justify-end">

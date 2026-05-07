@@ -19,6 +19,9 @@ import {
   AssignVendorInvoiceStaffParams,
   AssignVendorInvoiceStaffBody,
   AssignVendorInvoiceStaffResponse,
+  MarkVendorInvoicePaidParams,
+  MarkVendorInvoicePaidBody,
+  MarkVendorInvoicePaidResponse,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime, n } from "../lib/serializers";
 import { getOrCreateAppUser } from "../lib/auth";
@@ -59,6 +62,7 @@ async function serialize(v: VendorInvoiceRow) {
     fileName: v.fileName,
     notes: v.notes,
     status: v.status as "matched" | "unmatched",
+    paid: v.paid,
     uploadedAt: isoDateTime(v.uploadedAt),
   };
 }
@@ -151,11 +155,14 @@ router.get("/vendor-invoices", async (req, res): Promise<void> => {
     return;
   }
   const me = await getOrCreateAppUser(req);
-  const { projectId, staffId, status } = parsed.data;
+  const { projectId, staffId, status, paid } = parsed.data;
   const conds = [];
   if (projectId) conds.push(eq(vendorInvoicesTable.projectId, projectId));
   if (staffId) conds.push(eq(vendorInvoicesTable.staffId, staffId));
   if (status) conds.push(eq(vendorInvoicesTable.status, status));
+  if (typeof paid === "boolean") {
+    conds.push(eq(vendorInvoicesTable.paid, paid));
+  }
   if (me.role === "external") {
     conds.push(eq(vendorInvoicesTable.createdBy, me.clerkUserId));
   }
@@ -350,6 +357,46 @@ router.post(
       .where(eq(vendorInvoicesTable.id, params.data.id))
       .returning();
     res.json(AssignVendorInvoiceStaffResponse.parse(await serialize(row)));
+  },
+);
+
+router.post(
+  "/vendor-invoices/:id/mark-paid",
+  async (req, res): Promise<void> => {
+    const params = MarkVendorInvoicePaidParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const parsed = MarkVendorInvoicePaidBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const me = await getOrCreateAppUser(req);
+    const [existing] = await db
+      .select()
+      .from(vendorInvoicesTable)
+      .where(eq(vendorInvoicesTable.id, params.data.id));
+    if (!existing) {
+      res.status(404).json({ error: "Vendor invoice not found" });
+      return;
+    }
+    if (
+      me.role === "external" &&
+      existing.createdBy !== me.clerkUserId
+    ) {
+      res.status(403).json({
+        error: "他のアカウントが作成した職人請求書は更新できません",
+      });
+      return;
+    }
+    const [row] = await db
+      .update(vendorInvoicesTable)
+      .set({ paid: parsed.data.paid })
+      .where(eq(vendorInvoicesTable.id, params.data.id))
+      .returning();
+    res.json(MarkVendorInvoicePaidResponse.parse(await serialize(row)));
   },
 );
 

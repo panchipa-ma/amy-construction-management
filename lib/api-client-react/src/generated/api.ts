@@ -54,6 +54,7 @@ import type {
   ListStaffAssignmentsParams,
   ListVendorInvoicesParams,
   ListVendorQuotesParams,
+  MarkVendorInvoicePaidBody,
   MatchReceiptBody,
   MatchVendorInvoiceBody,
   MatchVendorQuoteBody,
@@ -4456,6 +4457,94 @@ export const useAssignVendorInvoiceStaff = <
   TContext
 > => {
   return useMutation(getAssignVendorInvoiceStaffMutationOptions(options));
+};
+
+/**
+ * @summary 職人への振込済フラグを更新する
+ */
+export const getMarkVendorInvoicePaidUrl = (id: string) => {
+  return `/api/vendor-invoices/${id}/mark-paid`;
+};
+
+export const markVendorInvoicePaid = async (
+  id: string,
+  markVendorInvoicePaidBody: MarkVendorInvoicePaidBody,
+  options?: RequestInit,
+): Promise<VendorInvoice> => {
+  return customFetch<VendorInvoice>(getMarkVendorInvoicePaidUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(markVendorInvoicePaidBody),
+  });
+};
+
+export const getMarkVendorInvoicePaidMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markVendorInvoicePaid>>,
+    TError,
+    { id: string; data: BodyType<MarkVendorInvoicePaidBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markVendorInvoicePaid>>,
+  TError,
+  { id: string; data: BodyType<MarkVendorInvoicePaidBody> },
+  TContext
+> => {
+  const mutationKey = ["markVendorInvoicePaid"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markVendorInvoicePaid>>,
+    { id: string; data: BodyType<MarkVendorInvoicePaidBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return markVendorInvoicePaid(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkVendorInvoicePaidMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markVendorInvoicePaid>>
+>;
+export type MarkVendorInvoicePaidMutationBody =
+  BodyType<MarkVendorInvoicePaidBody>;
+export type MarkVendorInvoicePaidMutationError = ErrorType<unknown>;
+
+/**
+ * @summary 職人への振込済フラグを更新する
+ */
+export const useMarkVendorInvoicePaid = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markVendorInvoicePaid>>,
+    TError,
+    { id: string; data: BodyType<MarkVendorInvoicePaidBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markVendorInvoicePaid>>,
+  TError,
+  { id: string; data: BodyType<MarkVendorInvoicePaidBody> },
+  TContext
+> => {
+  return useMutation(getMarkVendorInvoicePaidMutationOptions(options));
 };
 
 /**

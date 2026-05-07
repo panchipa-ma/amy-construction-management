@@ -97,9 +97,10 @@ export default function InvoicesListPage() {
     }
   };
 
-  const togglePaid = async (
+  const patchInvoice = async (
     id: string,
     inv: NonNullable<typeof data>[number],
+    patch: { paid?: boolean; sentToClient?: boolean },
   ) => {
     try {
       await updateMut.mutateAsync({
@@ -107,11 +108,14 @@ export default function InvoicesListPage() {
         data: {
           projectId: inv.projectId,
           invoiceNumber: inv.invoiceNumber,
+          customerName: inv.customerName ?? null,
+          contactName: inv.contactName ?? null,
+          subject: inv.subject ?? null,
           issueDate: inv.issueDate,
           dueDate: inv.dueDate ?? null,
           notes: inv.notes ?? null,
-          paid: !inv.paid,
-          sentToClient: inv.sentToClient,
+          paid: patch.paid ?? inv.paid,
+          sentToClient: patch.sentToClient ?? inv.sentToClient,
           items: inv.items,
         },
       });
@@ -124,31 +128,15 @@ export default function InvoicesListPage() {
     }
   };
 
-  const toggleSentToClient = async (
+  const togglePaid = (
     id: string,
     inv: NonNullable<typeof data>[number],
-  ) => {
-    try {
-      await updateMut.mutateAsync({
-        id,
-        data: {
-          projectId: inv.projectId,
-          invoiceNumber: inv.invoiceNumber,
-          issueDate: inv.issueDate,
-          dueDate: inv.dueDate ?? null,
-          notes: inv.notes ?? null,
-          paid: inv.paid,
-          sentToClient: !inv.sentToClient,
-          items: inv.items,
-        },
-      });
-      await queryClient.invalidateQueries({
-        queryKey: getListInvoicesQueryKey(),
-      });
-    } catch (err) {
-      toast({ title: apiErrorMessage(err), variant: "destructive" });
-    }
-  };
+  ) => patchInvoice(id, inv, { paid: !inv.paid });
+
+  const toggleSentToClient = (
+    id: string,
+    inv: NonNullable<typeof data>[number],
+  ) => patchInvoice(id, inv, { sentToClient: !inv.sentToClient });
 
   const handleDelete = async () => {
     if (!askDelete) return;

@@ -59,6 +59,7 @@ export * from "./listVendorInvoicesParams";
 export * from "./listVendorInvoicesStatus";
 export * from "./listVendorQuotesParams";
 export * from "./listVendorQuotesStatus";
+export * from "./markVendorInvoicePaidBody";
 export * from "./matchReceiptBody";
 export * from "./matchVendorInvoiceBody";
 export * from "./matchVendorQuoteBody";

@@ -25,5 +25,7 @@ export interface VendorInvoice {
   fileName: string;
   notes?: string | null;
   status: VendorInvoiceStatus;
+  /** 職人への振込済みかどうか */
+  paid: boolean;
   uploadedAt: Date;
 }

@@ -217,7 +217,13 @@ export interface VendorInvoice {
   fileName: string;
   notes?: string | null;
   status: VendorInvoiceStatus;
+  /** 職人への振込済みかどうか */
+  paid: boolean;
   uploadedAt: string;
+}
+
+export interface MarkVendorInvoicePaidBody {
+  paid: boolean;
 }
 
 export interface CreateVendorInvoiceBody {
@@ -776,6 +782,7 @@ export type ListVendorInvoicesParams = {
   projectId?: string;
   staffId?: string;
   status?: ListVendorInvoicesStatus;
+  paid?: boolean;
 };
 
 export type ListVendorInvoicesStatus =

@@ -88,6 +88,8 @@ export const vendorInvoicesTable = pgTable("vendor_invoices", {
   fileName: text("file_name").notNull(),
   notes: text("notes"),
   status: text("status").notNull().default("unmatched"),
+  // 職人への振込済みかどうか。元請から自社への入金 (invoices.paid) とは別。
+  paid: boolean("paid").notNull().default(false),
   createdBy: text("created_by"),
   uploadedAt: timestamp("uploaded_at", { withTimezone: true })
     .notNull()

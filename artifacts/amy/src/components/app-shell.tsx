@@ -15,6 +15,7 @@ const navItems = [
   { name: "請求済", href: "/invoices?paid=true", icon: BadgeCheck, internalOnly: false },
   { name: "職人見積書", href: "/vendor-quotes", icon: FileSignature, internalOnly: false },
   { name: "職人請求書", href: "/vendor-invoices", icon: Upload, internalOnly: false },
+  { name: "職人振込済", href: "/vendor-invoices?paid=true", icon: BadgeCheck, internalOnly: false },
   { name: "領収書", href: "/receipts", icon: ReceiptText, internalOnly: false },
   { name: "職人 出面表", href: "/staff-assignments", icon: ClipboardList, internalOnly: false },
   { name: "顧客", href: "/customers", icon: Users, internalOnly: false },

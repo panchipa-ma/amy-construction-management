@@ -1266,6 +1266,7 @@ export const ListVendorInvoicesQueryParams = zod.object({
   projectId: zod.coerce.string().optional(),
   staffId: zod.coerce.string().optional(),
   status: zod.enum(["matched", "unmatched"]).optional(),
+  paid: zod.coerce.boolean().optional(),
 });
 
 export const ListVendorInvoicesResponseItem = zod.object({
@@ -1283,6 +1284,7 @@ export const ListVendorInvoicesResponseItem = zod.object({
   fileName: zod.string(),
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
+  paid: zod.boolean().describe("職人への振込済みかどうか"),
   uploadedAt: zod.coerce.date(),
 });
 export const ListVendorInvoicesResponse = zod.array(
@@ -1318,6 +1320,7 @@ export const CreateVendorInvoiceResponse = zod.object({
   fileName: zod.string(),
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
+  paid: zod.boolean().describe("職人への振込済みかどうか"),
   uploadedAt: zod.coerce.date(),
 });
 
@@ -1351,6 +1354,37 @@ export const AssignVendorInvoiceStaffResponse = zod.object({
   fileName: zod.string(),
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
+  paid: zod.boolean().describe("職人への振込済みかどうか"),
+  uploadedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary 職人への振込済フラグを更新する
+ */
+export const MarkVendorInvoicePaidParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const MarkVendorInvoicePaidBody = zod.object({
+  paid: zod.boolean(),
+});
+
+export const MarkVendorInvoicePaidResponse = zod.object({
+  id: zod.string(),
+  staffId: zod.string().nullish(),
+  staffName: zod.string().nullish(),
+  vendorName: zod.string().describe("OCR抽出の取引先名。staffに紐付けば一致"),
+  projectId: zod.string().nullish(),
+  projectName: zod.string().nullish(),
+  costEntryId: zod.string().nullish(),
+  unitNumber: zod.string().describe("マンション号室"),
+  amount: zod.number(),
+  invoiceDate: zod.coerce.date(),
+  fileUrl: zod.string().describe("objectPath (e.g. \/objects\/uploads\/uuid)"),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["matched", "unmatched"]),
+  paid: zod.boolean().describe("職人への振込済みかどうか"),
   uploadedAt: zod.coerce.date(),
 });
 
@@ -1380,6 +1414,7 @@ export const MatchVendorInvoiceResponse = zod.object({
   fileName: zod.string(),
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
+  paid: zod.boolean().describe("職人への振込済みかどうか"),
   uploadedAt: zod.coerce.date(),
 });
 
@@ -1513,6 +1548,7 @@ export const ConvertVendorQuoteToInvoiceResponse = zod.object({
   fileName: zod.string(),
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
+  paid: zod.boolean().describe("職人への振込済みかどうか"),
   uploadedAt: zod.coerce.date(),
 });
 
