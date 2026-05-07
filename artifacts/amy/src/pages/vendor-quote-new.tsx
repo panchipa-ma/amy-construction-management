@@ -13,7 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -22,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -198,10 +197,25 @@ export default function VendorQuoteNewPage() {
         import("jspdf"),
         import("html2canvas-pro").then((m) => m.default),
       ]);
-      const canvas = await html2canvas(printRef.current, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-      });
+      // Blur any focused field so html2canvas doesn't capture caret/focus ring.
+      (document.activeElement as HTMLElement | null)?.blur?.();
+      // Temporarily hide editing chrome (delete buttons, "行を追加", placeholders).
+      const hidden: HTMLElement[] = [];
+      printRef.current
+        .querySelectorAll<HTMLElement>('[data-pdf-hide="true"]')
+        .forEach((el) => {
+          hidden.push(el);
+          el.style.visibility = "hidden";
+        });
+      let canvas;
+      try {
+        canvas = await html2canvas(printRef.current, {
+          scale: 2,
+          backgroundColor: "#ffffff",
+        });
+      } finally {
+        hidden.forEach((el) => (el.style.visibility = ""));
+      }
       const imgData = canvas.toDataURL("image/jpeg", 0.92);
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pageW = pdf.internal.pageSize.getWidth();
@@ -432,123 +446,11 @@ export default function VendorQuoteNewPage() {
             </div>
           </section>
 
-          <section className="border-t pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-sm font-medium">明細</div>
-              <Button size="sm" variant="outline" onClick={addRow} className="gap-1">
-                <Plus className="w-3 h-3" />
-                行を追加
-              </Button>
-            </div>
-            <div className="grid grid-cols-[1fr_70px_70px_110px_110px_1fr_40px] gap-2 text-xs text-muted-foreground px-2 mb-1">
-              <div>摘要</div>
-              <div className="text-center">単位</div>
-              <div className="text-right">数量</div>
-              <div className="text-right">単価</div>
-              <div className="text-right">金額</div>
-              <div>備考</div>
-              <div></div>
-            </div>
-            {items.map((row, i) => (
-              <div
-                key={i}
-                className="grid grid-cols-[1fr_70px_70px_110px_110px_1fr_40px] gap-2 mb-1.5 items-center"
-              >
-                <Input
-                  value={row.description}
-                  onChange={(e) =>
-                    updateRow(i, { description: e.target.value })
-                  }
-                  placeholder="例: 大工工事"
-                />
-                <Select
-                  value={row.unit || ""}
-                  onValueChange={(v) => updateRow(i, { unit: v })}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="—" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {UNIT_OPTIONS.map((u) => (
-                      <SelectItem key={u} value={u}>
-                        {u}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={row.quantity || ""}
-                  onChange={(e) =>
-                    updateRow(i, {
-                      quantity: Number(e.target.value) || 0,
-                    })
-                  }
-                  className="text-right tabular-nums"
-                />
-                <Input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={row.unitPrice || ""}
-                  onChange={(e) =>
-                    updateRow(i, {
-                      unitPrice: Number(e.target.value) || 0,
-                    })
-                  }
-                  className="text-right tabular-nums"
-                />
-                <div className="text-right tabular-nums text-sm py-2 px-2">
-                  {formatCurrency((row.quantity || 0) * (row.unitPrice || 0))}
-                </div>
-                <Input
-                  value={row.notes}
-                  onChange={(e) => updateRow(i, { notes: e.target.value })}
-                  placeholder="（任意）"
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeRow(i)}
-                  disabled={items.length <= 1}
-                  className="text-destructive"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
-            <div className="flex justify-end gap-6 mt-3 pt-3 border-t text-sm">
-              <div>
-                <span className="text-muted-foreground mr-2">小計</span>
-                <span className="tabular-nums">{formatCurrency(subtotal)}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground mr-2">消費税(10%)</span>
-                <span className="tabular-nums">{formatCurrency(tax)}</span>
-              </div>
-              <div className="font-bold">
-                <span className="text-muted-foreground mr-2">合計</span>
-                <span className="tabular-nums">{formatCurrency(total)}</span>
-              </div>
-            </div>
-          </section>
-
-          <section className="border-t pt-4">
-            <Label>備考</Label>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              placeholder="（任意）"
-            />
-          </section>
         </CardContent>
       </Card>
 
       <div className="text-sm font-medium text-muted-foreground">
-        プレビュー（このレイアウトでPDFが生成されます）
+        プレビュー（このレイアウトでPDFが生成されます）— 明細・備考は下のプレビュー上で直接入力できます
       </div>
       {/*
         IMPORTANT: Inline styles only — html2canvas-pro does not always pick up
@@ -678,26 +580,44 @@ export default function VendorQuoteNewPage() {
           </div>
         </div>
 
+        {/* Inline-edit CSS: strip native chrome from inputs/textareas in the print area */}
+        <style>{`
+          .vq-cell-input {
+            border: none;
+            outline: none;
+            background: transparent;
+            font: inherit;
+            color: inherit;
+            width: 100%;
+            padding: 0;
+            margin: 0;
+            display: block;
+            box-sizing: border-box;
+            -webkit-appearance: none;
+            -moz-appearance: textfield;
+            appearance: none;
+            border-radius: 0;
+          }
+          .vq-cell-input::-webkit-outer-spin-button,
+          .vq-cell-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+          .vq-cell-input:focus { background: #fff7d6; }
+          .vq-cell-input::placeholder { color: #cbd5e1; }
+          .vq-textarea { resize: none; overflow: hidden; line-height: 1.5; }
+        `}</style>
+
         {/* Items table */}
         {(() => {
           const MIN_ROWS = 8;
-          const padded = items.length >= MIN_ROWS
-            ? items
-            : [
-                ...items,
-                ...Array.from({ length: MIN_ROWS - items.length }, () => ({
-                  description: "",
-                  unit: "",
-                  quantity: 0,
-                  unitPrice: 0,
-                  notes: "",
-                })),
-              ];
+          const visibleCount = Math.max(items.length, MIN_ROWS);
           const cols = "32px 1fr 52px 60px 88px 108px 1fr";
           const headBorder = "1px solid #d8dbe6";
           const rowBorder = "1px solid #cbd5e1";
+          const rows = Array.from({ length: visibleCount }, (_, i) => ({
+            row: items[i] as LineRow | undefined,
+            i,
+          }));
           return (
-            <div style={{ border: "2px solid #0f172a", marginBottom: "0" }}>
+            <div style={{ border: "2px solid #0f172a", marginBottom: "0", position: "relative" }}>
               {/* Header */}
               <div style={{ display: "grid", gridTemplateColumns: cols, background: "#1f3a66", color: "#ffffff", fontSize: "11.5px", fontWeight: 600 }}>
                 <div style={{ padding: "8px 4px", textAlign: "center", borderRight: headBorder }}>No.</div>
@@ -709,18 +629,113 @@ export default function VendorQuoteNewPage() {
                 <div style={{ padding: "8px 12px" }}>備考</div>
               </div>
               {/* Rows */}
-              {padded.map((row, i) => {
-                const has = row.description.trim();
-                const amt = (row.quantity || 0) * (row.unitPrice || 0);
+              {rows.map(({ row, i }) => {
+                const exists = !!row;
+                const r: LineRow = row || { description: "", unit: "", quantity: 0, unitPrice: 0, notes: "" };
+                const amt = (r.quantity || 0) * (r.unitPrice || 0);
+                const ensureRow = () => {
+                  if (!exists) {
+                    setItems((rs) => {
+                      const next = [...rs];
+                      while (next.length <= i) {
+                        next.push({ description: "", unit: "式", quantity: 1, unitPrice: 0, notes: "" });
+                      }
+                      return next;
+                    });
+                  }
+                };
                 return (
-                  <div key={i} style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, fontSize: "13px", minHeight: "32px" }}>
-                    <div style={{ padding: "6px 4px", textAlign: "center", color: "#64748b", borderRight: rowBorder, fontVariantNumeric: "tabular-nums", fontSize: "12px" }}>{has ? i + 1 : ""}</div>
-                    <div style={{ padding: "6px 12px", borderRight: rowBorder, whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{has ? row.description : ""}</div>
-                    <div style={{ padding: "6px 4px", textAlign: "center", borderRight: rowBorder, fontSize: "12px" }}>{has ? row.unit || "" : ""}</div>
-                    <div style={{ padding: "6px 4px", textAlign: "right", fontVariantNumeric: "tabular-nums", borderRight: rowBorder }}>{has ? row.quantity : ""}</div>
-                    <div style={{ padding: "6px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums", borderRight: rowBorder }}>{has && row.unitPrice ? formatCurrency(row.unitPrice) : ""}</div>
-                    <div style={{ padding: "6px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums", borderRight: rowBorder, fontWeight: 500 }}>{has && amt > 0 ? formatCurrency(amt) : ""}</div>
-                    <div style={{ padding: "6px 12px", whiteSpace: "pre-wrap", fontSize: "12.5px", lineHeight: 1.4 }}>{has ? row.notes || "" : ""}</div>
+                  <div key={i} style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, fontSize: "13px", minHeight: "32px", position: "relative" }}>
+                    <div style={{ padding: "6px 4px", textAlign: "center", color: "#64748b", borderRight: rowBorder, fontVariantNumeric: "tabular-nums", fontSize: "12px" }}>{exists ? i + 1 : ""}</div>
+                    <div style={{ padding: "4px 8px", borderRight: rowBorder }}>
+                      <input
+                        className="vq-cell-input"
+                        value={r.description}
+                        placeholder="例: クロス貼り工事"
+                        onFocus={ensureRow}
+                        onChange={(e) => updateRow(i, { description: e.target.value })}
+                      />
+                    </div>
+                    <div style={{ padding: "4px 4px", borderRight: rowBorder, textAlign: "center" }}>
+                      <input
+                        className="vq-cell-input"
+                        list="vq-unit-options"
+                        value={r.unit}
+                        placeholder="—"
+                        onFocus={ensureRow}
+                        onChange={(e) => updateRow(i, { unit: e.target.value })}
+                        style={{ textAlign: "center", fontSize: "12px" }}
+                      />
+                    </div>
+                    <div style={{ padding: "4px 4px", borderRight: rowBorder }}>
+                      <input
+                        className="vq-cell-input"
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={r.quantity || ""}
+                        placeholder=""
+                        onFocus={ensureRow}
+                        onChange={(e) => updateRow(i, { quantity: Number(e.target.value) || 0 })}
+                        style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
+                      />
+                    </div>
+                    <div style={{ padding: "4px 6px", borderRight: rowBorder }}>
+                      <input
+                        className="vq-cell-input"
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={r.unitPrice || ""}
+                        placeholder=""
+                        onFocus={ensureRow}
+                        onChange={(e) => updateRow(i, { unitPrice: Number(e.target.value) || 0 })}
+                        style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
+                      />
+                    </div>
+                    <div style={{ padding: "6px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums", borderRight: rowBorder, fontWeight: 500 }}>
+                      {exists && amt > 0 ? formatCurrency(amt) : ""}
+                    </div>
+                    <div style={{ padding: "4px 8px" }}>
+                      <input
+                        className="vq-cell-input"
+                        value={r.notes}
+                        placeholder=""
+                        onFocus={ensureRow}
+                        onChange={(e) => updateRow(i, { notes: e.target.value })}
+                        style={{ fontSize: "12.5px" }}
+                      />
+                    </div>
+                    {/* Per-row delete button (hidden in PDF) */}
+                    {exists && items.length > 1 && (
+                      <button
+                        type="button"
+                        data-pdf-hide="true"
+                        onClick={() => removeRow(i)}
+                        title="この行を削除"
+                        style={{
+                          position: "absolute",
+                          top: "50%",
+                          right: "-26px",
+                          transform: "translateY(-50%)",
+                          width: "22px",
+                          height: "22px",
+                          border: "1px solid #fca5a5",
+                          background: "#fff",
+                          color: "#dc2626",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          lineHeight: 1,
+                          padding: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -747,6 +762,35 @@ export default function VendorQuoteNewPage() {
           );
         })()}
 
+        {/* 行を追加 (hidden in PDF) */}
+        <div data-pdf-hide="true" style={{ marginTop: "6px", textAlign: "right" }}>
+          <button
+            type="button"
+            onClick={addRow}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "4px 10px",
+              border: "1px dashed #94a3b8",
+              background: "#fff",
+              color: "#475569",
+              borderRadius: "4px",
+              fontSize: "12px",
+              cursor: "pointer",
+            }}
+          >
+            ＋ 行を追加
+          </button>
+        </div>
+
+        {/* Datalist for unit autocomplete */}
+        <datalist id="vq-unit-options">
+          {UNIT_OPTIONS.map((u) => (
+            <option key={u} value={u} />
+          ))}
+        </datalist>
+
         {/* Terms + Notes */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginTop: "16px", marginBottom: "8px" }}>
           <div>
@@ -764,7 +808,14 @@ export default function VendorQuoteNewPage() {
           </div>
           <div>
             <div style={{ fontSize: "10px", letterSpacing: "0.3em", color: "#64748b", marginBottom: "6px" }}>備考</div>
-            <div style={{ border: "1px solid #94a3b8", padding: "8px 10px", fontSize: "11.5px", whiteSpace: "pre-wrap", minHeight: "60px", lineHeight: 1.6 }}>{notes}</div>
+            <textarea
+              className="vq-cell-input vq-textarea"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="お客様への補足事項などを記入"
+              rows={3}
+              style={{ border: "1px solid #94a3b8", padding: "8px 10px", fontSize: "11.5px", minHeight: "60px", lineHeight: 1.6, width: "100%" }}
+            />
           </div>
         </div>
 
