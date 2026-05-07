@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "wouter";
+import { useEffect, useState } from "react";
+import { Link, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProjects,
@@ -51,7 +51,19 @@ import { apiErrorMessage } from "@/lib/api-error";
 export default function ProjectsListPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [status, setStatus] = useState<string>("all");
+  const search = useSearch();
+  const initialStatus = (() => {
+    const s = new URLSearchParams(search).get("status");
+    return s && PROJECT_STATUS_OPTIONS.some((o) => o.value === s) ? s : "all";
+  })();
+  const [status, setStatus] = useState<string>(initialStatus);
+  // Re-sync when sidebar nav changes the query string.
+  useEffect(() => {
+    const s = new URLSearchParams(search).get("status");
+    setStatus(
+      s && PROJECT_STATUS_OPTIONS.some((o) => o.value === s) ? s : "all",
+    );
+  }, [search]);
   const params =
     status === "all" ? undefined : { status: status as ProjectStatus };
   const { data, isLoading } = useListProjects(params);

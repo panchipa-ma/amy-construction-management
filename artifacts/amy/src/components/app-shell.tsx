@@ -1,5 +1,5 @@
-import { Link, useLocation } from "wouter";
-import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog, Shield, FileSignature } from "lucide-react";
+import { Link, useLocation, useSearch } from "wouter";
+import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog, Shield, FileSignature, CheckCircle2, BadgeCheck } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { useRole, isPathAllowed } from "@/lib/role";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 const navItems = [
   { name: "ダッシュボード", href: "/", icon: LayoutDashboard, internalOnly: false },
   { name: "案件", href: "/projects", icon: FolderKanban, internalOnly: false },
+  { name: "竣工", href: "/projects?status=completed", icon: CheckCircle2, internalOnly: false },
   { name: "施工台帳", href: "/ledger", icon: BookOpen, internalOnly: false },
   { name: "工程表", href: "/gantt", icon: GanttChart, internalOnly: false },
   { name: "見積", href: "/quotes", icon: FileText, internalOnly: false },
   { name: "請求", href: "/invoices", icon: Receipt, internalOnly: false },
+  { name: "請求済", href: "/invoices?paid=true", icon: BadgeCheck, internalOnly: false },
   { name: "職人見積書", href: "/vendor-quotes", icon: FileSignature, internalOnly: false },
   { name: "職人請求書", href: "/vendor-invoices", icon: Upload, internalOnly: false },
   { name: "領収書", href: "/receipts", icon: ReceiptText, internalOnly: false },
@@ -22,13 +24,18 @@ const navItems = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const search = useSearch();
   const { role } = useRole();
   const { user } = useUser();
   const { signOut } = useClerk();
-  const visibleNav = navItems.filter(
-    (item) =>
-      isPathAllowed(role, item.href) && (!item.internalOnly || role === "internal"),
-  );
+  const visibleNav = navItems.filter((item) => {
+    const pathOnly = item.href.split("?")[0];
+    return (
+      isPathAllowed(role, pathOnly) && (!item.internalOnly || role === "internal")
+    );
+  });
+  const currentSearch = search ? `?${search}` : "";
+  const currentFull = location + currentSearch;
   const userLabel =
     user?.fullName ||
     user?.primaryEmailAddress?.emailAddress ||
@@ -47,7 +54,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
           {visibleNav.map((item) => {
-            const isActive = item.href === "/" ? location === "/" : location.startsWith(item.href);
+            const [itemPath, itemQuery] = item.href.split("?");
+            let isActive: boolean;
+            if (item.href === "/") {
+              isActive = location === "/" && !currentSearch;
+            } else if (itemQuery) {
+              // Filtered shortcut — must match path AND query exactly.
+              isActive = currentFull === item.href;
+            } else {
+              // Plain path — match prefix but NOT when a sibling shortcut
+              // (same path + query) is active.
+              const hasFilteredSibling = navItems.some(
+                (other) =>
+                  other.href !== item.href &&
+                  other.href.startsWith(itemPath + "?") &&
+                  currentFull === other.href,
+              );
+              isActive = location.startsWith(itemPath) && !hasFilteredSibling;
+            }
             return (
               <Link key={item.href} href={item.href}>
                 <div
