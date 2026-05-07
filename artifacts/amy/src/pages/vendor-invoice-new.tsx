@@ -42,6 +42,7 @@ const RECIPIENT_PRESETS = ["株式会社AMY"];
 
 type CreatorDefaults = {
   recipientName: string;
+  recipientContactName: string;
   authorName: string;
   registrationNumber: string;
   companyName: string;
@@ -60,6 +61,7 @@ type CreatorDefaults = {
 
 const EMPTY_DEFAULTS: CreatorDefaults = {
   recipientName: "株式会社AMY",
+  recipientContactName: "",
   authorName: "",
   registrationNumber: "",
   companyName: "",
@@ -78,17 +80,23 @@ const EMPTY_DEFAULTS: CreatorDefaults = {
 
 type LineRow = { description: string; quantity: number; unitPrice: number };
 
-function loadFormDefaults(): { recipientName: string; authorName: string } {
+function loadFormDefaults(): {
+  recipientName: string;
+  recipientContactName: string;
+  authorName: string;
+} {
   try {
     const raw = localStorage.getItem(FORM_STORAGE_KEY);
-    if (!raw) return { recipientName: "株式会社AMY", authorName: "" };
+    if (!raw)
+      return { recipientName: "株式会社AMY", recipientContactName: "", authorName: "" };
     const parsed = JSON.parse(raw);
     return {
       recipientName: parsed.recipientName ?? "株式会社AMY",
+      recipientContactName: parsed.recipientContactName ?? "",
       authorName: parsed.authorName ?? "",
     };
   } catch {
-    return { recipientName: "株式会社AMY", authorName: "" };
+    return { recipientName: "株式会社AMY", recipientContactName: "", authorName: "" };
   }
 }
 
@@ -112,17 +120,25 @@ function endOfMonthISO(base: string): string {
 function parseAuthorRecipient(notes: string | null | undefined): {
   authorName?: string;
   recipientName?: string;
+  recipientContactName?: string;
   rest?: string;
 } {
   if (!notes) return {};
   const parts = notes.split(" / ").map((s) => s.trim());
-  const out: { authorName?: string; recipientName?: string; rest?: string } = {};
+  const out: {
+    authorName?: string;
+    recipientName?: string;
+    recipientContactName?: string;
+    rest?: string;
+  } = {};
   const remaining: string[] = [];
   for (const p of parts) {
     const a = p.match(/^作成者:\s*(.+)$/);
     const r = p.match(/^宛名:\s*(.+)$/);
+    const c = p.match(/^ご担当:\s*(.+)$/);
     if (a) out.authorName = a[1];
     else if (r) out.recipientName = r[1];
+    else if (c) out.recipientContactName = c[1];
     else remaining.push(p);
   }
   if (remaining.length > 0) out.rest = remaining.join(" / ");
@@ -195,6 +211,7 @@ export default function VendorInvoiceNewPage() {
       ...EMPTY_DEFAULTS,
       ...profile,
       recipientName: form.recipientName,
+      recipientContactName: form.recipientContactName,
       authorName: form.authorName || user?.fullName || "",
     });
   }, [profile, user]);
@@ -230,6 +247,7 @@ export default function VendorInvoiceNewPage() {
     setDefaults((d) => ({
       ...d,
       recipientName: parsed.recipientName || d.recipientName,
+      recipientContactName: parsed.recipientContactName || d.recipientContactName,
       authorName: parsed.authorName || d.authorName,
       companyName: sourceQuote.vendorName || d.companyName,
     }));
@@ -304,6 +322,7 @@ export default function VendorInvoiceNewPage() {
         FORM_STORAGE_KEY,
         JSON.stringify({
           recipientName: defaults.recipientName,
+          recipientContactName: defaults.recipientContactName,
           authorName: defaults.authorName,
         }),
       );
@@ -346,6 +365,8 @@ export default function VendorInvoiceNewPage() {
       const unitNumber = project?.unitNumber || project?.name || "未設定";
       const noteParts: string[] = [];
       if (defaults.authorName) noteParts.push(`作成者: ${defaults.authorName}`);
+      if (defaults.recipientContactName)
+        noteParts.push(`ご担当: ${defaults.recipientContactName}`);
       if (defaults.recipientName)
         noteParts.push(`宛名: ${defaults.recipientName}`);
       if (notes) noteParts.push(notes);
@@ -478,11 +499,23 @@ export default function VendorInvoiceNewPage() {
               </div>
             </div>
             <div className="space-y-2">
+              <Label>ご担当者名（宛先）</Label>
+              <Input
+                value={defaults.recipientContactName}
+                onChange={(e) =>
+                  updateDefault("recipientContactName", e.target.value)
+                }
+                placeholder="例: 田中 様（宛先のご担当者）"
+                data-testid="input-recipient-contact"
+              />
+            </div>
+            <div className="space-y-2">
               <Label>作成者</Label>
               <Input
                 value={defaults.authorName}
                 onChange={(e) => updateDefault("authorName", e.target.value)}
-                placeholder="例: 山田 太郎"
+                placeholder="例: 山田 太郎（自分の名前）"
+                data-testid="input-author"
               />
             </div>
             <div className="space-y-2 md:col-span-2">
@@ -767,6 +800,11 @@ export default function VendorInvoiceNewPage() {
             </div>
             <div style={{ marginTop: "12px", fontSize: "13px" }}>
               <span>ご担当：</span>
+              {defaults.recipientContactName && (
+                <span style={{ marginLeft: "4px" }}>
+                  {defaults.recipientContactName} 様
+                </span>
+              )}
             </div>
             <div style={{ marginTop: "8px", fontSize: "13px" }}>
               <span>件名：</span>

@@ -41,6 +41,7 @@ const RECIPIENT_PRESETS = ["株式会社AMY"];
 
 type CreatorDefaults = {
   recipientName: string;
+  recipientContactName: string;
   authorName: string;
   registrationNumber: string;
   companyName: string;
@@ -56,6 +57,7 @@ type CreatorDefaults = {
 
 const EMPTY_DEFAULTS: CreatorDefaults = {
   recipientName: "株式会社AMY",
+  recipientContactName: "",
   authorName: "",
   registrationNumber: "",
   companyName: "",
@@ -77,17 +79,23 @@ type LineRow = {
   notes: string;
 };
 
-function loadFormDefaults(): { recipientName: string; authorName: string } {
+function loadFormDefaults(): {
+  recipientName: string;
+  recipientContactName: string;
+  authorName: string;
+} {
   try {
     const raw = localStorage.getItem(FORM_STORAGE_KEY);
-    if (!raw) return { recipientName: "株式会社AMY", authorName: "" };
+    if (!raw)
+      return { recipientName: "株式会社AMY", recipientContactName: "", authorName: "" };
     const parsed = JSON.parse(raw);
     return {
       recipientName: parsed.recipientName ?? "株式会社AMY",
+      recipientContactName: parsed.recipientContactName ?? "",
       authorName: parsed.authorName ?? "",
     };
   } catch {
-    return { recipientName: "株式会社AMY", authorName: "" };
+    return { recipientName: "株式会社AMY", recipientContactName: "", authorName: "" };
   }
 }
 
@@ -136,6 +144,7 @@ export default function VendorQuoteNewPage() {
       ...EMPTY_DEFAULTS,
       ...profile,
       recipientName: form.recipientName,
+      recipientContactName: form.recipientContactName,
       authorName: form.authorName || user?.fullName || "",
     });
   }, [profile, user]);
@@ -230,6 +239,7 @@ export default function VendorQuoteNewPage() {
         FORM_STORAGE_KEY,
         JSON.stringify({
           recipientName: defaults.recipientName,
+          recipientContactName: defaults.recipientContactName,
           authorName: defaults.authorName,
         }),
       );
@@ -289,6 +299,8 @@ export default function VendorQuoteNewPage() {
       if (defaults.authorName) noteParts.push(`作成者: ${defaults.authorName}`);
       if (defaults.recipientName)
         noteParts.push(`宛名: ${defaults.recipientName}`);
+      if (defaults.recipientContactName)
+        noteParts.push(`ご担当: ${defaults.recipientContactName}`);
       if (notes) noteParts.push(notes);
 
       await createMut.mutateAsync({
@@ -400,11 +412,23 @@ export default function VendorQuoteNewPage() {
               </div>
             </div>
             <div className="space-y-2">
+              <Label>ご担当者名（宛先）</Label>
+              <Input
+                value={defaults.recipientContactName}
+                onChange={(e) =>
+                  updateDefault("recipientContactName", e.target.value)
+                }
+                placeholder="例: 田中 様（宛先のご担当者）"
+                data-testid="input-recipient-contact"
+              />
+            </div>
+            <div className="space-y-2">
               <Label>作成者</Label>
               <Input
                 value={defaults.authorName}
                 onChange={(e) => updateDefault("authorName", e.target.value)}
-                placeholder="例: 山田 太郎"
+                placeholder="例: 山田 太郎（自分の名前）"
+                data-testid="input-author"
               />
             </div>
             <div className="space-y-2 md:col-span-2">
@@ -543,10 +567,10 @@ export default function VendorQuoteNewPage() {
               <span style={{ fontSize: "18px", fontWeight: 700, flex: 1 }}>{defaults.recipientName || "—"}</span>
               <span style={{ fontSize: "14px" }}>御中</span>
             </div>
-            {defaults.authorName && (
+            {defaults.recipientContactName && (
               <div style={{ display: "flex", gap: "10px", marginTop: "4px", alignItems: "center", fontSize: "11px" }}>
                 <span style={{ color: "#64748b", width: "48px" }}>ご担当</span>
-                <span style={{ flex: 1, borderBottom: "1px solid #e2e8f0", paddingBottom: "1px" }}>{defaults.authorName}</span>
+                <span style={{ flex: 1, borderBottom: "1px solid #e2e8f0", paddingBottom: "1px" }}>{defaults.recipientContactName}</span>
                 <span>様</span>
               </div>
             )}
