@@ -37,6 +37,10 @@ export const customersTable = pgTable("customers", {
   defaultSalesCommissionRate: numeric("default_sales_commission_rate")
     .notNull()
     .default("5"),
+  // 現場監督歩合の規定値 (%) — 規定超過粗利に対する監督への配分率。
+  defaultSupervisorCommissionRate: numeric("default_supervisor_commission_rate")
+    .notNull()
+    .default("30"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

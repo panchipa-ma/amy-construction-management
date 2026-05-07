@@ -63,6 +63,7 @@ type Project = {
   contractAmount?: number;
   salesCommissionRate?: number | null;
   standardProfitRate?: number | null;
+  supervisorCommissionRate?: number | null;
   salesRep?: string | null;
   siteSupervisor?: string | null;
 };
@@ -105,7 +106,7 @@ export type CreateCostEntryDraft = {
 };
 
 const DEFAULT_STANDARD_PROFIT_RATE = 0.20;
-const SUPERVISOR_COMMISSION_RATE = 0.30;
+const DEFAULT_SUPERVISOR_COMMISSION_RATE = 0.30;
 
 function pct(num: number, den: number): string {
   if (den === 0) return "-";
@@ -148,7 +149,13 @@ export function LedgerSpreadsheet({
   const standardProfit = Math.round(orderAmount * standardProfitRate);
   const profitAfterSales = grossProfit - salesCommission;
   const excessProfit = Math.max(0, profitAfterSales - standardProfit);
-  const supervisorCommission = Math.round(excessProfit * SUPERVISOR_COMMISSION_RATE);
+  const supervisorCommissionRate =
+    project.supervisorCommissionRate != null
+      ? project.supervisorCommissionRate / 100
+      : DEFAULT_SUPERVISOR_COMMISSION_RATE;
+  const supervisorCommission = Math.round(
+    excessProfit * supervisorCommissionRate,
+  );
 
   const finalProfit = grossProfit - salesCommission - supervisorCommission;
 
@@ -483,7 +490,7 @@ export function LedgerSpreadsheet({
       {/* 歩合・最終利益 */}
       <div className="border border-border overflow-hidden rounded-sm">
         <div className="bg-accent text-accent-foreground text-center py-1.5 font-semibold text-xs border-b border-border">
-          歩合・最終利益 (規定利率 {(standardProfitRate * 100).toFixed(1)}% / 監督歩合 30%)
+          歩合・最終利益 (規定利率 {(standardProfitRate * 100).toFixed(1)}% / 監督歩合 {(supervisorCommissionRate * 100).toFixed(1)}%)
         </div>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-xs tabular-nums">
@@ -577,7 +584,9 @@ export function LedgerSpreadsheet({
                 </td>
               </tr>
               <tr>
-                <td className="font-medium">監督歩合 (30%)</td>
+                <td className="font-medium">
+                  監督歩合 ({(supervisorCommissionRate * 100).toFixed(1)}%)
+                </td>
                 <td className="text-right text-destructive">
                   −{formatCurrency(supervisorCommission)}
                 </td>
@@ -585,7 +594,7 @@ export function LedgerSpreadsheet({
                   {pct(supervisorCommission, orderAmount)}
                 </td>
                 <td className="text-muted-foreground">
-                  規定超過粗利 × 30% ({project.siteSupervisor ?? "担当監督"})
+                  規定超過粗利 × {(supervisorCommissionRate * 100).toFixed(1)}% ({project.siteSupervisor ?? "担当監督"})
                 </td>
               </tr>
               <tr className="bg-accent/10">

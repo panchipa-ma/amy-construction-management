@@ -61,6 +61,7 @@ const empty = {
   notes: "",
   defaultProfitRate: "20",
   defaultSalesCommissionRate: "5",
+  defaultSupervisorCommissionRate: "30",
 };
 
 export default function CustomersPage() {
@@ -92,6 +93,9 @@ export default function CustomersPage() {
       notes: c.notes ?? "",
       defaultProfitRate: String(c.defaultProfitRate ?? 20),
       defaultSalesCommissionRate: String(c.defaultSalesCommissionRate ?? 5),
+      defaultSupervisorCommissionRate: String(
+        c.defaultSupervisorCommissionRate ?? 30,
+      ),
     });
     setOpen(true);
   };
@@ -112,6 +116,8 @@ export default function CustomersPage() {
       defaultProfitRate: Number(form.defaultProfitRate) || 20,
       defaultSalesCommissionRate:
         Number(form.defaultSalesCommissionRate) || 5,
+      defaultSupervisorCommissionRate:
+        Number(form.defaultSupervisorCommissionRate) || 30,
     };
     try {
       if (editing) {
@@ -234,6 +240,7 @@ export default function CustomersPage() {
                   <TableHead>住所</TableHead>
                   <TableHead className="text-right">規定利率</TableHead>
                   <TableHead className="text-right">営業歩合</TableHead>
+                  <TableHead className="text-right">監督歩合</TableHead>
                   <TableHead className="w-24"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -260,6 +267,9 @@ export default function CustomersPage() {
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {(c.defaultSalesCommissionRate ?? 5).toFixed(1)}%
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {(c.defaultSupervisorCommissionRate ?? 30).toFixed(1)}%
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1 justify-end">
@@ -339,7 +349,7 @@ export default function CustomersPage() {
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="defaultProfitRate">
                   規定利率 (%)
@@ -381,6 +391,29 @@ export default function CustomersPage() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   案件作成時に既定値としてプリフィル
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="defaultSupervisorCommissionRate">
+                  現場監督歩合 (%)
+                </Label>
+                <Input
+                  id="defaultSupervisorCommissionRate"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={form.defaultSupervisorCommissionRate}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      defaultSupervisorCommissionRate: e.target.value,
+                    })
+                  }
+                  placeholder="例: 30"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  規定超過粗利のうち監督への配分率
                 </p>
               </div>
             </div>

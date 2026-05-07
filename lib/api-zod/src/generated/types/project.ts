@@ -30,6 +30,8 @@ export interface Project {
   salesCommissionRate?: number;
   /** 規定利率 (%, 顧客マスタから取得) */
   standardProfitRate?: number;
+  /** 現場監督歩合 (%, 顧客マスタから取得) */
+  supervisorCommissionRate?: number;
   /** 担当営業 */
   salesRep?: string | null;
   /** 担当現場監督 */

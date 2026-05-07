@@ -15,4 +15,5 @@ export interface CreateCustomerBody {
   notes?: string | null;
   defaultProfitRate?: number | null;
   defaultSalesCommissionRate?: number | null;
+  defaultSupervisorCommissionRate?: number | null;
 }

@@ -18,5 +18,7 @@ export interface Customer {
   defaultProfitRate: number;
   /** 営業歩合の規定値 (%, 案件作成時にプリフィル) */
   defaultSalesCommissionRate: number;
+  /** 現場監督歩合の規定値 (%, 規定超過粗利に対する配分率) */
+  defaultSupervisorCommissionRate: number;
   createdAt: Date;
 }

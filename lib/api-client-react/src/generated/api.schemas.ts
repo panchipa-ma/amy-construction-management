@@ -41,6 +41,8 @@ export interface Customer {
   defaultProfitRate: number;
   /** 営業歩合の規定値 (%, 案件作成時にプリフィル) */
   defaultSalesCommissionRate: number;
+  /** 現場監督歩合の規定値 (%, 規定超過粗利に対する配分率) */
+  defaultSupervisorCommissionRate: number;
   createdAt: string;
 }
 
@@ -53,6 +55,7 @@ export interface CreateCustomerBody {
   notes?: string | null;
   defaultProfitRate?: number | null;
   defaultSalesCommissionRate?: number | null;
+  defaultSupervisorCommissionRate?: number | null;
 }
 
 export type AppUserRole = (typeof AppUserRole)[keyof typeof AppUserRole];
@@ -146,6 +149,8 @@ export interface Project {
   salesCommissionRate?: number;
   /** 規定利率 (%, 顧客マスタから取得) */
   standardProfitRate?: number;
+  /** 現場監督歩合 (%, 顧客マスタから取得) */
+  supervisorCommissionRate?: number;
   /** 担当営業 */
   salesRep?: string | null;
   /** 担当現場監督 */

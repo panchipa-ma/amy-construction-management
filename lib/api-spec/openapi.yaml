@@ -1171,7 +1171,7 @@ components:
 
     Customer:
       type: object
-      required: [id, name, defaultProfitRate, defaultSalesCommissionRate, createdAt]
+      required: [id, name, defaultProfitRate, defaultSalesCommissionRate, defaultSupervisorCommissionRate, createdAt]
       properties:
         id: { type: string }
         name: { type: string }
@@ -1182,6 +1182,7 @@ components:
         notes: { type: string, nullable: true }
         defaultProfitRate: { type: number, description: "規定利率 (%, 施工台帳の規定粗利額算出に使用)" }
         defaultSalesCommissionRate: { type: number, description: "営業歩合の規定値 (%, 案件作成時にプリフィル)" }
+        defaultSupervisorCommissionRate: { type: number, description: "現場監督歩合の規定値 (%, 規定超過粗利に対する配分率)" }
         createdAt: { type: string, format: date-time }
 
     CreateCustomerBody:
@@ -1196,6 +1197,7 @@ components:
         notes: { type: string, nullable: true }
         defaultProfitRate: { type: number, nullable: true }
         defaultSalesCommissionRate: { type: number, nullable: true }
+        defaultSupervisorCommissionRate: { type: number, nullable: true }
 
     AppUser:
       type: object
@@ -1259,6 +1261,7 @@ components:
         actualCost: { type: number, description: "実績原価合計" }
         salesCommissionRate: { type: number, description: "営業歩合率 (%, 売上に対して)" }
         standardProfitRate: { type: number, description: "規定利率 (%, 顧客マスタから取得)" }
+        supervisorCommissionRate: { type: number, description: "現場監督歩合 (%, 顧客マスタから取得)" }
         salesRep: { type: string, nullable: true, description: "担当営業" }
         siteSupervisor: { type: string, nullable: true, description: "担当現場監督" }
         notes: { type: string, nullable: true }

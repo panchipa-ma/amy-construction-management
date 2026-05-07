@@ -25,6 +25,7 @@ function serialize(c: typeof customersTable.$inferSelect) {
     notes: c.notes,
     defaultProfitRate: n(c.defaultProfitRate),
     defaultSalesCommissionRate: n(c.defaultSalesCommissionRate),
+    defaultSupervisorCommissionRate: n(c.defaultSupervisorCommissionRate),
     createdAt: isoDateTime(c.createdAt),
   };
 }
@@ -38,6 +39,7 @@ function toDbValues(input: {
   notes?: string | null;
   defaultProfitRate?: number | null;
   defaultSalesCommissionRate?: number | null;
+  defaultSupervisorCommissionRate?: number | null;
 }) {
   const data: Record<string, unknown> = {};
   if (input.name !== undefined) data.name = input.name;
@@ -50,6 +52,10 @@ function toDbValues(input: {
     data.defaultProfitRate = String(input.defaultProfitRate);
   if (input.defaultSalesCommissionRate != null)
     data.defaultSalesCommissionRate = String(input.defaultSalesCommissionRate);
+  if (input.defaultSupervisorCommissionRate != null)
+    data.defaultSupervisorCommissionRate = String(
+      input.defaultSupervisorCommissionRate,
+    );
   return data;
 }
 

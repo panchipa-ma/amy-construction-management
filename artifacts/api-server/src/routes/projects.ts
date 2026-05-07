@@ -42,6 +42,8 @@ async function serializeProject(p: ProjectRow) {
     .select({
       name: customersTable.name,
       defaultProfitRate: customersTable.defaultProfitRate,
+      defaultSupervisorCommissionRate:
+        customersTable.defaultSupervisorCommissionRate,
     })
     .from(customersTable)
     .where(eq(customersTable.id, p.customerId));
@@ -62,6 +64,9 @@ async function serializeProject(p: ProjectRow) {
     actualCost: actual,
     salesCommissionRate: n(p.salesCommissionRate),
     standardProfitRate: customer ? n(customer.defaultProfitRate) : 20,
+    supervisorCommissionRate: customer
+      ? n(customer.defaultSupervisorCommissionRate)
+      : 30,
     salesRep: p.salesRep,
     siteSupervisor: p.siteSupervisor,
     notes: p.notes,
