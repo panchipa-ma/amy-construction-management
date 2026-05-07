@@ -86,15 +86,25 @@ function AttendanceMatrix() {
     return s.slice(0, 10);
   };
 
-  const staffAssignedProjects = useMemo(() => {
-    const m = new Map<string, { projectId: string; projectName: string }[]>();
+  const staffPhaseSpans = useMemo(() => {
+    const m = new Map<
+      string,
+      Array<{
+        projectId: string;
+        projectName: string;
+        startDate: string;
+        endDate: string;
+      }>
+    >();
     for (const p of allPhases) {
       if (!p.staffId) continue;
       if (!m.has(p.staffId)) m.set(p.staffId, []);
-      const arr = m.get(p.staffId)!;
-      if (!arr.some((x) => x.projectId === p.projectId)) {
-        arr.push({ projectId: p.projectId, projectName: p.projectName });
-      }
+      m.get(p.staffId)!.push({
+        projectId: p.projectId,
+        projectName: p.projectName,
+        startDate: toDateKey(p.startDate),
+        endDate: toDateKey(p.endDate),
+      });
     }
     return m;
   }, [allPhases]);
@@ -110,18 +120,19 @@ function AttendanceMatrix() {
       dm.get(dk)!.push(e);
     }
 
-    for (const [staffId, projects] of staffAssignedProjects) {
+    for (const [staffId, spans] of staffPhaseSpans) {
       if (!m.has(staffId)) m.set(staffId, new Map());
       const dm = m.get(staffId)!;
       for (const d of dateList) {
-        if (!dm.has(d)) dm.set(d, []);
-        const existing = dm.get(d)!;
-        for (const proj of projects) {
-          if (!existing.some((e) => e.projectId === proj.projectId)) {
+        for (const span of spans) {
+          if (d < span.startDate || d > span.endDate) continue;
+          if (!dm.has(d)) dm.set(d, []);
+          const existing = dm.get(d)!;
+          if (!existing.some((e) => e.projectId === span.projectId)) {
             existing.push({
-              id: `phase-assign-${staffId}-${proj.projectId}-${d}`,
-              projectId: proj.projectId,
-              projectName: proj.projectName,
+              id: `phase-assign-${staffId}-${span.projectId}-${d}`,
+              projectId: span.projectId,
+              projectName: span.projectName,
               staffId,
               staffName: "",
               date: d,
@@ -137,7 +148,7 @@ function AttendanceMatrix() {
     }
 
     return m;
-  }, [entries, staffAssignedProjects, dateList]);
+  }, [entries, staffPhaseSpans, dateList]);
 
   const projectColor = useMemo(() => {
     const ids = new Set<string>();
