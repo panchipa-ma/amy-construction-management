@@ -1,148 +1,119 @@
 # AMY 施工管理
 
-## Overview
-
-A Japanese interior contractor (内装屋) business management web app. The hero feature is the **施工台帳 (construction cost ledger / 原価管理)** showing planned vs actual cost with gross profit/rate per project. Other features: project lifecycle management (見積〜竣工), quotes/invoices with line items + 10% tax, customer/staff (職人) management, weekly schedule grid, and on-site progress logs (進捗記録).
-
-UI is entirely in Japanese. Authentication is via **Replit-managed Clerk**.
-
-## 認証 (Clerk Auth)
-
-Replit-managed Clerk tenant — keys auto-provisioned (`CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`). Login providers (email/password, Google) are managed via the workspace **Auth pane** — there is no external Clerk dashboard. Production gets its own isolated user store; dev keys are `pk_test`/`sk_test` (expected — do NOT try to "fix").
-
-**Frontend wiring** (`src/App.tsx`):
-- `<ClerkProvider>` wraps the app inside `<WouterRouter base={basePath}>`. `proxyUrl` from `VITE_CLERK_PROXY_URL` (empty in dev, set in prod). `routerPush`/`routerReplace` strip basePath before calling `setLocation`.
-- Routes: `/sign-in/*?` and `/sign-up/*?` (optional wildcard required for Clerk's sub-routes like `/sign-in/sso-callback`). All other paths gated by `<Show when="signed-in">` showing `<ProtectedRoutes>` (RoleProvider + AppShell + existing routes), `<Show when="signed-out">` showing `LandingPage`.
-- `LandingPage` (`src/pages/landing.tsx`) is the public landing for unauthenticated users with サインイン / アカウントを作成 buttons (linking to `/sign-in` and `/sign-up`). Per Clerk skill: home must be publicly accessible — never auto-redirect to sign-in.
-- Custom `clerkAppearance` uses `theme: shadcn`, `cssLayerName: "clerk"`, primary color matches the navy `--primary` (hsl 222 65% 24%), Japanese localization for sign-in/sign-up titles. Logo at `/logo.svg`.
-- Tailwind v4 setup requires `@layer theme, base, clerk, components, utilities;` BEFORE `@import 'tailwindcss';` in `src/index.css`, and `tailwindcss({ optimize: false })` in `vite.config.ts` (otherwise Clerk renders correctly in dev but breaks in prod).
-- `app-shell.tsx` shows `useUser().fullName/email` + サインアウト button (`useClerk().signOut()`) at the bottom of the sidebar.
-
-**Backend wiring** (`artifacts/api-server/src/app.ts`):
-- `clerkProxyMiddleware` mounted at `/api/__clerk` BEFORE body parsers (proxies Clerk Frontend API in production only).
-- `clerkMiddleware()` from `@clerk/express` mounted after CORS+json. Resolves publishable key from request host via `publishableKeyFromHost(getClerkProxyHost(req), CLERK_PUBLISHABLE_KEY)` for custom-domain support.
-- `routes/index.ts` mounts `requireAuth` (checks `getAuth(req).userId`) globally AFTER `healthRouter` — so `/api/health` is public but every other `/api/*` requires a signed-in user. Web cookies authenticate browser requests automatically (no `setAuthTokenGetter` needed for web).
-
-## プロフィール (per-user profile, Clerk unsafeMetadata)
-
-After sign-up, every user must complete a profile that is auto-populated into 職人請求書 creation. Stored in `user.unsafeMetadata.profile` (Clerk) so each social member only sees their own info.
-
-- `lib/profile.ts` — `UserProfile` type, `EMPTY_PROFILE`, `readProfile(user)`, `isProfileComplete(profile)`, `saveProfile(user, profile)`. All fields required EXCEPT `registrationNumber` (インボイス登録番号は任意). Fields: companyName / registrationNumber / postalCode / address / email / bankName / branchName / accountType (default 普通) / accountNumber / accountHolder.
-- `pages/profile-setup.tsx` — single page used in two modes via `mode` prop: `"setup"` (forced after signup, redirects to `/` on save) or `"edit"` (sidebar link, redirects to `/profile`).
-- `App.tsx` — `<ProfileGate>` inside `<Show signed-in>` (after `<RoleProvider>`). Checks `isProfileComplete(readProfile(user))`; if incomplete and current path ≠ `/profile-setup`, redirects there. Routes `/profile-setup` and `/profile` are inside `ProtectedRoutes`. `EXTERNAL_ALLOWED_PREFIXES` (lib/role.tsx) includes `/profile` and `/profile-setup` so 社外 users can also complete profile.
-- `app-shell.tsx` — sidebar shows プロフィール button (UserCog icon, links to `/profile`) above サインアウト.
-- `pages/vendor-invoice-new.tsx` — issuer + bank sections are now read-only display cards populated from `readProfile(user)` with a "プロフィールを編集" button. Per-invoice form fields (`recipientName`, `authorName`) are still editable and persist to localStorage `amy.vendorInvoiceForm.v1` (the old `amy.vendorInvoiceCreator.v1` key is no longer written). `authorName` defaults from `user.fullName` when empty.
-
-## ユーザー管理・権限分け (Server-managed roles + approval)
-
-Roles and approval are now **server-managed** (no localStorage). The `app_users` table stores one row per Clerk user (`clerkUserId` unique) with `role` (`internal` | `external`) and `status` (`pending` | `approved`).
-
-**Bootstrap rule** (`artifacts/api-server/src/lib/auth.ts` `getOrCreateAppUser`): on first sign-in, if there are NO approved-internal users yet, that user is auto-promoted to `internal` + `approved` (so somebody can administer the app). Every subsequent new user defaults to `external` + `pending` and must be approved by an internal admin.
-
-**Backend** (`artifacts/api-server/src/routes/users.ts`):
-- `GET /api/me` — upserts the current user's app_users row from Clerk (email/name via `clerkClient.users.getUser`). Available to every signed-in user, even pending ones (they need it to know their status).
-- `GET /api/users`, `PATCH /api/users/:id`, `DELETE /api/users/:id` — gated by `requireInternal` middleware (403 unless `role==='internal' && status==='approved'`). PATCH/DELETE refuse to demote/delete self (lock-out guard). Approving sets `approvedAt` + `approvedBy`.
-
-**Frontend**:
-- `lib/role.tsx` — `RoleProvider` calls `useGetMe()`. `useMe()` returns `{me, isLoading, isError, refetch}`. `useRole()` is a back-compat shim returning `{role, status}`.
-- `App.tsx` — `<ApprovalGate>` placed AFTER `<ProfileGate>` inside `<Show signed-in>`. If `status !== 'approved'`, renders `pages/pending-approval.tsx` (承認待ち screen with サインアウト + 状況更新 buttons). Order: signed-in → profile complete → approved → app.
-- `pages/users.tsx` (`/users`) — internal-only admin page. Table with role Select, 承認/承認解除 button, 削除 button. Self-row protected (no demote/delete).
-- `app-shell.tsx` — removed the localStorage 権限 Select. Sidebar bottom now shows user name + read-only 権限 label, plus プロフィール / サインアウト. New nav item 「ユーザー管理」 (Shield icon) visible to internal only.
-
-External users still only see the same allowed paths via `EXTERNAL_ALLOWED_PREFIXES` (`/vendor-invoices`, `/staff-assignments`, `/profile`, `/profile-setup`). `RoleGuard` redirects external users to `/vendor-invoices` if they navigate to a restricted path.
-
-### 社外ユーザーのデータ分離 (per-account row visibility)
-
-To prevent external 職人 accounts seeing each other's submissions, three tables now carry a nullable `created_by` text column (Clerk userId): `vendor_invoices`, `vendor_quotes`, `schedule_entries`. The column is set automatically on POST from `getAuth(req).userId`.
-
-- **List endpoints** (`GET /api/vendor-invoices`, `GET /api/vendor-quotes`, `GET /api/schedule`): if caller is `role==='external'`, an extra `WHERE created_by = :clerkUserId` filter is added. Internal users always see all rows.
-- **GET /api/project-phases/overview**: external users get an empty array (so the 全案件工程スケジュール section on /staff-assignments only shows the user's own data). The `/api/schedule` endpoint also skips the project-phases virtual-entry merge for external users.
-- **Mutations** (`PATCH/DELETE /api/schedule/:id`, `DELETE /api/vendor-invoices/:id`, `DELETE /api/vendor-quotes/:id`, `POST /api/vendor-quotes/:id/convert-to-invoice`): if caller is external and the existing row's `created_by` differs, returns 403. Convert also stamps the new vendor_invoice's `created_by` to the caller (not the original quote creator).
-- Legacy rows with `created_by = NULL` are invisible to external users (only internal admins see them) — by design, so historical data isn't leaked when external users are added later.
+Japanese interior contractor (内装屋) business app. Hero feature: **施工台帳** (planned vs actual cost / 粗利). Other: 案件 (見積〜竣工), 見積/請求書 with line items + 10% tax, 顧客/職人, 工程表 (Gantt), 出面表, 進捗記録. UI is entirely Japanese.
 
 ## Architecture
 
-pnpm monorepo with TypeScript project references.
+pnpm monorepo, TypeScript project references.
 
-- `lib/db` — Drizzle ORM, Postgres schema (10 tables: customers, staff, projects, quotes, invoices, cost_entries, schedule_entries, progress_logs, vendor_invoices, project_phases). `projects.unitNumber` (マンション号室) for auto-routing.
-- `lib/object-storage-web` — Uppy-based `<ObjectUploader>` component for presigned PUT uploads. React is a peer dep only (do NOT add `react` as devDep — duplicates React copy and breaks hooks).
-- `lib/api-spec` — OpenAPI 3 source of truth (`openapi.yaml`).
-- `lib/api-zod` — Generated Zod validators (orval). Re-exports schemas namespace under `types`.
-- `lib/api-client-react` — Generated react-query hooks + types (orval).
-- `artifacts/api-server` — Express + Drizzle backend at `/api/*`. Routes in `src/routes/*`. Built with esbuild → `dist/index.mjs`.
-- `artifacts/amy` — React + Vite frontend (Wouter routing, shadcn/ui, Tailwind, Recharts).
+- `lib/db` — Drizzle ORM, Postgres (10 tables incl. `customers`, `staff`, `projects`, `quotes`, `invoices`, `cost_entries`, `schedule_entries`, `progress_logs`, `vendor_invoices`, `vendor_quotes`, `project_phases`, `app_users`). `projects.unitNumber` (マンション号室) drives auto-routing of vendor docs.
+- `lib/object-storage-web` — Uppy `<ObjectUploader>` for presigned PUT. React is a peer dep only.
+- `lib/api-spec` — OpenAPI 3 source of truth.
+- `lib/api-zod`, `lib/api-client-react` — orval-generated Zod validators + react-query hooks.
+- `artifacts/api-server` — Express + Drizzle at `/api/*`. esbuild → `dist/index.mjs`.
+- `artifacts/amy` — React + Vite + Wouter + shadcn/ui + Tailwind v4 + Recharts.
 
-## Theme
-
-"Warm wood + controlled industrial" — off-white backgrounds, dark wood-tone sidebar, leather/wood primary, blueprint-blue accent, rust-red destructive, emerald positive (粗利).
+Theme: warm wood + controlled industrial — off-white bg, dark wood-tone sidebar, navy primary, blueprint-blue accent, rust-red destructive, emerald positive (粗利).
 
 ## Conventions
 
-- Hooks always imported from `@workspace/api-client-react`.
-- Mutations use `mutateAsync` then `queryClient.invalidateQueries({ queryKey: getXxxQueryKey(...) })`.
-- Backend serializers: `n()` coerces numeric DB values, `isoDate()`/`isoDateTime()` for date columns. Drizzle date columns require ISO string coercion before insert/update.
-- Tax rate: hardcoded 10% (Japanese consumption tax).
-- Endpoint naming: cost ledger uses `/api/cost-entries` (NOT `/api/costs`).
+- Hooks always from `@workspace/api-client-react`.
+- Mutations: `mutateAsync` then `queryClient.invalidateQueries({ queryKey: getXxxQueryKey(...) })`.
+- Backend serializers: `n()` for numerics, `isoDate()`/`isoDateTime()` for dates. Drizzle date columns require ISO string before insert/update.
+- Tax 10% (Japanese consumption tax), hardcoded.
+- Endpoint: cost ledger uses `/api/cost-entries` (not `/api/costs`).
 
-## Build/Run
+## Build / Run
 
-- API server build: `pnpm --filter @workspace/api-server run build` (esbuild bundle). Workflow runs `dev` which builds + starts.
-- Frontend: Vite dev server. Workflow already configured.
-- Schema changes: `pnpm --filter @workspace/db run db:push`.
-- Regenerate clients after openapi.yaml change: `pnpm --filter @workspace/api-zod run codegen` and `pnpm --filter @workspace/api-client-react run codegen`.
+- API: `pnpm --filter @workspace/api-server run build` (workflow runs `dev`).
+- Frontend: Vite dev (workflow already configured).
+- DB schema: `pnpm --filter @workspace/db run push`.
+- After openapi.yaml change: `pnpm --filter @workspace/api-zod run codegen` and `pnpm --filter @workspace/api-client-react run codegen`.
+- If `lib/object-storage-web` dist gets stale: `pnpm --filter @workspace/object-storage-web exec tsc --build`.
+
+## 認証 (Replit-managed Clerk)
+
+Keys auto-provisioned (`CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`). Login providers managed in workspace **Auth pane** — no external Clerk dashboard. Prod has its own user store; dev keys are `pk_test`/`sk_test` (expected).
+
+**Frontend** (`src/App.tsx`): `<ClerkProvider>` inside `<WouterRouter base={basePath}>`; `proxyUrl` from `VITE_CLERK_PROXY_URL` (empty in dev). `routerPush`/`routerReplace` strip basePath. Routes `/sign-in/*?` and `/sign-up/*?` (optional wildcard required for Clerk sub-routes). All other paths gated by `<Show signed-in>` → `ProtectedRoutes` (RoleProvider + AppShell + routes); `<Show signed-out>` → `LandingPage`. `clerkAppearance` uses `theme: shadcn`, `cssLayerName: "clerk"`, navy primary, Japanese localization.
+
+**Tailwind v4 gotcha**: `@layer theme, base, clerk, components, utilities;` BEFORE `@import 'tailwindcss';` in `src/index.css`, and `tailwindcss({ optimize: false })` in `vite.config.ts`. Otherwise Clerk renders fine in dev but breaks in prod.
+
+**Backend** (`artifacts/api-server/src/app.ts`): `clerkProxyMiddleware` at `/api/__clerk` BEFORE body parsers (prod only). `clerkMiddleware()` from `@clerk/express` after CORS+json. `routes/index.ts` mounts `requireAuth` (checks `getAuth(req).userId`) AFTER `healthRouter` — so `/api/health` is public, every other `/api/*` requires sign-in. Web cookies authenticate browser requests automatically.
+
+## プロフィール (per-user, Clerk unsafeMetadata)
+
+Stored in `user.unsafeMetadata.profile` so each social member only sees their own info. Auto-populated into 職人請求書/見積書.
+
+- `lib/profile.ts` — `UserProfile`, `EMPTY_PROFILE`, `readProfile(user)`, `isProfileComplete(profile)`, `saveProfile(user, profile)`. All required EXCEPT `registrationNumber` (任意). Fields: companyName / registrationNumber / postalCode / address / email / bankName / branchName / accountType (default 普通) / accountNumber / accountHolder.
+- `pages/profile-setup.tsx` used in two `mode`s: `"setup"` (forced after signup → `/`), `"edit"` (sidebar link → `/profile`).
+- `App.tsx` `<ProfileGate>` inside `<Show signed-in>` after `<RoleProvider>`. If incomplete and path ≠ `/profile-setup`, redirects there. `EXTERNAL_ALLOWED_PREFIXES` (lib/role.tsx) includes `/profile`, `/profile-setup`.
+- Vendor invoice/quote pages display issuer + bank as read-only cards from `readProfile(user)` with a "プロフィールを編集" button. Per-form fields (`recipientName`, `authorName`) persist to localStorage `amy.vendorInvoiceForm.v1` / `amy.vendorQuoteForm.v1`. `authorName` defaults from `user.fullName`.
+
+## ユーザー管理・権限 (server-managed roles + approval)
+
+`app_users` table stores one row per Clerk user (`clerkUserId` unique) with `role` (`internal`|`external`) and `status` (`pending`|`approved`).
+
+**Bootstrap** (`artifacts/api-server/src/lib/auth.ts` `getOrCreateAppUser`): on first sign-in, if NO approved-internal users yet, that user is auto-promoted to `internal`+`approved`. All later new users default to `external`+`pending`.
+
+**Backend** (`routes/users.ts`):
+- `GET /api/me` — upserts caller's row from Clerk. Available to every signed-in user (even pending).
+- `GET /api/users`, `PATCH /api/users/:id`, `DELETE /api/users/:id` — `requireInternal` middleware (403 unless `role==='internal' && status==='approved'`). PATCH/DELETE refuse self-demote/delete.
+
+**Frontend**: `lib/role.tsx` `RoleProvider` calls `useGetMe()`. `App.tsx` `<ApprovalGate>` after `<ProfileGate>` — if `status !== 'approved'`, renders `pages/pending-approval.tsx`. Order: signed-in → profile complete → approved → app. `pages/users.tsx` (`/users`) is internal-only admin (Shield icon in sidebar). `RoleGuard` redirects external users to `/vendor-invoices` if they navigate to a restricted path.
+
+### 社外ユーザーのデータ分離
+
+`vendor_invoices`, `vendor_quotes`, `schedule_entries` carry a nullable `created_by` (Clerk userId), set automatically on POST.
+
+- **List endpoints**: external callers get `WHERE created_by = :clerkUserId`. Internal sees all.
+- **`GET /api/project-phases/overview`**: external → empty array. `/api/schedule` skips project-phases virtual-entry merge for external.
+- **Mutations** (PATCH/DELETE on the 3 tables, plus `POST /api/vendor-quotes/:id/convert-to-invoice`): external caller + foreign `created_by` → 403. Convert stamps the new invoice's `created_by` to the caller.
+- Legacy `created_by = NULL` rows: invisible to external (by design).
 
 ## Cross-document workflows
 
-- **見積 → 請求書**: `POST /api/quotes/:id/convert-to-invoice` copies line items into a new invoice. UI: button on quote-detail page.
-- **見積 → 施工台帳**: `POST /api/quotes/:id/import-to-ledger` with `category` + `entryDate` + `replaceExisting` creates `cost_entries` (planned amount) for each line item. Wrapped in transaction.
-- **見積 → 売上 自動同期**: Whenever a quote is created/updated/deleted (POST/PATCH/DELETE `/api/quotes/:id`), the linked project's `contractAmount` (= 売上 on 施工台帳) is auto-synced to the latest quote's **tax-included total** via `syncProjectContractAmount(projectId)`. Tax-included is used because vendor invoices and receipts are also recorded tax-included. Deleting the only quote resets it to 0. Manual edits to 売上 on the ledger will be overridden the next time a quote is saved.
-- **職人請求書アップロード**: page at `/vendor-invoices`. Staff selects 職人 + 号室 + 金額 + ファイル. Server normalizes 号室 (drops 号室/号/室, full→half-width digits) and looks up `projects.unitNumber`. On match, auto-creates a `cost_entry` (category: `labor` if role contains 社員/自社, else `subcontract`) and links via `vendor_invoices.costEntryId`. Status = `matched` | `unmatched`. Manual matching via `POST /api/vendor-invoices/:id/match`. Delete cascades cost_entry removal.
-- **職人見積書 (vendor quotes)**: parallel feature to 職人請求書 at `/vendor-quotes` (list) and `/vendor-quotes/new` (form). Schema `vendor_quotes` mirrors `vendor_invoices` but uses `quoteDate` instead of `invoiceDate` and adds nullable `validUntil`. Crucially, the auto-created `cost_entry` populates **`plannedAmount`** (想定原価) — NOT `actualAmount` — so vendor quotes show up as planned cost on the 施工台帳, while vendor invoices remain the actual cost. Description format: `"○○ 見積 (○号室)"`. Backend route at `artifacts/api-server/src/routes/vendor-quotes.ts` (no OCR — form-based PDF generation only, mirroring vendor-invoice-new flow). Form-defaults localStorage key: `amy.vendorQuoteForm.v1`. PDF title: 御見積書. Sidebar nav uses FileSignature icon; `/vendor-quotes` is in `EXTERNAL_ALLOWED_PREFIXES` so 社外 users can also create quotes.
-- **職人見積書 → 職人請求書 変換**: `POST /api/vendor-quotes/:id/convert-to-invoice` with `{invoiceDate, dueDate?}` creates a new `vendor_invoices` row reusing the quote's vendor/staff/project/file (fileName prefix `見積書_` → `請求書_`). If the quote was matched to a project, it also creates a NEW `cost_entry` with `actualAmount` populated (description suffix `請求`). The original planned `cost_entry` from the quote is **left intact** so the ledger shows both 想定 vs 実績 side-by-side. UI: 「請求書に変換」 button on `/vendor-quotes` list opens a dialog asking 請求日 + 任意支払期限, defaults to today + end of next month.
-- **職人請求書を作成** (`/vendor-invoices/new`): Form-based vendor-invoice creation. Fields: 宛名 (default 株式会社AMY, custom入力可), 作成者, 件名 (案件 dropdown — drives unitNumber for auto-routing), 発行日, 支払期限, 発行元 (会社名/インボイス番号/郵便番号/住所/メール), 振込先 (銀行/支店/種別/口座番号/名義), 明細 (摘要/数量/単価). Uses `html2canvas-pro` + `jsPDF` to render the preview area to PDF, uploads via `/api/storage/uploads/request-url`, then POSTs to `/api/vendor-invoices` with the resulting servePath. Creator inputs (発行元 + 振込先 + 宛名 + 作成者) persist in `localStorage` under key `amy.vendorInvoiceCreator.v1` so 2回目以降は自動入力.
-- **File uploads**: `POST /api/storage/uploads/request-url` returns `{uploadURL, objectPath}`. Frontend captures `objectPath` from this call (via ref in onGetUploadParameters), then constructs serve path `/api/storage${objectPath}` for `vendor_invoices.fileUrl`. Files are served by `GET /api/storage/objects/*` (currently unauthenticated — fine for single-tenant).
-
-## 見積書の流用 (Duplicate-from-existing-quote)
-
-過去案件（特に竣工済み）の見積書をひな型として新規見積書を作成できる。
-
-- **エントリーポイント**:
-  1. `/quotes/:id` 詳細ページの「複製して新規作成」ボタン (Copy icon, between 印刷 and 請求書に変換) → `/quotes/new?fromQuoteId=<id>`.
-  2. `/projects?status=completed` (竣工) 一覧の各行に「見積を流用」ボタン → 案件の見積一覧 Dialog (`ReuseQuotePicker` in `pages/projects-list.tsx`, calls `useListQuotes({ projectId })`) → 選択で `/quotes/new?fromQuoteId=<id>` に遷移。一般の案件一覧には表示しない（`isCompletedView` ガード）。
-- **`pages/quote-new.tsx`**: `?fromQuoteId=` を読んで `useGetQuote` でフェッチ。`prefilledRef` で1度だけ `subject` / `contactName` / `notes` / `items` を流入（`subjectTouched=true` にして案件選択時の上書きを防ぐ）。**意図的に引き継がない**もの: `projectId` / `customerId` / `quoteNumber` / `issueDate` / `validUntil`（新規案件用なので必ず選び直し）。流用後は toast で通知。
-- **バックエンドは無変更**: 既存の `GET /api/quotes/:id` で取得→ 既存の `POST /api/quotes` で保存するだけ。新エンドポイント不要。
+- **見積 → 請求書**: `POST /api/quotes/:id/convert-to-invoice` — creates a single summarized line item (description = subject or project name, unit "式", quantity 1, unitPrice = quote subtotal). Customer/contact/subject auto-filled.
+- **見積 → 施工台帳**: `POST /api/quotes/:id/import-to-ledger` (`category` + `entryDate` + `replaceExisting`) creates `cost_entries` (planned) per line item, in a transaction.
+- **見積 → 売上 自動同期**: any POST/PATCH/DELETE `/api/quotes/:id` calls `syncProjectContractAmount(projectId)` to set the project's `contractAmount` (= 売上 on 施工台帳) to the latest quote's **tax-included** total. Manual ledger edits to 売上 will be overridden the next time a quote is saved.
+- **見積書の流用 (duplicate)**: 「複製して新規作成」 on `/quotes/:id`, or 「見積を流用」 on `/projects?status=completed` rows (opens `ReuseQuotePicker` Dialog using `useListQuotes({ projectId })`). Both navigate to `/quotes/new?fromQuoteId=<id>`. `pages/quote-new.tsx` reads the param via `useState` initializer, fetches via `useGetQuote`, and uses `prefilledRef` to one-shot prefill `subject`/`contactName`/`notes`/`items` (sets `subjectTouched=true` to prevent project-select overwrite). **Not** prefilled: projectId / customerId / quoteNumber / issueDate / validUntil. Backend unchanged.
+- **職人見積書 (vendor quotes)**: `/vendor-quotes` (list) + `/vendor-quotes/new` (form). Mirrors vendor_invoices but stores `quoteDate` + nullable `validUntil`. Auto-creates `cost_entry` with **`plannedAmount`** (想定原価) — NOT actual — so the ledger shows planned vs actual side-by-side. Description: `"○○ 見積 (○号室)"`. Form-based PDF (no OCR). PDF title: 御見積書. localStorage: `amy.vendorQuoteForm.v1`. `/vendor-quotes` is in `EXTERNAL_ALLOWED_PREFIXES`.
+- **職人見積書 → 職人請求書 変換**: 「請求書に変換」 on `/vendor-quotes` → confirm dialog → navigates to `/vendor-invoices/new?fromVendorQuoteId=<id>`. `vendor-invoice-new.tsx` reads the param, calls `useListVendorQuotes()` to find the source, and (one-shot via `prefilledFromQuoteRef`) prefills projectId, vendorName→companyName, and a single summary line `${projectName} 工事一式 / qty=1 / unitPrice=Math.round(amount/1.1)` (vendor-quote `amount` is tax-included; we back out the tax-excluded subtotal so `subtotal+tax ≈ amount`). Recipient/author parsed from `notes` ("作成者: X / 宛名: Y / freeform"). The user reviews/edits 請求日・支払期限・明細, then saves — html2canvas-pro + jsPDF generate a fresh **請求書** PDF and the existing `POST /api/vendor-invoices` creates the row + cost_entry (実績原価). The legacy backend `POST /api/vendor-quotes/:id/convert-to-invoice` route is no longer invoked by the UI (kept for back-compat); it had a defect: it reused the quote's PDF, so the file shown for the new invoice was actually the old 御見積書. Plan A above replaces it with a fresh client-generated PDF.
+- **職人請求書を作成** (`/vendor-invoices/new`): Form-based. Fields: 宛名 (default 株式会社AMY, custom入力可), 作成者, 件名 (案件 dropdown — drives unitNumber for auto-routing), 発行日, 支払期限, 発行元 (read-only from profile), 振込先 (read-only from profile), 明細. html2canvas-pro + jsPDF render the preview to PDF, upload via `/api/storage/uploads/request-url`, POST to `/api/vendor-invoices`. Per-form `recipientName`+`authorName` persisted to `amy.vendorInvoiceForm.v1`.
+- **職人請求書アップロード** (legacy upload-only flow at `/vendor-invoices`): server normalizes 号室 (drops 号室/号/室, full→half-width digits), looks up `projects.unitNumber`. On match, auto-creates `cost_entry` (category: `labor` if role contains 社員/自社, else `subcontract`) and links via `vendor_invoices.costEntryId`. Status `matched`|`unmatched`. Manual matching: `POST /api/vendor-invoices/:id/match`. Delete cascades cost_entry removal.
+- **File uploads**: `POST /api/storage/uploads/request-url` returns `{uploadURL, objectPath}`. Frontend constructs serve path `/api/storage${objectPath}` for `vendor_invoices.fileUrl`. Files served by `GET /api/storage/objects/*` (currently unauthenticated).
 
 ## 竣工 / 請求済 自動移動 (sidebar shortcuts)
 
-- Sidebar 「竣工」 → `/projects?status=completed`, 「請求済」 → `/invoices?paid=true` (`app-shell.tsx`).
-- `pages/projects-list.tsx`: default filter is `"active"` which **excludes** `completed` projects. The 案件 list never shows 竣工 — they auto-move to the 竣工 view. The status `<Select>` is hidden on the 竣工 view (it's already filtered) and `ACTIVE_STATUS_OPTIONS` (PROJECT_STATUS_OPTIONS minus `completed`) drives the dropdown on the regular list. Title/subtitle switch based on `?status=completed`.
-- `pages/invoices-list.tsx`: default filter is `"unpaid"`. Paid invoices never appear on the 請求 list — they auto-move to 請求済 (`?paid=true`). The previous all/paid/unpaid `<Select>` was removed; the URL param is the single switch. Title/subtitle switch based on `?paid=true`.
-- Sidebar active-state in `app-shell.tsx` strips the query before checking `isPathAllowed`, and uses exact `path+query` match for filtered shortcuts so 案件 vs 竣工 (and 請求 vs 請求済) don't both highlight at once.
+- Sidebar 「竣工」 → `/projects?status=completed`, 「請求済」 → `/invoices?paid=true`.
+- `pages/projects-list.tsx` default filter `"active"` **excludes** `completed`. Status `<Select>` is hidden on the 竣工 view; `ACTIVE_STATUS_OPTIONS` (PROJECT_STATUS_OPTIONS minus completed) drives the dropdown otherwise. Title/subtitle switch on `?status=completed`.
+- `pages/invoices-list.tsx` default `"unpaid"`. The all/paid/unpaid `<Select>` was removed; the URL param is the single switch.
+- `app-shell.tsx` strips the query before checking `isPathAllowed`, and uses exact `path+query` match for filtered shortcuts so 案件 vs 竣工 (and 請求 vs 請求済) don't both highlight.
 
 ## Standalone pages
 
-- **工程表** (`/gantt`): Top-level Gantt chart page listing all projects in collapsible accordion. Reuses `ProjectGantt` component. Filter by status (default: 施工中・契約済) and search by name/customer. Each project expands to show its full interactive Gantt chart with drag, resize, add/edit/delete phases. Phase dialog includes 担当職人 dropdown — assigning a staff member to a phase sets `project_phases.staffId`.
-- **職人出面表** (`/staff-assignments`): Daily attendance matrix (職人×日付) and card-based list view. Automatically merges data from two sources: (1) real `schedule_entries` and (2) virtual entries derived from `project_phases` with `staffId` set (date range expanded into daily entries). Deduplication by staffId+projectId+date ensures no double-counting. Phase expansion is capped at 90 days per phase for safety. Below the staff grid, a **全案件 工程スケジュール** section fetches ALL project phases **without date filter** so every project with a gantt schedule is always visible regardless of the current view window. The project legend at the top also shows all projects from phases. Uses `GET /api/project-phases/overview` endpoint. Assigned phases render in blue, unassigned in amber.
-- **スケジュール** (`/schedule`): Weekly staff assignment grid (職人×曜日). Different from 工程表 — this is about who works where.
+- **工程表** (`/gantt`): All projects in collapsible accordion. Reuses `ProjectGantt`. Filter by status (default: 施工中・契約済) + search by name/customer. Phase dialog includes 担当職人 dropdown — sets `project_phases.staffId`.
+- **職人出面表** (`/staff-assignments`): Daily 職人×日付 matrix. Merges `schedule_entries` + virtual entries from `project_phases` (with `staffId`, expanded into daily entries, capped at 90 days/phase). Dedup by staffId+projectId+date. The 全案件 工程スケジュール section uses `GET /api/project-phases/overview` (no date filter). Assigned phases blue, unassigned amber.
+- **スケジュール** (`/schedule`): Weekly 職人×曜日 grid (different from 工程表 — who works where).
 
 ## Inline editing (台帳形式)
 
-- `components/editable-cell.tsx` exposes `EditableText`, `EditableNumber`, `EditableDate`. All save on blur and on Enter; Escape sets a `cancelRef` flag that the synchronous onBlur checks to skip commit (state setters fire after blur, so a flag is needed). `required` prop reverts to original on empty.
-- `pages/project-detail.tsx` `onCostEntryUpdate` runs a per-id writer chain (`writersRef`) with optimistic merge into `latestCostRef`. The writer loops, re-reading the cache each iteration (fingerprint-compared), so rapid sequential edits to the same row are coalesced and sent in order — no parallel PUTs to the same row, no lost-update race. The ledger refetch only resyncs `latestCostRef` for ids without a pending writer.
-- **施工台帳** (`/ledger`): The `LedgerSpreadsheet` component is now fully editable on the ledger page — same writer-queue pattern as project-detail for cost entries, plus `onProjectUpdate`/`onCostEntryCreate`/`onCostEntryDelete` handlers. Previously read-only. Basic info section mirrors the 案件登録 form: 案件名, 契約番号, ステータス (Select), 顧客 (Select from useListCustomers), 工事場所, 部屋, 着工日, 引渡日, 売上, 担当営業, 営業歩合率, 担当現場監督, 備考 — all inline-editable.
-- **職人一覧** (`/staff`): Table cells (氏名, 職種, 会社, 電話, 日当) are inline-editable using `EditableText`/`EditableNumber`. Each blur saves immediately via `useUpdateStaff`. On error, the staff list is re-fetched to revert. Dialog kept only for creating new staff.
-- **見積書詳細** (`/quotes/:id`): Edit mode toggled by 編集 button. In edit mode, 件名, ご担当, 見積No, 見積日, 有効期限, 備考, and all line items become editable. Line items can be added/removed. Validation: quoteNumber and issueDate are required before save. Save calls `useUpdateQuote` with full body.
+- `components/editable-cell.tsx`: `EditableText`/`EditableNumber`/`EditableDate`. Save on blur and Enter; Escape sets a `cancelRef` flag the synchronous onBlur checks (state setters fire after blur, so a flag is needed). `required` reverts to original on empty.
+- `pages/project-detail.tsx` `onCostEntryUpdate` runs a per-id writer chain (`writersRef`) with optimistic merge into `latestCostRef` — coalesces rapid sequential edits to the same row, no parallel PUTs, no lost-update race. Ledger refetch only resyncs ids without a pending writer.
+- **施工台帳** (`/ledger`): `LedgerSpreadsheet` is fully editable (same writer-queue pattern), plus `onProjectUpdate`/`onCostEntryCreate`/`onCostEntryDelete`. Basic info section mirrors 案件登録 form.
+- **職人一覧** (`/staff`): cells inline-editable via `useUpdateStaff`. On error, refetch to revert. Dialog kept only for 新規.
+- **見積書詳細** (`/quotes/:id`): 編集 button toggles edit mode for 件名/ご担当/見積No/見積日/有効期限/備考/明細. `quoteNumber` and `issueDate` required before save.
 
 ## 請求書 (Invoice) format
 
-- Invoice detail page (`/invoices/:id`) uses a formal Japanese 請求書 layout matching printed invoice format: header with customer 御中, ご担当, 件名, company info with registration number, 合計金額 (税込), 17-row line items table, お振込先 bank details, 小計/消費税/合計 summary.
-- `invoices` DB table has `customerName`, `contactName`, `subject` nullable columns (added to support the formal format).
-- Quote-to-invoice conversion (`POST /api/quotes/:id/convert-to-invoice`) creates a **single summarized line item**: description = quote subject or project name, unit = "式", quantity = 1, unitPrice = quote subtotal (tax-excluded). Customer name, contact, and subject are auto-filled from the quote/project.
-- Company info and bank details are in `lib/company-info.ts` (`COMPANY_INFO`, `BANK_INFO`).
+- `/invoices/:id` uses formal Japanese 請求書 layout: customer 御中, ご担当, 件名, company info with registration number, 合計金額 (税込), 17-row line items, お振込先, 小計/消費税/合計.
+- `invoices` table has `customerName`, `contactName`, `subject` nullable.
+- Company info + bank details in `lib/company-info.ts` (`COMPANY_INFO`, `BANK_INFO`).
 
 ## Known gotchas
 
-- Don't manually clear `dist/` between builds — esbuild already does it. But if routes mysteriously go missing, force-rebuild api-server.
-- Orval generates `useUpdateInvoice` requiring full body shape, including `items`. When toggling `paid`, send the existing invoice fields.
-- DB push command is `pnpm --filter @workspace/db run push` (script name is `push`, not `db:push`).
-- After DB schema or openapi changes, run codegen + db push, then `pnpm --filter @workspace/object-storage-web exec tsc --build` if its dist gets stale (it has `composite: true`).
+- Don't manually clear `dist/` between builds — esbuild does it. But if routes go missing, force-rebuild api-server.
+- Orval `useUpdateInvoice` requires full body shape including `items`. When toggling `paid`, send the existing fields.
+- DB push command is `pnpm --filter @workspace/db run push` (not `db:push`).
+- After DB schema or openapi changes: run codegen + db push, then rebuild `lib/object-storage-web` if its dist is stale.
+- `useListVendorQuotes(undefined, { query: { enabled, queryKey: getListVendorQuotesQueryKey() } })` — orval requires both `enabled` and `queryKey` when passing `query` options.

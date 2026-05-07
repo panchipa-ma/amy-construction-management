@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProjects,
+  useListVendorQuotes,
   useCreateVendorInvoice,
   useRequestUploadUrl,
   getListVendorInvoicesQueryKey,
+  getListVendorQuotesQueryKey,
   getListProjectsQueryKey,
   getGetProjectLedgerQueryKey,
   getGetProjectQueryKey,
@@ -99,6 +101,26 @@ function endOfMonthISO(base: string): string {
   return `${y}-${m}-${day}`;
 }
 
+function parseAuthorRecipient(notes: string | null | undefined): {
+  authorName?: string;
+  recipientName?: string;
+  rest?: string;
+} {
+  if (!notes) return {};
+  const parts = notes.split(" / ").map((s) => s.trim());
+  const out: { authorName?: string; recipientName?: string; rest?: string } = {};
+  const remaining: string[] = [];
+  for (const p of parts) {
+    const a = p.match(/^作成者:\s*(.+)$/);
+    const r = p.match(/^宛名:\s*(.+)$/);
+    if (a) out.authorName = a[1];
+    else if (r) out.recipientName = r[1];
+    else remaining.push(p);
+  }
+  if (remaining.length > 0) out.rest = remaining.join(" / ");
+  return out;
+}
+
 export default function VendorInvoiceNewPage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -109,6 +131,28 @@ export default function VendorInvoiceNewPage() {
 
   const { user } = useUser();
   const profile = useMemo(() => readProfile(user), [user]);
+
+  // ?fromVendorQuoteId=<id> — prefill from a vendor quote (Plan A: regenerate
+  // a real 請求書 PDF instead of reusing the quote's PDF).
+  const search = useSearch();
+  const [fromVendorQuoteId] = useState<string>(() => {
+    const params = new URLSearchParams(search);
+    return params.get("fromVendorQuoteId") ?? "";
+  });
+  const vendorQuotesQ = useListVendorQuotes(undefined, {
+    query: {
+      enabled: !!fromVendorQuoteId,
+      queryKey: getListVendorQuotesQueryKey(),
+    },
+  });
+  const sourceQuote = useMemo(
+    () =>
+      fromVendorQuoteId
+        ? (vendorQuotesQ.data ?? []).find((q) => q.id === fromVendorQuoteId)
+        : undefined,
+    [fromVendorQuoteId, vendorQuotesQ.data],
+  );
+  const prefilledFromQuoteRef = useRef(false);
 
   const [defaults, setDefaults] = useState<CreatorDefaults>(EMPTY_DEFAULTS);
   const [projectId, setProjectId] = useState<string>("");
@@ -122,7 +166,10 @@ export default function VendorInvoiceNewPage() {
   const printRef = useRef<HTMLDivElement>(null);
 
   // Hydrate from profile (Clerk metadata) + per-invoice form storage on mount/profile-change.
+  // Skip after a vendor-quote prefill has already populated companyName/recipient/author —
+  // otherwise a Clerk user-object refresh would clobber the prefilled values.
   useEffect(() => {
+    if (prefilledFromQuoteRef.current) return;
     const form = loadFormDefaults();
     setDefaults({
       ...EMPTY_DEFAULTS,
@@ -131,6 +178,61 @@ export default function VendorInvoiceNewPage() {
       authorName: form.authorName || user?.fullName || "",
     });
   }, [profile, user]);
+
+  // Prefill from source vendor quote (one-shot). Runs once both the quote and
+  // the projects list have loaded. If the list finishes loading without the
+  // quote appearing (deleted, or external user with no access), surface an
+  // error toast instead of silently leaving the form blank.
+  const missingQuoteToastedRef = useRef(false);
+  useEffect(() => {
+    if (prefilledFromQuoteRef.current) return;
+    if (!fromVendorQuoteId) return;
+    if (!sourceQuote) {
+      if (
+        !vendorQuotesQ.isLoading &&
+        vendorQuotesQ.isFetched &&
+        !missingQuoteToastedRef.current
+      ) {
+        missingQuoteToastedRef.current = true;
+        toast({
+          title: "見積書が見つかりませんでした",
+          description: "削除された、もしくはアクセス権がない可能性があります。フォームは空のまま開いています。",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+    prefilledFromQuoteRef.current = true;
+
+    if (sourceQuote.projectId) setProjectId(sourceQuote.projectId);
+
+    const parsed = parseAuthorRecipient(sourceQuote.notes);
+    setDefaults((d) => ({
+      ...d,
+      recipientName: parsed.recipientName || d.recipientName,
+      authorName: parsed.authorName || d.authorName,
+      companyName: sourceQuote.vendorName || d.companyName,
+    }));
+    if (parsed.rest) setNotes(parsed.rest);
+
+    // Vendor quotes only store a single tax-included `amount`. Convert back to
+    // a tax-excluded subtotal for the single summary line so total ≈ amount.
+    const subtotalGuess = Math.round(sourceQuote.amount / 1.1);
+    const projName = sourceQuote.projectName || sourceQuote.vendorName || "工事一式";
+    setItems([
+      {
+        description: `${projName} 工事一式`,
+        quantity: 1,
+        unitPrice: subtotalGuess,
+      },
+    ]);
+
+    toast({
+      title: "見積書から内容を引き継ぎました",
+      description:
+        "明細は1行にまとめています。必要に応じて編集し、請求日を確認してください。",
+    });
+  }, [fromVendorQuoteId, sourceQuote, toast]);
 
   const updateDefault = <K extends keyof CreatorDefaults>(
     k: K,

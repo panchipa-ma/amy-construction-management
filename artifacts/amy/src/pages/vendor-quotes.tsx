@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListVendorQuotes,
   useDeleteVendorQuote,
   useMatchVendorQuote,
-  useConvertVendorQuoteToInvoice,
   useListProjects,
   getListVendorQuotesQueryKey,
   getListVendorInvoicesQueryKey,
@@ -33,6 +32,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -54,8 +54,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Trash2, Link2, FilePlus, ArrowRightLeft } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -64,21 +62,20 @@ import { apiErrorMessage } from "@/lib/api-error";
 export default function VendorQuotesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const listQ = useListVendorQuotes();
   const projectsQ = useListProjects();
   const deleteMut = useDeleteVendorQuote();
   const matchMut = useMatchVendorQuote();
-  const convertMut = useConvertVendorQuoteToInvoice();
 
   const [askDelete, setAskDelete] = useState<string | null>(null);
   const [matchTarget, setMatchTarget] = useState<{
     id: string;
     projectId: string;
   } | null>(null);
-  const [convertTarget, setConvertTarget] = useState<{
+  const [askConvert, setAskConvert] = useState<{
     id: string;
-    invoiceDate: string;
-    dueDate: string;
+    label: string;
   } | null>(null);
 
   const refresh = async (projectIds?: (string | null | undefined)[]) => {
@@ -113,32 +110,6 @@ export default function VendorQuotesPage() {
       await refresh([target?.projectId]);
       toast({ title: "削除しました" });
       setAskDelete(null);
-    } catch (err) {
-      toast({ title: apiErrorMessage(err), variant: "destructive" });
-    }
-  };
-
-  const handleConvert = async () => {
-    if (!convertTarget) return;
-    if (!convertTarget.invoiceDate) {
-      toast({ title: "請求日を入力してください", variant: "destructive" });
-      return;
-    }
-    const target = (listQ.data ?? []).find((v) => v.id === convertTarget.id);
-    try {
-      const inv = await convertMut.mutateAsync({
-        id: convertTarget.id,
-        data: {
-          invoiceDate: convertTarget.invoiceDate,
-          dueDate: convertTarget.dueDate || null,
-        },
-      });
-      await refresh([target?.projectId, inv.projectId]);
-      toast({
-        title: "請求書に変換しました",
-        description: "施工台帳に実績原価が登録されました（想定はそのまま残ります）",
-      });
-      setConvertTarget(null);
     } catch (err) {
       toast({ title: apiErrorMessage(err), variant: "destructive" });
     }
@@ -270,19 +241,16 @@ export default function VendorQuotesPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => {
-                            const today = new Date()
-                              .toISOString()
-                              .slice(0, 10);
-                            const eom = new Date();
-                            eom.setMonth(eom.getMonth() + 1);
-                            eom.setDate(0);
-                            setConvertTarget({
+                          onClick={() =>
+                            setAskConvert({
                               id: v.id,
-                              invoiceDate: today,
-                              dueDate: eom.toISOString().slice(0, 10),
-                            });
-                          }}
+                              label:
+                                v.vendorName ||
+                                v.staffName ||
+                                v.fileName ||
+                                "(無題)",
+                            })
+                          }
                           className="gap-1"
                           data-testid={`button-convert-${v.id}`}
                         >
@@ -354,53 +322,30 @@ export default function VendorQuotesPage() {
       </Dialog>
 
       <Dialog
-        open={!!convertTarget}
-        onOpenChange={(o) => !o && setConvertTarget(null)}
+        open={!!askConvert}
+        onOpenChange={(o) => !o && setAskConvert(null)}
       >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>職人見積書を請求書に変換</DialogTitle>
+            <DialogDescription>
+              「{askConvert?.label}」の内容を引き継いで職人請求書を作成します。次の画面で請求日・支払期限・宛名・明細などを最終確認してから保存してください。請求書PDFはその場で再生成されます。
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              この見積書を元に職人請求書を作成します。施工台帳には<span className="font-medium">実績原価</span>が新たに登録されます（想定原価はそのまま残ります）。
-            </p>
-            <div className="space-y-2">
-              <Label>請求日</Label>
-              <Input
-                type="date"
-                value={convertTarget?.invoiceDate ?? ""}
-                onChange={(e) =>
-                  setConvertTarget((t) =>
-                    t ? { ...t, invoiceDate: e.target.value } : t,
-                  )
-                }
-                data-testid="input-convert-invoice-date"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>支払期限（任意）</Label>
-              <Input
-                type="date"
-                value={convertTarget?.dueDate ?? ""}
-                onChange={(e) =>
-                  setConvertTarget((t) =>
-                    t ? { ...t, dueDate: e.target.value } : t,
-                  )
-                }
-              />
-            </div>
-          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConvertTarget(null)}>
+            <Button variant="outline" onClick={() => setAskConvert(null)}>
               キャンセル
             </Button>
             <Button
-              onClick={handleConvert}
-              disabled={!convertTarget?.invoiceDate || convertMut.isPending}
+              onClick={() => {
+                if (!askConvert) return;
+                const id = askConvert.id;
+                setAskConvert(null);
+                navigate(`/vendor-invoices/new?fromVendorQuoteId=${id}`);
+              }}
               data-testid="button-confirm-convert"
             >
-              請求書を作成
+              請求書を作成する画面へ
             </Button>
           </DialogFooter>
         </DialogContent>
