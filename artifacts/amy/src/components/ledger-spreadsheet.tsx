@@ -1,5 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import {
@@ -7,6 +14,10 @@ import {
   EditableNumber,
   EditableDate,
 } from "@/components/editable-cell";
+import {
+  PROJECT_STATUS_OPTIONS,
+} from "@/components/project-status-select";
+import { ProjectStatus } from "@workspace/api-client-react";
 
 const CAT_KEYS = ["material", "subcontract", "labor", "expense", "other"] as const;
 type Cat = (typeof CAT_KEYS)[number];
@@ -41,6 +52,8 @@ type Ledger = {
 type Project = {
   code?: string | null;
   name: string;
+  status?: string;
+  customerId?: string;
   customerName?: string | null;
   siteAddress?: string | null;
   unitNumber?: string | null;
@@ -52,6 +65,8 @@ type Project = {
   salesRep?: string | null;
   siteSupervisor?: string | null;
 };
+
+type CustomerOption = { id: string; name: string };
 
 export type CostEntryPatch = Partial<{
   category: Cat;
@@ -66,6 +81,8 @@ export type CostEntryPatch = Partial<{
 export type ProjectPatch = Partial<{
   code: string | null;
   name: string;
+  status: ProjectStatus;
+  customerId: string;
   siteAddress: string | null;
   unitNumber: string | null;
   startDate: string | null;
@@ -97,6 +114,7 @@ function pct(num: number, den: number): string {
 export function LedgerSpreadsheet({
   ledger,
   project,
+  customers,
   onProjectUpdate,
   onCostEntryUpdate,
   onCostEntryCreate,
@@ -104,6 +122,7 @@ export function LedgerSpreadsheet({
 }: {
   ledger: Ledger;
   project: Project;
+  customers?: CustomerOption[];
   onProjectUpdate?: (patch: ProjectPatch) => void | Promise<void>;
   onCostEntryUpdate?: (id: string, patch: CostEntryPatch) => void | Promise<void>;
   onCostEntryCreate?: (draft: CreateCostEntryDraft) => void | Promise<void>;
@@ -247,7 +266,57 @@ export function LedgerSpreadsheet({
               </tr>
               <tr>
                 <th>顧客名</th>
-                <td colSpan={3}>{project.customerName ?? ""}</td>
+                <td colSpan={3}>
+                  {editable && customers && customers.length > 0 ? (
+                    <Select
+                      value={project.customerId ?? ""}
+                      onValueChange={(v) =>
+                        onProjectUpdate!({ customerId: v })
+                      }
+                    >
+                      <SelectTrigger className="h-7 w-full text-xs border-0 shadow-none focus:ring-1 px-1">
+                        <SelectValue placeholder="顧客を選択" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customers.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    (project.customerName ?? "")
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <th>ステータス</th>
+                <td colSpan={3}>
+                  {editable ? (
+                    <Select
+                      value={project.status ?? ""}
+                      onValueChange={(v) =>
+                        onProjectUpdate!({ status: v as ProjectStatus })
+                      }
+                    >
+                      <SelectTrigger className="h-7 w-48 text-xs border-0 shadow-none focus:ring-1 px-1">
+                        <SelectValue placeholder="ステータス" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PROJECT_STATUS_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    (PROJECT_STATUS_OPTIONS.find(
+                      (o) => o.value === project.status,
+                    )?.label ?? project.status ?? "")
+                  )}
+                </td>
               </tr>
               <tr>
                 <th>工事場所</th>

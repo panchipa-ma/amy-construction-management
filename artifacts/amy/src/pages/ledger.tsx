@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProjects,
+  useListCustomers,
   useGetProjectLedger,
   useUpdateProject,
   useCreateCostEntry,
@@ -57,6 +58,7 @@ export default function LedgerPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const projectsQ = useListProjects();
+  const customersQ = useListCustomers();
   const [projectId, setProjectId] = useState<string>("");
   const ledgerQ = useGetProjectLedger(projectId, {
     query: {
@@ -164,6 +166,7 @@ export default function LedgerPage() {
                 <LedgerSpreadsheet
                   ledger={ledger}
                   project={selectedProject}
+                  customers={customersQ.data ?? []}
                   onProjectUpdate={async (patch: ProjectPatch) => {
                     try {
                       await updateProjectMut.mutateAsync({
