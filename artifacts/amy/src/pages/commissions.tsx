@@ -48,19 +48,44 @@ const KIND_COLOR: Record<CommissionInvoiceLine["kind"], string> = {
   other_sales_bonus: "bg-amber-100 text-amber-800 hover:bg-amber-100",
 };
 
+type FilterKind = "all" | "sales" | "supervisor";
+
 export default function CommissionsPage() {
   const [month, setMonth] = useState<string>(todayMonth());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState<FilterKind>("all");
   const { data, isLoading } = useGetCommissions({ month });
 
   const totals = data?.totals;
-  const people = data?.people ?? [];
+  const peopleAll = data?.people ?? [];
+
+  // 営業ビューでは「営業歩合 + 他人売上ボーナス」を合算した方が
+  // 「亘がその月にいくらもらうか」が一目でわかるため、ビュー別に列を切り替える
+  const people = peopleAll
+    .filter((p) => {
+      if (filter === "all") return true;
+      if (filter === "sales")
+        return p.salesCommission > 0 || p.otherSalesBonus > 0;
+      return p.supervisorCommission > 0;
+    });
+
+  const salesSideTotal =
+    (totals?.salesCommission ?? 0) + (totals?.otherSalesBonus ?? 0);
 
   function toggle(name: string) {
     const next = new Set(expanded);
     if (next.has(name)) next.delete(name);
     else next.add(name);
     setExpanded(next);
+  }
+
+  function filterLines(lines: CommissionInvoiceLine[]): CommissionInvoiceLine[] {
+    if (filter === "all") return lines;
+    if (filter === "sales")
+      return lines.filter(
+        (l) => l.kind === "sales" || l.kind === "other_sales_bonus",
+      );
+    return lines.filter((l) => l.kind === "supervisor");
   }
 
   return (
@@ -125,27 +150,37 @@ export default function CommissionsPage() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <SummaryTile
-                  label="営業歩合"
-                  value={formatCurrency(totals?.salesCommission ?? 0)}
+                  label="全体"
+                  value={formatCurrency(
+                    salesSideTotal + (totals?.supervisorCommission ?? 0),
+                  )}
+                  tone="navy"
+                  hint="クリックで全件表示"
+                  selected={filter === "all"}
+                  onClick={() => setFilter("all")}
+                />
+                <SummaryTile
+                  label="営業 (含む他人売上ボーナス)"
+                  value={formatCurrency(salesSideTotal)}
                   tone="blue"
+                  hint={`営業歩合 ¥${(totals?.salesCommission ?? 0).toLocaleString()} + 他人売上 ¥${(totals?.otherSalesBonus ?? 0).toLocaleString()}`}
+                  selected={filter === "sales"}
+                  onClick={() => setFilter("sales")}
                 />
                 <SummaryTile
                   label="現場監督歩合"
                   value={formatCurrency(totals?.supervisorCommission ?? 0)}
                   tone="emerald"
                   hint="竣工案件のみ"
-                />
-                <SummaryTile
-                  label="他人売上ボーナス"
-                  value={formatCurrency(totals?.otherSalesBonus ?? 0)}
-                  tone="amber"
-                  hint="例: 亘 2.5% (案件ごとに変更可)"
+                  selected={filter === "supervisor"}
+                  onClick={() => setFilter("supervisor")}
                 />
               </div>
               {totals && (
                 <p className="text-xs text-muted-foreground mt-3">
                   対象月の送付済請求書: {totals.invoiceCount}件 / 合計 ¥
-                  {totals.invoiceTotal.toLocaleString()} (税込)
+                  {totals.invoiceTotal.toLocaleString()} (税込) ・
+                  タイルをクリックで担当者別表を絞り込み
                 </p>
               )}
             </>
@@ -155,7 +190,19 @@ export default function CommissionsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">担当者別 内訳</CardTitle>
+          <CardTitle className="text-base">
+            担当者別 内訳
+            {filter === "sales" && (
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                (営業ビュー: 営業歩合 + 他人売上ボーナスを合算)
+              </span>
+            )}
+            {filter === "supervisor" && (
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                (現場監督ビュー)
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -176,9 +223,26 @@ export default function CommissionsPage() {
                 <TableRow>
                   <TableHead className="w-8"></TableHead>
                   <TableHead>担当者</TableHead>
-                  <TableHead className="text-right">営業歩合</TableHead>
-                  <TableHead className="text-right">監督歩合</TableHead>
-                  <TableHead className="text-right">他人売上ボーナス</TableHead>
+                  {filter === "all" && (
+                    <>
+                      <TableHead className="text-right">営業歩合</TableHead>
+                      <TableHead className="text-right">監督歩合</TableHead>
+                      <TableHead className="text-right">
+                        他人売上ボーナス
+                      </TableHead>
+                    </>
+                  )}
+                  {filter === "sales" && (
+                    <>
+                      <TableHead className="text-right">営業歩合</TableHead>
+                      <TableHead className="text-right">
+                        他人売上ボーナス
+                      </TableHead>
+                    </>
+                  )}
+                  {filter === "supervisor" && (
+                    <TableHead className="text-right">監督歩合</TableHead>
+                  )}
                   <TableHead className="text-right font-semibold">
                     合計
                   </TableHead>
@@ -187,6 +251,14 @@ export default function CommissionsPage() {
               <TableBody>
                 {people.map((p) => {
                   const isOpen = expanded.has(p.name);
+                  const rowTotal =
+                    filter === "sales"
+                      ? p.salesCommission + p.otherSalesBonus
+                      : filter === "supervisor"
+                        ? p.supervisorCommission
+                        : p.total;
+                  const colSpan =
+                    filter === "all" ? 6 : filter === "sales" ? 5 : 4;
                   return (
                     <Fragment key={p.name}>
                       <TableRow
@@ -211,28 +283,53 @@ export default function CommissionsPage() {
                             </Badge>
                           )}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {p.salesCommission > 0
-                            ? formatCurrency(p.salesCommission)
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {p.supervisorCommission > 0
-                            ? formatCurrency(p.supervisorCommission)
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {p.otherSalesBonus > 0
-                            ? formatCurrency(p.otherSalesBonus)
-                            : "—"}
-                        </TableCell>
+                        {filter === "all" && (
+                          <>
+                            <TableCell className="text-right tabular-nums">
+                              {p.salesCommission > 0
+                                ? formatCurrency(p.salesCommission)
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {p.supervisorCommission > 0
+                                ? formatCurrency(p.supervisorCommission)
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {p.otherSalesBonus > 0
+                                ? formatCurrency(p.otherSalesBonus)
+                                : "—"}
+                            </TableCell>
+                          </>
+                        )}
+                        {filter === "sales" && (
+                          <>
+                            <TableCell className="text-right tabular-nums">
+                              {p.salesCommission > 0
+                                ? formatCurrency(p.salesCommission)
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {p.otherSalesBonus > 0
+                                ? formatCurrency(p.otherSalesBonus)
+                                : "—"}
+                            </TableCell>
+                          </>
+                        )}
+                        {filter === "supervisor" && (
+                          <TableCell className="text-right tabular-nums">
+                            {p.supervisorCommission > 0
+                              ? formatCurrency(p.supervisorCommission)
+                              : "—"}
+                          </TableCell>
+                        )}
                         <TableCell className="text-right tabular-nums font-semibold">
-                          {formatCurrency(p.total)}
+                          {formatCurrency(rowTotal)}
                         </TableCell>
                       </TableRow>
                       {isOpen && (
                         <TableRow>
-                          <TableCell colSpan={6} className="bg-muted/20 p-0">
+                          <TableCell colSpan={colSpan} className="bg-muted/20 p-0">
                             <div className="px-4 py-3">
                               <Table>
                                 <TableHeader>
@@ -246,7 +343,7 @@ export default function CommissionsPage() {
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                  {p.lines.map((l, i) => (
+                                  {filterLines(p.lines).map((l, i) => (
                                     <TableRow key={`${l.invoiceId}-${l.kind}-${i}`}>
                                       <TableCell>
                                         <Badge className={KIND_COLOR[l.kind]}>
@@ -333,11 +430,15 @@ function SummaryTile({
   value,
   tone,
   hint,
+  selected,
+  onClick,
 }: {
   label: string;
   value: string;
   tone: "blue" | "emerald" | "amber" | "navy";
   hint?: string;
+  selected?: boolean;
+  onClick?: () => void;
 }) {
   const toneClass = {
     blue: "border-blue-200 bg-blue-50",
@@ -345,13 +446,27 @@ function SummaryTile({
     amber: "border-amber-200 bg-amber-50",
     navy: "border-slate-300 bg-slate-100",
   }[tone];
+  const ringClass = {
+    blue: "ring-2 ring-blue-500",
+    emerald: "ring-2 ring-emerald-500",
+    amber: "ring-2 ring-amber-500",
+    navy: "ring-2 ring-slate-500",
+  }[tone];
+  const interactive = onClick != null;
   return (
-    <div className={`rounded-lg border p-3 ${toneClass}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!interactive}
+      className={`text-left rounded-lg border p-3 transition ${toneClass} ${
+        interactive ? "cursor-pointer hover:shadow-sm" : "cursor-default"
+      } ${selected ? ringClass : ""}`}
+    >
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-lg font-semibold tabular-nums mt-0.5">{value}</div>
       {hint && (
         <div className="text-[11px] text-muted-foreground mt-0.5">{hint}</div>
       )}
-    </div>
+    </button>
   );
 }
