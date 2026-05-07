@@ -31,6 +31,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { useUser } from "@clerk/react";
 import { readProfile } from "@/lib/profile";
+import { addCanvasToPdfWithRowBreaks } from "@/lib/pdf-row-breaks";
 
 // Per-invoice form state (recipient + author). Issuer + bank info are loaded
 // from the signed-in user's Clerk profile so each user sees only their own info.
@@ -297,23 +298,8 @@ export default function VendorInvoiceNewPage() {
         scale: 2,
         backgroundColor: "#ffffff",
       });
-      const imgData = canvas.toDataURL("image/jpeg", 0.92);
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      // Always render on a SINGLE page: if the captured image is taller than
-      // A4, scale it down proportionally so it fits — never split the bitmap
-      // (which would tear text in half). The on-screen preview is sized to
-      // one A4 page, so the saved PDF should match.
-      let imgW = pageW;
-      let imgH = (canvas.height * imgW) / canvas.width;
-      if (imgH > pageH) {
-        const scale = pageH / imgH;
-        imgH = pageH;
-        imgW = imgW * scale;
-      }
-      const offsetX = (pageW - imgW) / 2;
-      pdf.addImage(imgData, "JPEG", offsetX, 0, imgW, imgH);
+      addCanvasToPdfWithRowBreaks(pdf, canvas, printRef.current);
       const pdfBlob = pdf.output("blob");
 
       const fileName = `請求書_${defaults.companyName || "vendor"}_${issueDate}.pdf`;
@@ -829,7 +815,7 @@ export default function VendorInvoiceNewPage() {
                   const has = it.description.trim();
                   const amt = (it.quantity || 0) * (it.unitPrice || 0);
                   return (
-                    <tr key={i}>
+                    <tr key={i} data-pdf-row="true">
                       <td style={{ ...cellBase, textAlign: "center", color: "#64748b" }}>{has ? i + 1 : ""}</td>
                       <td style={{ ...cellBase, textAlign: "left" }}>{has ? it.description : ""}</td>
                       <td style={{ ...cellBase, textAlign: "center" }}>{has ? "式" : ""}</td>

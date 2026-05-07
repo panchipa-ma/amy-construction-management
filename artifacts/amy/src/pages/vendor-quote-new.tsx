@@ -30,6 +30,7 @@ import { useUser } from "@clerk/react";
 import { readProfile } from "@/lib/profile";
 import { UNIT_OPTIONS } from "@/lib/units";
 import { QUOTE_TERMS } from "@/lib/company-info";
+import { addCanvasToPdfWithRowBreaks } from "@/lib/pdf-row-breaks";
 
 // Per-quote form state (recipient + author). Issuer + bank info come from the
 // signed-in user's Clerk profile (same as 職人請求書).
@@ -255,23 +256,8 @@ export default function VendorQuoteNewPage() {
       } finally {
         hidden.forEach((el) => (el.style.visibility = ""));
       }
-      const imgData = canvas.toDataURL("image/jpeg", 0.92);
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      // Always render on a SINGLE page: if the captured image is taller than
-      // A4, scale it down proportionally so it fits — never split the bitmap
-      // (which would tear text in half). The on-screen preview is sized to
-      // one A4 page, so the saved PDF should match.
-      let imgW = pageW;
-      let imgH = (canvas.height * imgW) / canvas.width;
-      if (imgH > pageH) {
-        const scale = pageH / imgH;
-        imgH = pageH;
-        imgW = imgW * scale;
-      }
-      const offsetX = (pageW - imgW) / 2;
-      pdf.addImage(imgData, "JPEG", offsetX, 0, imgW, imgH);
+      addCanvasToPdfWithRowBreaks(pdf, canvas, printRef.current);
       const pdfBlob = pdf.output("blob");
 
       const fileName = `見積書_${defaults.companyName || "vendor"}_${issueDate}.pdf`;
@@ -697,7 +683,7 @@ export default function VendorQuoteNewPage() {
                     }
                   };
                   return (
-                  <div key={i} style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, fontSize: "13px", minHeight: "32px", position: "relative" }}>
+                  <div key={i} data-pdf-row="true" style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, fontSize: "13px", minHeight: "32px", position: "relative" }}>
                     <div style={{ padding: "6px 4px", textAlign: "center", color: "#64748b", borderRight: rowBorder, fontVariantNumeric: "tabular-nums", fontSize: "12px" }}>{exists ? i + 1 : ""}</div>
                     <div style={{ padding: "4px 8px", borderRight: rowBorder }}>
                       <input
