@@ -61,7 +61,12 @@ async function serializeProject(p: ProjectRow) {
     plannedCost: planned,
     actualCost: actual,
     salesCommissionRate: n(p.salesCommissionRate),
-    standardProfitRate: customer ? n(customer.defaultProfitRate) : 20,
+    standardProfitRate:
+      p.standardProfitRate != null
+        ? n(p.standardProfitRate)
+        : customer
+          ? n(customer.defaultProfitRate)
+          : 20,
     supervisorCommissionRate: n(p.supervisorCommissionRate),
     salesRep: p.salesRep,
     siteSupervisor: p.siteSupervisor,
@@ -117,6 +122,10 @@ router.post("/projects", async (req, res): Promise<void> => {
         parsed.data.salesCommissionRate == null
           ? "5"
           : String(parsed.data.salesCommissionRate),
+      standardProfitRate:
+        parsed.data.standardProfitRate == null
+          ? null
+          : String(parsed.data.standardProfitRate),
       supervisorCommissionRate:
         parsed.data.supervisorCommissionRate == null
           ? "30"
@@ -164,6 +173,12 @@ router.patch("/projects/:id", async (req, res): Promise<void> => {
   }
   if (parsed.data.salesCommissionRate != null) {
     data.salesCommissionRate = String(parsed.data.salesCommissionRate);
+  }
+  if ("standardProfitRate" in parsed.data) {
+    data.standardProfitRate =
+      parsed.data.standardProfitRate == null
+        ? null
+        : String(parsed.data.standardProfitRate);
   }
   if (parsed.data.supervisorCommissionRate != null) {
     data.supervisorCommissionRate = String(parsed.data.supervisorCommissionRate);

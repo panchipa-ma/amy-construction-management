@@ -47,6 +47,7 @@ export default function ProjectNewPage() {
     startDate: "",
     endDate: "",
     contractAmount: "0",
+    standardProfitRate: "20",
     salesCommissionRate: "5",
     supervisorCommissionRate: "30",
     salesRep: "",
@@ -72,6 +73,7 @@ export default function ProjectNewPage() {
           startDate: form.startDate || null,
           endDate: form.endDate || null,
           contractAmount: Number(form.contractAmount) || 0,
+          standardProfitRate: Number(form.standardProfitRate) || 20,
           salesCommissionRate: Number(form.salesCommissionRate) || 5,
           supervisorCommissionRate:
             Number(form.supervisorCommissionRate) || 30,
@@ -158,6 +160,10 @@ export default function ProjectNewPage() {
                     setForm((f) => ({
                       ...f,
                       customerId: v,
+                      standardProfitRate:
+                        cust?.defaultProfitRate != null
+                          ? String(cust.defaultProfitRate)
+                          : f.standardProfitRate,
                       salesCommissionRate: cust?.defaultSalesCommissionRate
                         != null
                         ? String(cust.defaultSalesCommissionRate)
@@ -245,6 +251,26 @@ export default function ProjectNewPage() {
                     setForm({ ...form, contractAmount: e.target.value })
                   }
                 />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="standardProfitRate">
+                  規定利率 (%) ※施工台帳の規定粗利額算出に使用
+                </Label>
+                <Input
+                  id="standardProfitRate"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={form.standardProfitRate}
+                  onChange={(e) =>
+                    setForm({ ...form, standardProfitRate: e.target.value })
+                  }
+                  placeholder="例: 20"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  顧客の規定値が自動入力されます (顧客マスタで変更可)
+                </p>
               </div>
               <div>
                 <Label htmlFor="salesRep">担当営業</Label>

@@ -18,6 +18,7 @@ export interface UpdateProjectBody {
   endDate?: Date | null;
   contractAmount?: number;
   salesCommissionRate?: number | null;
+  standardProfitRate?: number | null;
   supervisorCommissionRate?: number | null;
   salesRep?: string | null;
   siteSupervisor?: string | null;

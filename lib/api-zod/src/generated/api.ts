@@ -138,7 +138,7 @@ export const ListProjectsResponseItem = zod.object({
   standardProfitRate: zod
     .number()
     .optional()
-    .describe("規定利率 (%, 顧客マスタから取得)"),
+    .describe("規定利率 (%, NULL時は顧客マスタから取得)"),
   supervisorCommissionRate: zod
     .number()
     .optional()
@@ -167,6 +167,7 @@ export const CreateProjectBody = zod.object({
   endDate: zod.coerce.date().nullish(),
   contractAmount: zod.number().optional(),
   salesCommissionRate: zod.number().nullish(),
+  standardProfitRate: zod.number().nullish(),
   supervisorCommissionRate: zod.number().nullish(),
   salesRep: zod.string().nullish(),
   siteSupervisor: zod.string().nullish(),
@@ -203,7 +204,7 @@ export const CreateProjectResponse = zod.object({
   standardProfitRate: zod
     .number()
     .optional()
-    .describe("規定利率 (%, 顧客マスタから取得)"),
+    .describe("規定利率 (%, NULL時は顧客マスタから取得)"),
   supervisorCommissionRate: zod
     .number()
     .optional()
@@ -248,7 +249,7 @@ export const GetProjectResponse = zod.object({
   standardProfitRate: zod
     .number()
     .optional()
-    .describe("規定利率 (%, 顧客マスタから取得)"),
+    .describe("規定利率 (%, NULL時は顧客マスタから取得)"),
   supervisorCommissionRate: zod
     .number()
     .optional()
@@ -276,6 +277,7 @@ export const UpdateProjectBody = zod.object({
   endDate: zod.coerce.date().nullish(),
   contractAmount: zod.number().optional(),
   salesCommissionRate: zod.number().nullish(),
+  standardProfitRate: zod.number().nullish(),
   supervisorCommissionRate: zod.number().nullish(),
   salesRep: zod.string().nullish(),
   siteSupervisor: zod.string().nullish(),
@@ -312,7 +314,7 @@ export const UpdateProjectResponse = zod.object({
   standardProfitRate: zod
     .number()
     .optional()
-    .describe("規定利率 (%, 顧客マスタから取得)"),
+    .describe("規定利率 (%, NULL時は顧客マスタから取得)"),
   supervisorCommissionRate: zod
     .number()
     .optional()

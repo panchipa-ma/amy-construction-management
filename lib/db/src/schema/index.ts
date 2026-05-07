@@ -72,6 +72,8 @@ export const projectsTable = pgTable("projects", {
   endDate: date("end_date"),
   contractAmount: numeric("contract_amount").notNull().default("0"),
   salesCommissionRate: numeric("sales_commission_rate").notNull().default("5"),
+  // 規定利率 (%) — 施工台帳の規定粗利額算出に使用。NULL時は顧客の defaultProfitRate にフォールバック。
+  standardProfitRate: numeric("standard_profit_rate"),
   // 現場監督歩合率 (%) — 規定超過粗利のうち監督への配分率。顧客既定値からプリフィル可。
   supervisorCommissionRate: numeric("supervisor_commission_rate")
     .notNull()
