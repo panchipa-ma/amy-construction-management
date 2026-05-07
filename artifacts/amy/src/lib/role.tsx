@@ -48,6 +48,8 @@ export function useRole() {
 export const EXTERNAL_ALLOWED_PREFIXES = [
   "/vendor-invoices",
   "/staff-assignments",
+  "/profile",
+  "/profile-setup",
 ];
 
 export function isPathAllowed(role: Role, path: string): boolean {

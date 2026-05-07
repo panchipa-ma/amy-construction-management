@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut } from "lucide-react";
+import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { useRole, isPathAllowed, type Role } from "@/lib/role";
 import {
@@ -83,10 +83,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </SelectContent>
             </Select>
           </div>
-          <div className="border-t border-sidebar-border pt-3">
+          <div className="border-t border-sidebar-border pt-3 space-y-1">
             <div className="text-[11px] text-sidebar-foreground/60 mb-1 px-1 truncate">
               {userLabel}
             </div>
+            <Link href="/profile">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-8 text-xs"
+                data-testid="button-profile"
+              >
+                <UserCog className="w-3.5 h-3.5 mr-2" />
+                プロフィール
+              </Button>
+            </Link>
             <Button
               variant="ghost"
               size="sm"

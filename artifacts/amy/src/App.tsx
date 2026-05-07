@@ -13,6 +13,7 @@ import {
   SignUp,
   Show,
   useClerk,
+  useUser,
 } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
@@ -41,6 +42,8 @@ import LedgerPage from "@/pages/ledger";
 import StaffAssignmentsPage from "@/pages/staff-assignments";
 import GanttPage from "@/pages/gantt";
 import LandingPage from "@/pages/landing";
+import ProfileSetupPage from "@/pages/profile-setup";
+import { readProfile, isProfileComplete } from "@/lib/profile";
 
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
@@ -171,11 +174,30 @@ function RoleGuard() {
   return null;
 }
 
+function ProfileGate({ children }: { children: React.ReactNode }) {
+  const { user, isLoaded } = useUser();
+  const [location] = useLocation();
+  if (!isLoaded) return null;
+  const complete = isProfileComplete(readProfile(user));
+  if (!complete && location !== "/profile-setup") {
+    return <Redirect to="/profile-setup" />;
+  }
+  return <>{children}</>;
+}
+
+function ProfileEditPage() {
+  return <ProfileSetupPage mode="edit" />;
+}
+
 function ProtectedRoutes() {
   return (
     <AppShell>
       <RoleGuard />
       <Switch>
+        <Route path="/profile-setup">
+          <ProfileSetupPage mode="setup" />
+        </Route>
+        <Route path="/profile" component={ProfileEditPage} />
         <Route path="/" component={DashboardPage} />
         <Route path="/projects" component={ProjectsListPage} />
         <Route path="/projects/new" component={ProjectNewPage} />
@@ -208,7 +230,9 @@ function AppRoutes() {
       <Route>
         <Show when="signed-in">
           <RoleProvider>
-            <ProtectedRoutes />
+            <ProfileGate>
+              <ProtectedRoutes />
+            </ProfileGate>
           </RoleProvider>
         </Show>
         <Show when="signed-out">

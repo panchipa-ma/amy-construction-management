@@ -27,8 +27,12 @@ import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
+import { useUser } from "@clerk/react";
+import { readProfile } from "@/lib/profile";
 
-const STORAGE_KEY = "amy.vendorInvoiceCreator.v1";
+// Per-invoice form state (recipient + author). Issuer + bank info are loaded
+// from the signed-in user's Clerk profile so each user sees only their own info.
+const FORM_STORAGE_KEY = "amy.vendorInvoiceForm.v1";
 
 const RECIPIENT_PRESETS = ["株式会社AMY"];
 
@@ -64,14 +68,17 @@ const EMPTY_DEFAULTS: CreatorDefaults = {
 
 type LineRow = { description: string; quantity: number; unitPrice: number };
 
-function loadDefaults(): CreatorDefaults {
+function loadFormDefaults(): { recipientName: string; authorName: string } {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return EMPTY_DEFAULTS;
+    const raw = localStorage.getItem(FORM_STORAGE_KEY);
+    if (!raw) return { recipientName: "株式会社AMY", authorName: "" };
     const parsed = JSON.parse(raw);
-    return { ...EMPTY_DEFAULTS, ...parsed };
+    return {
+      recipientName: parsed.recipientName ?? "株式会社AMY",
+      authorName: parsed.authorName ?? "",
+    };
   } catch {
-    return EMPTY_DEFAULTS;
+    return { recipientName: "株式会社AMY", authorName: "" };
   }
 }
 
@@ -100,6 +107,9 @@ export default function VendorInvoiceNewPage() {
   const createMut = useCreateVendorInvoice();
   const requestUrlMut = useRequestUploadUrl();
 
+  const { user } = useUser();
+  const profile = useMemo(() => readProfile(user), [user]);
+
   const [defaults, setDefaults] = useState<CreatorDefaults>(EMPTY_DEFAULTS);
   const [projectId, setProjectId] = useState<string>("");
   const [issueDate, setIssueDate] = useState<string>(todayISO());
@@ -111,10 +121,16 @@ export default function VendorInvoiceNewPage() {
   const [submitting, setSubmitting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Load creator defaults on mount
+  // Hydrate from profile (Clerk metadata) + per-invoice form storage on mount/profile-change.
   useEffect(() => {
-    setDefaults(loadDefaults());
-  }, []);
+    const form = loadFormDefaults();
+    setDefaults({
+      ...EMPTY_DEFAULTS,
+      ...profile,
+      recipientName: form.recipientName,
+      authorName: form.authorName || user?.fullName || "",
+    });
+  }, [profile, user]);
 
   const updateDefault = <K extends keyof CreatorDefaults>(
     k: K,
@@ -160,8 +176,15 @@ export default function VendorInvoiceNewPage() {
     if (!printRef.current) return;
     setSubmitting(true);
     try {
-      // Persist creator defaults for next time
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
+      // Persist per-invoice form fields (recipient + author) only.
+      // Issuer + bank info live on the user's Clerk profile.
+      localStorage.setItem(
+        FORM_STORAGE_KEY,
+        JSON.stringify({
+          recipientName: defaults.recipientName,
+          authorName: defaults.authorName,
+        }),
+      );
 
       // Render the printable area to PDF
       const [{ default: jsPDF }, html2canvas] = await Promise.all([
@@ -367,110 +390,57 @@ export default function VendorInvoiceNewPage() {
           </section>
 
           <section className="border-t pt-4">
-            <div className="text-sm font-medium mb-3">
-              発行元情報（次回以降は自動で記入されます）
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-medium">
+                発行元情報・お振込先（あなたのプロフィールから自動反映）
+              </div>
+              <Link href="/profile">
+                <Button variant="outline" size="sm" data-testid="button-edit-profile">
+                  プロフィールを編集
+                </Button>
+              </Link>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>会社名</Label>
-                <Input
-                  value={defaults.companyName}
-                  onChange={(e) => updateDefault("companyName", e.target.value)}
-                  placeholder="例: 有限会社 浪速"
-                />
+            <div className="rounded-md border bg-muted/30 p-4 text-sm grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+              <div>
+                <span className="text-muted-foreground">会社名：</span>
+                <span className="font-medium">{defaults.companyName || "—"}</span>
               </div>
-              <div className="space-y-2">
-                <Label>インボイス登録番号</Label>
-                <Input
-                  value={defaults.registrationNumber}
-                  onChange={(e) =>
-                    updateDefault("registrationNumber", e.target.value)
-                  }
-                  placeholder="例: T1234567890123"
-                />
+              <div>
+                <span className="text-muted-foreground">インボイス登録番号：</span>
+                <span className="font-medium">
+                  {defaults.registrationNumber || "（未登録）"}
+                </span>
               </div>
-              <div className="space-y-2">
-                <Label>郵便番号</Label>
-                <Input
-                  value={defaults.postalCode}
-                  onChange={(e) => updateDefault("postalCode", e.target.value)}
-                  placeholder="〒000-0000"
-                />
+              <div>
+                <span className="text-muted-foreground">郵便番号：</span>
+                <span className="font-medium">{defaults.postalCode || "—"}</span>
               </div>
-              <div className="space-y-2">
-                <Label>会社住所</Label>
-                <Input
-                  value={defaults.address}
-                  onChange={(e) => updateDefault("address", e.target.value)}
-                  placeholder="例: 大阪府..."
-                />
+              <div>
+                <span className="text-muted-foreground">住所：</span>
+                <span className="font-medium">{defaults.address || "—"}</span>
               </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>会社メールアドレス</Label>
-                <Input
-                  type="email"
-                  value={defaults.email}
-                  onChange={(e) => updateDefault("email", e.target.value)}
-                  placeholder="example@example.com"
-                />
+              <div className="md:col-span-2">
+                <span className="text-muted-foreground">メール：</span>
+                <span className="font-medium">{defaults.email || "—"}</span>
               </div>
-            </div>
-          </section>
-
-          <section className="border-t pt-4">
-            <div className="text-sm font-medium mb-3">お振込先</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>銀行名</Label>
-                <Input
-                  value={defaults.bankName}
-                  onChange={(e) => updateDefault("bankName", e.target.value)}
-                  placeholder="例: 三井住友銀行"
-                />
+              <div className="md:col-span-2 border-t pt-2 mt-1 text-xs text-muted-foreground">
+                お振込先
               </div>
-              <div className="space-y-2">
-                <Label>支店名</Label>
-                <Input
-                  value={defaults.branchName}
-                  onChange={(e) => updateDefault("branchName", e.target.value)}
-                  placeholder="例: 守口支店"
-                />
+              <div>
+                <span className="text-muted-foreground">銀行：</span>
+                <span className="font-medium">
+                  {defaults.bankName || "—"} {defaults.branchName}
+                </span>
               </div>
-              <div className="space-y-2">
-                <Label>種別</Label>
-                <Select
-                  value={defaults.accountType}
-                  onValueChange={(v) => updateDefault("accountType", v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="普通">普通</SelectItem>
-                    <SelectItem value="当座">当座</SelectItem>
-                    <SelectItem value="貯蓄">貯蓄</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div>
+                <span className="text-muted-foreground">種別／口座番号：</span>
+                <span className="font-medium">
+                  {defaults.accountType} {defaults.accountNumber || "—"}
+                </span>
               </div>
-              <div className="space-y-2">
-                <Label>口座番号</Label>
-                <Input
-                  value={defaults.accountNumber}
-                  onChange={(e) =>
-                    updateDefault("accountNumber", e.target.value)
-                  }
-                  placeholder="例: 1234567"
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>口座名義</Label>
-                <Input
-                  value={defaults.accountHolder}
-                  onChange={(e) =>
-                    updateDefault("accountHolder", e.target.value)
-                  }
-                  placeholder="例: ユウゲンガイシャ ナニワ"
-                />
+              <div className="md:col-span-2">
+                <span className="text-muted-foreground">口座名義：</span>
+                <span className="font-medium">{defaults.accountHolder || "—"}</span>
               </div>
             </div>
           </section>

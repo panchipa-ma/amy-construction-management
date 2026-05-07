@@ -23,6 +23,16 @@ Replit-managed Clerk tenant — keys auto-provisioned (`CLERK_PUBLISHABLE_KEY`, 
 - `clerkMiddleware()` from `@clerk/express` mounted after CORS+json. Resolves publishable key from request host via `publishableKeyFromHost(getClerkProxyHost(req), CLERK_PUBLISHABLE_KEY)` for custom-domain support.
 - `routes/index.ts` mounts `requireAuth` (checks `getAuth(req).userId`) globally AFTER `healthRouter` — so `/api/health` is public but every other `/api/*` requires a signed-in user. Web cookies authenticate browser requests automatically (no `setAuthTokenGetter` needed for web).
 
+## プロフィール (per-user profile, Clerk unsafeMetadata)
+
+After sign-up, every user must complete a profile that is auto-populated into 職人請求書 creation. Stored in `user.unsafeMetadata.profile` (Clerk) so each social member only sees their own info.
+
+- `lib/profile.ts` — `UserProfile` type, `EMPTY_PROFILE`, `readProfile(user)`, `isProfileComplete(profile)`, `saveProfile(user, profile)`. All fields required EXCEPT `registrationNumber` (インボイス登録番号は任意). Fields: companyName / registrationNumber / postalCode / address / email / bankName / branchName / accountType (default 普通) / accountNumber / accountHolder.
+- `pages/profile-setup.tsx` — single page used in two modes via `mode` prop: `"setup"` (forced after signup, redirects to `/` on save) or `"edit"` (sidebar link, redirects to `/profile`).
+- `App.tsx` — `<ProfileGate>` inside `<Show signed-in>` (after `<RoleProvider>`). Checks `isProfileComplete(readProfile(user))`; if incomplete and current path ≠ `/profile-setup`, redirects there. Routes `/profile-setup` and `/profile` are inside `ProtectedRoutes`. `EXTERNAL_ALLOWED_PREFIXES` (lib/role.tsx) includes `/profile` and `/profile-setup` so 社外 users can also complete profile.
+- `app-shell.tsx` — sidebar shows プロフィール button (UserCog icon, links to `/profile`) above サインアウト.
+- `pages/vendor-invoice-new.tsx` — issuer + bank sections are now read-only display cards populated from `readProfile(user)` with a "プロフィールを編集" button. Per-invoice form fields (`recipientName`, `authorName`) are still editable and persist to localStorage `amy.vendorInvoiceForm.v1` (the old `amy.vendorInvoiceCreator.v1` key is no longer written). `authorName` defaults from `user.fullName` when empty.
+
 ## 権限分け (Role-based UI gating)
 
 Client-side role switching only (no server-side enforcement — single-tenant tool). `lib/role.tsx` exposes `RoleProvider` + `useRole()` and stores the active role in `localStorage` key `amy.role.v1`. Two roles:
