@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
+import { getAuth } from "@clerk/express";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
@@ -18,6 +19,14 @@ const objectStorageService = new ObjectStorageService();
  * Then uploads the file directly to the returned presigned URL.
  */
 router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
+  // This route is mounted before the global requireAuth middleware (so the
+  // public GET /storage/objects/* can serve PDFs to a new tab without
+  // cookie-handling quirks). Re-check auth inline here for the upload.
+  const auth = getAuth(req);
+  if (!auth?.userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });

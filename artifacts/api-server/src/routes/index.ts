@@ -31,6 +31,11 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
 }
 
 router.use(healthRouter);
+// Storage: GET /storage/objects/* and /storage/public-objects/* are public
+// so saved PDFs can be opened directly in a new browser tab (object paths
+// contain unguessable UUIDs). The POST upload endpoint inside storageRouter
+// performs its own auth check.
+router.use(storageRouter);
 router.use(requireAuth);
 router.use(usersRouter);
 router.use(requireApproved);
@@ -47,7 +52,6 @@ router.use(vendorInvoicesRouter);
 router.use(vendorQuotesRouter);
 router.use(receiptsRouter);
 router.use(phasesRouter);
-router.use(storageRouter);
 router.use(ocrRouter);
 
 export default router;
