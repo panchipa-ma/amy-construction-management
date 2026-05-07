@@ -14,5 +14,9 @@ export interface Customer {
   email?: string | null;
   address?: string | null;
   notes?: string | null;
+  /** 規定利率 (%, 施工台帳の規定粗利額算出に使用) */
+  defaultProfitRate: number;
+  /** 営業歩合の規定値 (%, 案件作成時にプリフィル) */
+  defaultSalesCommissionRate: number;
   createdAt: Date;
 }

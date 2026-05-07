@@ -39,7 +39,10 @@ async function aggregateCosts(projectId: string) {
 
 async function serializeProject(p: ProjectRow) {
   const [customer] = await db
-    .select({ name: customersTable.name })
+    .select({
+      name: customersTable.name,
+      defaultProfitRate: customersTable.defaultProfitRate,
+    })
     .from(customersTable)
     .where(eq(customersTable.id, p.customerId));
   const { planned, actual } = await aggregateCosts(p.id);
@@ -58,6 +61,7 @@ async function serializeProject(p: ProjectRow) {
     plannedCost: planned,
     actualCost: actual,
     salesCommissionRate: n(p.salesCommissionRate),
+    standardProfitRate: customer ? n(customer.defaultProfitRate) : 20,
     salesRep: p.salesRep,
     siteSupervisor: p.siteSupervisor,
     notes: p.notes,

@@ -148,7 +148,19 @@ export default function ProjectNewPage() {
                 <Label>顧客 *</Label>
                 <Select
                   value={form.customerId}
-                  onValueChange={(v) => setForm({ ...form, customerId: v })}
+                  onValueChange={(v) => {
+                    const cust = (customersQ.data ?? []).find(
+                      (c) => c.id === v,
+                    );
+                    setForm((f) => ({
+                      ...f,
+                      customerId: v,
+                      salesCommissionRate: cust?.defaultSalesCommissionRate
+                        != null
+                        ? String(cust.defaultSalesCommissionRate)
+                        : f.salesCommissionRate,
+                    }));
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="顧客を選択" />
@@ -250,6 +262,9 @@ export default function ProjectNewPage() {
                   }
                   placeholder="5.0 〜 7.5"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  顧客の規定値が自動入力されます (顧客マスタで変更可)
+                </p>
               </div>
               <div className="col-span-2">
                 <Label htmlFor="siteSupervisor">担当現場監督</Label>

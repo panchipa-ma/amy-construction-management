@@ -59,6 +59,8 @@ const empty = {
   email: "",
   address: "",
   notes: "",
+  defaultProfitRate: "20",
+  defaultSalesCommissionRate: "5",
 };
 
 export default function CustomersPage() {
@@ -88,6 +90,8 @@ export default function CustomersPage() {
       email: c.email ?? "",
       address: c.address ?? "",
       notes: c.notes ?? "",
+      defaultProfitRate: String(c.defaultProfitRate ?? 20),
+      defaultSalesCommissionRate: String(c.defaultSalesCommissionRate ?? 5),
     });
     setOpen(true);
   };
@@ -105,6 +109,9 @@ export default function CustomersPage() {
       email: form.email || null,
       address: form.address || null,
       notes: form.notes || null,
+      defaultProfitRate: Number(form.defaultProfitRate) || 20,
+      defaultSalesCommissionRate:
+        Number(form.defaultSalesCommissionRate) || 5,
     };
     try {
       if (editing) {
@@ -225,6 +232,8 @@ export default function CustomersPage() {
                   <TableHead>電話</TableHead>
                   <TableHead>メール</TableHead>
                   <TableHead>住所</TableHead>
+                  <TableHead className="text-right">規定利率</TableHead>
+                  <TableHead className="text-right">営業歩合</TableHead>
                   <TableHead className="w-24"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -245,6 +254,12 @@ export default function CustomersPage() {
                     <TableCell>{c.email || "-"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {c.address || "-"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {(c.defaultProfitRate ?? 20).toFixed(1)}%
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {(c.defaultSalesCommissionRate ?? 5).toFixed(1)}%
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1 justify-end">
@@ -323,6 +338,51 @@ export default function CustomersPage() {
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
               />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="defaultProfitRate">
+                  規定利率 (%)
+                </Label>
+                <Input
+                  id="defaultProfitRate"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={form.defaultProfitRate}
+                  onChange={(e) =>
+                    setForm({ ...form, defaultProfitRate: e.target.value })
+                  }
+                  placeholder="例: 20"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  施工台帳の「規定粗利額」算出に使用
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="defaultSalesCommissionRate">
+                  営業歩合 (%)
+                </Label>
+                <Input
+                  id="defaultSalesCommissionRate"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={form.defaultSalesCommissionRate}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      defaultSalesCommissionRate: e.target.value,
+                    })
+                  }
+                  placeholder="例: 5"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  案件作成時に既定値としてプリフィル
+                </p>
+              </div>
             </div>
             <div>
               <Label htmlFor="notes">備考</Label>

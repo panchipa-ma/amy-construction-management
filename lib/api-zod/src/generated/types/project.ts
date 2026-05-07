@@ -28,6 +28,8 @@ export interface Project {
   actualCost: number;
   /** 営業歩合率 (%, 売上に対して) */
   salesCommissionRate?: number;
+  /** 規定利率 (%, 顧客マスタから取得) */
+  standardProfitRate?: number;
   /** 担当営業 */
   salesRep?: string | null;
   /** 担当現場監督 */

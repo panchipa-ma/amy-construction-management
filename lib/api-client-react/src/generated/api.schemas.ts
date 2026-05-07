@@ -37,6 +37,10 @@ export interface Customer {
   email?: string | null;
   address?: string | null;
   notes?: string | null;
+  /** 規定利率 (%, 施工台帳の規定粗利額算出に使用) */
+  defaultProfitRate: number;
+  /** 営業歩合の規定値 (%, 案件作成時にプリフィル) */
+  defaultSalesCommissionRate: number;
   createdAt: string;
 }
 
@@ -47,6 +51,8 @@ export interface CreateCustomerBody {
   email?: string | null;
   address?: string | null;
   notes?: string | null;
+  defaultProfitRate?: number | null;
+  defaultSalesCommissionRate?: number | null;
 }
 
 export type AppUserRole = (typeof AppUserRole)[keyof typeof AppUserRole];
@@ -138,6 +144,8 @@ export interface Project {
   actualCost: number;
   /** 営業歩合率 (%, 売上に対して) */
   salesCommissionRate?: number;
+  /** 規定利率 (%, 顧客マスタから取得) */
+  standardProfitRate?: number;
   /** 担当営業 */
   salesRep?: string | null;
   /** 担当現場監督 */

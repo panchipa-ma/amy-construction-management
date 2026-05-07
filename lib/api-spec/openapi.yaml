@@ -1171,7 +1171,7 @@ components:
 
     Customer:
       type: object
-      required: [id, name, createdAt]
+      required: [id, name, defaultProfitRate, defaultSalesCommissionRate, createdAt]
       properties:
         id: { type: string }
         name: { type: string }
@@ -1180,6 +1180,8 @@ components:
         email: { type: string, nullable: true }
         address: { type: string, nullable: true }
         notes: { type: string, nullable: true }
+        defaultProfitRate: { type: number, description: "規定利率 (%, 施工台帳の規定粗利額算出に使用)" }
+        defaultSalesCommissionRate: { type: number, description: "営業歩合の規定値 (%, 案件作成時にプリフィル)" }
         createdAt: { type: string, format: date-time }
 
     CreateCustomerBody:
@@ -1192,6 +1194,8 @@ components:
         email: { type: string, nullable: true }
         address: { type: string, nullable: true }
         notes: { type: string, nullable: true }
+        defaultProfitRate: { type: number, nullable: true }
+        defaultSalesCommissionRate: { type: number, nullable: true }
 
     AppUser:
       type: object
@@ -1254,6 +1258,7 @@ components:
         plannedCost: { type: number, description: "予算原価合計" }
         actualCost: { type: number, description: "実績原価合計" }
         salesCommissionRate: { type: number, description: "営業歩合率 (%, 売上に対して)" }
+        standardProfitRate: { type: number, description: "規定利率 (%, 顧客マスタから取得)" }
         salesRep: { type: string, nullable: true, description: "担当営業" }
         siteSupervisor: { type: string, nullable: true, description: "担当現場監督" }
         notes: { type: string, nullable: true }

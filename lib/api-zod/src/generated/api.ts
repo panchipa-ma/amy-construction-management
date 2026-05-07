@@ -135,6 +135,10 @@ export const ListProjectsResponseItem = zod.object({
     .number()
     .optional()
     .describe("営業歩合率 (%, 売上に対して)"),
+  standardProfitRate: zod
+    .number()
+    .optional()
+    .describe("規定利率 (%, 顧客マスタから取得)"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -191,6 +195,10 @@ export const CreateProjectResponse = zod.object({
     .number()
     .optional()
     .describe("営業歩合率 (%, 売上に対して)"),
+  standardProfitRate: zod
+    .number()
+    .optional()
+    .describe("規定利率 (%, 顧客マスタから取得)"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -228,6 +236,10 @@ export const GetProjectResponse = zod.object({
     .number()
     .optional()
     .describe("営業歩合率 (%, 売上に対して)"),
+  standardProfitRate: zod
+    .number()
+    .optional()
+    .describe("規定利率 (%, 顧客マスタから取得)"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -283,6 +295,10 @@ export const UpdateProjectResponse = zod.object({
     .number()
     .optional()
     .describe("営業歩合率 (%, 売上に対して)"),
+  standardProfitRate: zod
+    .number()
+    .optional()
+    .describe("規定利率 (%, 顧客マスタから取得)"),
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
@@ -352,6 +368,12 @@ export const ListCustomersResponseItem = zod.object({
   email: zod.string().nullish(),
   address: zod.string().nullish(),
   notes: zod.string().nullish(),
+  defaultProfitRate: zod
+    .number()
+    .describe("規定利率 (%, 施工台帳の規定粗利額算出に使用)"),
+  defaultSalesCommissionRate: zod
+    .number()
+    .describe("営業歩合の規定値 (%, 案件作成時にプリフィル)"),
   createdAt: zod.coerce.date(),
 });
 export const ListCustomersResponse = zod.array(ListCustomersResponseItem);
@@ -363,6 +385,8 @@ export const CreateCustomerBody = zod.object({
   email: zod.string().nullish(),
   address: zod.string().nullish(),
   notes: zod.string().nullish(),
+  defaultProfitRate: zod.number().nullish(),
+  defaultSalesCommissionRate: zod.number().nullish(),
 });
 
 export const CreateCustomerResponse = zod.object({
@@ -373,6 +397,12 @@ export const CreateCustomerResponse = zod.object({
   email: zod.string().nullish(),
   address: zod.string().nullish(),
   notes: zod.string().nullish(),
+  defaultProfitRate: zod
+    .number()
+    .describe("規定利率 (%, 施工台帳の規定粗利額算出に使用)"),
+  defaultSalesCommissionRate: zod
+    .number()
+    .describe("営業歩合の規定値 (%, 案件作成時にプリフィル)"),
   createdAt: zod.coerce.date(),
 });
 
@@ -387,6 +417,8 @@ export const UpdateCustomerBody = zod.object({
   email: zod.string().nullish(),
   address: zod.string().nullish(),
   notes: zod.string().nullish(),
+  defaultProfitRate: zod.number().nullish(),
+  defaultSalesCommissionRate: zod.number().nullish(),
 });
 
 export const UpdateCustomerResponse = zod.object({
@@ -397,6 +429,12 @@ export const UpdateCustomerResponse = zod.object({
   email: zod.string().nullish(),
   address: zod.string().nullish(),
   notes: zod.string().nullish(),
+  defaultProfitRate: zod
+    .number()
+    .describe("規定利率 (%, 施工台帳の規定粗利額算出に使用)"),
+  defaultSalesCommissionRate: zod
+    .number()
+    .describe("営業歩合の規定値 (%, 案件作成時にプリフィル)"),
   createdAt: zod.coerce.date(),
 });
 

@@ -10,7 +10,7 @@ import {
   CreateCustomerResponse,
   UpdateCustomerResponse,
 } from "@workspace/api-zod";
-import { isoDateTime } from "../lib/serializers";
+import { isoDateTime, n } from "../lib/serializers";
 
 const router: IRouter = Router();
 
@@ -23,8 +23,34 @@ function serialize(c: typeof customersTable.$inferSelect) {
     email: c.email,
     address: c.address,
     notes: c.notes,
+    defaultProfitRate: n(c.defaultProfitRate),
+    defaultSalesCommissionRate: n(c.defaultSalesCommissionRate),
     createdAt: isoDateTime(c.createdAt),
   };
+}
+
+function toDbValues(input: {
+  name?: string;
+  contactName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  defaultProfitRate?: number | null;
+  defaultSalesCommissionRate?: number | null;
+}) {
+  const data: Record<string, unknown> = {};
+  if (input.name !== undefined) data.name = input.name;
+  if (input.contactName !== undefined) data.contactName = input.contactName;
+  if (input.phone !== undefined) data.phone = input.phone;
+  if (input.email !== undefined) data.email = input.email;
+  if (input.address !== undefined) data.address = input.address;
+  if (input.notes !== undefined) data.notes = input.notes;
+  if (input.defaultProfitRate != null)
+    data.defaultProfitRate = String(input.defaultProfitRate);
+  if (input.defaultSalesCommissionRate != null)
+    data.defaultSalesCommissionRate = String(input.defaultSalesCommissionRate);
+  return data;
 }
 
 router.get("/customers", async (_req, res): Promise<void> => {
@@ -43,7 +69,7 @@ router.post("/customers", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .insert(customersTable)
-    .values(parsed.data)
+    .values(toDbValues(parsed.data) as typeof customersTable.$inferInsert)
     .returning();
   res.json(CreateCustomerResponse.parse(serialize(row)));
 });
@@ -61,7 +87,7 @@ router.patch("/customers/:id", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .update(customersTable)
-    .set(parsed.data)
+    .set(toDbValues(parsed.data))
     .where(eq(customersTable.id, params.data.id))
     .returning();
   if (!row) {

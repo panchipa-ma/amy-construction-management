@@ -13,4 +13,6 @@ export interface CreateCustomerBody {
   email?: string | null;
   address?: string | null;
   notes?: string | null;
+  defaultProfitRate?: number | null;
+  defaultSalesCommissionRate?: number | null;
 }

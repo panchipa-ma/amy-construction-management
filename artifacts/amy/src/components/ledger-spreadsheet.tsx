@@ -62,6 +62,7 @@ type Project = {
   notes?: string | null;
   contractAmount?: number;
   salesCommissionRate?: number | null;
+  standardProfitRate?: number | null;
   salesRep?: string | null;
   siteSupervisor?: string | null;
 };
@@ -103,7 +104,7 @@ export type CreateCostEntryDraft = {
   entryDate: string;
 };
 
-const STANDARD_PROFIT_RATE = 0.20;
+const DEFAULT_STANDARD_PROFIT_RATE = 0.20;
 const SUPERVISOR_COMMISSION_RATE = 0.30;
 
 function pct(num: number, den: number): string {
@@ -140,7 +141,11 @@ export function LedgerSpreadsheet({
   const salesCommissionRate = (project.salesCommissionRate ?? 5) / 100;
   const salesCommission = Math.round(orderAmount * salesCommissionRate);
 
-  const standardProfit = Math.round(orderAmount * STANDARD_PROFIT_RATE);
+  const standardProfitRate =
+    project.standardProfitRate != null
+      ? project.standardProfitRate / 100
+      : DEFAULT_STANDARD_PROFIT_RATE;
+  const standardProfit = Math.round(orderAmount * standardProfitRate);
   const profitAfterSales = grossProfit - salesCommission;
   const excessProfit = Math.max(0, profitAfterSales - standardProfit);
   const supervisorCommission = Math.round(excessProfit * SUPERVISOR_COMMISSION_RATE);
@@ -478,7 +483,7 @@ export function LedgerSpreadsheet({
       {/* 歩合・最終利益 */}
       <div className="border border-border overflow-hidden rounded-sm">
         <div className="bg-accent text-accent-foreground text-center py-1.5 font-semibold text-xs border-b border-border">
-          歩合・最終利益 (規定利率 20% / 監督歩合 30%)
+          歩合・最終利益 (規定利率 {(standardProfitRate * 100).toFixed(1)}% / 監督歩合 30%)
         </div>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-xs tabular-nums">
@@ -544,12 +549,18 @@ export function LedgerSpreadsheet({
                 <td className="text-muted-foreground">粗利 − 営業歩合</td>
               </tr>
               <tr>
-                <td className="font-medium">規定粗利額 (20%)</td>
+                <td className="font-medium">
+                  規定粗利額 ({(standardProfitRate * 100).toFixed(1)}%)
+                </td>
                 <td className="text-right text-muted-foreground">
                   {formatCurrency(standardProfit)}
                 </td>
-                <td className="text-right text-muted-foreground">20.0%</td>
-                <td className="text-muted-foreground">売上 × 規定利率</td>
+                <td className="text-right text-muted-foreground">
+                  {(standardProfitRate * 100).toFixed(1)}%
+                </td>
+                <td className="text-muted-foreground">
+                  売上 × 規定利率 (顧客マスタの規定値)
+                </td>
               </tr>
               <tr>
                 <td className="font-medium">規定超過粗利</td>

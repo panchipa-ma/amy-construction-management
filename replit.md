@@ -1,6 +1,6 @@
 # AMY 施工管理
 
-Japanese interior contractor (内装屋) business app. Hero feature: **施工台帳** (planned vs actual cost / 粗利). Other: 案件 (見積〜竣工), 見積/請求書 with line items + 10% tax, 顧客/職人, 工程表 (Gantt), 出面表, 進捗記録. UI is entirely Japanese.
+Japanese interior contractor (内装屋) business app. Hero feature: **施工台帳** (planned vs actual cost / 粗利). Other: 案件 (見積〜竣工), 見積/請求書 with line items + 10% tax, 顧客/職人 (customers carry `defaultProfitRate` 規定利率 + `defaultSalesCommissionRate` 営業歩合 — flow into Project response as `standardProfitRate` and prefill new project `salesCommissionRate`), 工程表 (Gantt), 出面表, 進捗記録. UI is entirely Japanese.
 
 ## Architecture
 

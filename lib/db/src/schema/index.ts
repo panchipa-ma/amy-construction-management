@@ -31,6 +31,12 @@ export const customersTable = pgTable("customers", {
   email: text("email"),
   address: text("address"),
   notes: text("notes"),
+  // 規定利率 (%) — 施工台帳「規定粗利額」算出に使用。
+  defaultProfitRate: numeric("default_profit_rate").notNull().default("20"),
+  // 営業歩合の規定値 (%) — 案件作成時に salesCommissionRate のプリフィルに使用。
+  defaultSalesCommissionRate: numeric("default_sales_commission_rate")
+    .notNull()
+    .default("5"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
