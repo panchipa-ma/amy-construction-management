@@ -18,6 +18,7 @@ import InvoicesListPage from "@/pages/invoices-list";
 import InvoiceNewPage from "@/pages/invoice-new";
 import InvoiceDetailPage from "@/pages/invoice-detail";
 import VendorInvoicesPage from "@/pages/vendor-invoices";
+import VendorInvoiceNewPage from "@/pages/vendor-invoice-new";
 import ReceiptsPage from "@/pages/receipts";
 import LedgerPage from "@/pages/ledger";
 import StaffAssignmentsPage from "@/pages/staff-assignments";
@@ -40,6 +41,7 @@ function Router() {
       <Route path="/invoices/:id" component={InvoiceDetailPage} />
       <Route path="/gantt" component={GanttPage} />
       <Route path="/vendor-invoices" component={VendorInvoicesPage} />
+      <Route path="/vendor-invoices/new" component={VendorInvoiceNewPage} />
       <Route path="/receipts" component={ReceiptsPage} />
       <Route path="/ledger" component={LedgerPage} />
       <Route path="/staff-assignments" component={StaffAssignmentsPage} />

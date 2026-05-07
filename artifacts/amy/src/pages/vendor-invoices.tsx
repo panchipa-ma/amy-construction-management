@@ -57,7 +57,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Upload, Trash2, Link2, Sparkles, Loader2 } from "lucide-react";
+import { Upload, Trash2, Link2, Sparkles, Loader2, FilePlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -244,6 +244,13 @@ export default function VendorInvoicesPage() {
               読み取り中 ({processing})
             </span>
           )}
+          <Link
+            href="/vendor-invoices/new"
+            className="inline-flex items-center gap-2 px-4 py-2 border border-input bg-background text-foreground rounded-md text-sm font-medium hover:bg-accent"
+          >
+            <FilePlus className="w-4 h-4" />
+            請求書を作成
+          </Link>
           <ObjectUploader
             maxNumberOfFiles={1}
             maxFileSize={20 * 1024 * 1024}
