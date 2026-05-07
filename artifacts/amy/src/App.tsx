@@ -37,6 +37,8 @@ import InvoiceNewPage from "@/pages/invoice-new";
 import InvoiceDetailPage from "@/pages/invoice-detail";
 import VendorInvoicesPage from "@/pages/vendor-invoices";
 import VendorInvoiceNewPage from "@/pages/vendor-invoice-new";
+import VendorQuotesPage from "@/pages/vendor-quotes";
+import VendorQuoteNewPage from "@/pages/vendor-quote-new";
 import ReceiptsPage from "@/pages/receipts";
 import LedgerPage from "@/pages/ledger";
 import StaffAssignmentsPage from "@/pages/staff-assignments";
@@ -239,6 +241,8 @@ function ProtectedRoutes() {
         <Route path="/gantt" component={GanttPage} />
         <Route path="/vendor-invoices" component={VendorInvoicesPage} />
         <Route path="/vendor-invoices/new" component={VendorInvoiceNewPage} />
+        <Route path="/vendor-quotes" component={VendorQuotesPage} />
+        <Route path="/vendor-quotes/new" component={VendorQuoteNewPage} />
         <Route path="/receipts" component={ReceiptsPage} />
         <Route path="/ledger" component={LedgerPage} />
         <Route path="/staff-assignments" component={StaffAssignmentsPage} />

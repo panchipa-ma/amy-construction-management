@@ -92,6 +92,29 @@ export const vendorInvoicesTable = pgTable("vendor_invoices", {
     .defaultNow(),
 });
 
+export const vendorQuotesTable = pgTable("vendor_quotes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  staffId: uuid("staff_id").references(() => staffTable.id, {
+    onDelete: "restrict",
+  }),
+  vendorName: text("vendor_name").notNull().default(""),
+  projectId: uuid("project_id").references(() => projectsTable.id, {
+    onDelete: "set null",
+  }),
+  costEntryId: uuid("cost_entry_id"),
+  unitNumber: text("unit_number").notNull(),
+  amount: numeric("amount").notNull(),
+  quoteDate: date("quote_date").notNull(),
+  validUntil: date("valid_until"),
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name").notNull(),
+  notes: text("notes"),
+  status: text("status").notNull().default("unmatched"),
+  uploadedAt: timestamp("uploaded_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const receiptsTable = pgTable("receipts", {
   id: uuid("id").primaryKey().defaultRandom(),
   projectId: uuid("project_id").references(() => projectsTable.id, {

@@ -240,6 +240,51 @@ export interface AssignVendorInvoiceStaffBody {
   staffId: string | null;
 }
 
+export type VendorQuoteStatus =
+  (typeof VendorQuoteStatus)[keyof typeof VendorQuoteStatus];
+
+export const VendorQuoteStatus = {
+  matched: "matched",
+  unmatched: "unmatched",
+} as const;
+
+export interface VendorQuote {
+  id: string;
+  staffId?: string | null;
+  staffName?: string | null;
+  vendorName: string;
+  projectId?: string | null;
+  projectName?: string | null;
+  /** 施工台帳に作成された想定原価のID */
+  costEntryId?: string | null;
+  unitNumber: string;
+  /** 見積合計（税込） */
+  amount: number;
+  quoteDate: string;
+  validUntil?: string | null;
+  fileUrl: string;
+  fileName: string;
+  notes?: string | null;
+  status: VendorQuoteStatus;
+  uploadedAt: string;
+}
+
+export interface CreateVendorQuoteBody {
+  vendorName: string;
+  staffId?: string | null;
+  unitNumber: string;
+  amount: number;
+  quoteDate: string;
+  validUntil?: string | null;
+  fileUrl: string;
+  fileName: string;
+  notes?: string | null;
+}
+
+export interface MatchVendorQuoteBody {
+  projectId: string;
+}
+
 export type ReceiptStatus = (typeof ReceiptStatus)[keyof typeof ReceiptStatus];
 
 export const ReceiptStatus = {
@@ -723,6 +768,20 @@ export type ListVendorInvoicesStatus =
   (typeof ListVendorInvoicesStatus)[keyof typeof ListVendorInvoicesStatus];
 
 export const ListVendorInvoicesStatus = {
+  matched: "matched",
+  unmatched: "unmatched",
+} as const;
+
+export type ListVendorQuotesParams = {
+  projectId?: string;
+  staffId?: string;
+  status?: ListVendorQuotesStatus;
+};
+
+export type ListVendorQuotesStatus =
+  (typeof ListVendorQuotesStatus)[keyof typeof ListVendorQuotesStatus];
+
+export const ListVendorQuotesStatus = {
   matched: "matched",
   unmatched: "unmatched",
 } as const;

@@ -1,0 +1,316 @@
+import { useState } from "react";
+import { Link } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useListVendorQuotes,
+  useDeleteVendorQuote,
+  useMatchVendorQuote,
+  useListProjects,
+  getListVendorQuotesQueryKey,
+  getGetProjectLedgerQueryKey,
+  getGetProjectQueryKey,
+  getListProjectsQueryKey,
+} from "@workspace/api-client-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Trash2, Link2, FilePlus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { invalidateDashboard } from "@/lib/invalidate";
+import { formatCurrency, formatDate } from "@/lib/format";
+import { apiErrorMessage } from "@/lib/api-error";
+
+export default function VendorQuotesPage() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const listQ = useListVendorQuotes();
+  const projectsQ = useListProjects();
+  const deleteMut = useDeleteVendorQuote();
+  const matchMut = useMatchVendorQuote();
+
+  const [askDelete, setAskDelete] = useState<string | null>(null);
+  const [matchTarget, setMatchTarget] = useState<{
+    id: string;
+    projectId: string;
+  } | null>(null);
+
+  const refresh = async (projectIds?: (string | null | undefined)[]) => {
+    await queryClient.invalidateQueries({
+      queryKey: getListVendorQuotesQueryKey(),
+    });
+    await queryClient.invalidateQueries({
+      queryKey: getListProjectsQueryKey(),
+    });
+    const unique = new Set(
+      (projectIds ?? []).filter((p): p is string => !!p),
+    );
+    for (const pid of unique) {
+      await queryClient.invalidateQueries({
+        queryKey: getGetProjectLedgerQueryKey(pid),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getGetProjectQueryKey(pid),
+      });
+    }
+    await invalidateDashboard(queryClient);
+  };
+
+  const handleDelete = async () => {
+    if (!askDelete) return;
+    const target = (listQ.data ?? []).find((v) => v.id === askDelete);
+    try {
+      await deleteMut.mutateAsync({ id: askDelete });
+      await refresh([target?.projectId]);
+      toast({ title: "削除しました" });
+      setAskDelete(null);
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+    }
+  };
+
+  const handleMatch = async () => {
+    if (!matchTarget) return;
+    try {
+      const updated = await matchMut.mutateAsync({
+        id: matchTarget.id,
+        data: { projectId: matchTarget.projectId },
+      });
+      await refresh([updated.projectId]);
+      toast({ title: "案件に紐付けました（想定原価として施工台帳に反映）" });
+      setMatchTarget(null);
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold">職人見積書</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            職人からの見積書を作成・保管します。施工台帳には<span className="font-medium text-foreground">想定原価</span>として自動反映されます（実績ではありません）。
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/vendor-quotes/new"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90"
+            data-testid="link-new-vendor-quote"
+          >
+            <FilePlus className="w-4 h-4" />
+            見積書を作成
+          </Link>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">見積書一覧</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {listQ.isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : (listQ.data ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">
+              見積書はまだありません。右上のボタンから作成してください。
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>作成日</TableHead>
+                  <TableHead>取引先</TableHead>
+                  <TableHead>見積日</TableHead>
+                  <TableHead>有効期限</TableHead>
+                  <TableHead className="text-right">金額</TableHead>
+                  <TableHead>振分先案件</TableHead>
+                  <TableHead>ファイル</TableHead>
+                  <TableHead className="w-32"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(listQ.data ?? []).map((v) => (
+                  <TableRow key={v.id} data-testid={`row-vendor-quote-${v.id}`}>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDate(v.uploadedAt.slice(0, 10))}
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">
+                        {v.vendorName || v.staffName || "(不明)"}
+                      </div>
+                      {v.staffName && (
+                        <div className="text-[11px] text-emerald-600">
+                          ✓ 職人「{v.staffName}」
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>{formatDate(v.quoteDate)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {v.validUntil ? formatDate(v.validUntil) : "—"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatCurrency(v.amount)}
+                    </TableCell>
+                    <TableCell>
+                      {v.status === "matched" && v.projectId ? (
+                        <Link
+                          href={`/projects/${v.projectId}`}
+                          className="text-primary hover:underline"
+                        >
+                          {v.projectName}
+                        </Link>
+                      ) : (
+                        <Badge variant="outline" className="text-amber-700">
+                          未振分
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <a
+                        href={v.fileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary hover:underline text-sm"
+                      >
+                        {v.fileName}
+                      </a>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 justify-end">
+                        {v.status === "unmatched" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              setMatchTarget({ id: v.id, projectId: "" })
+                            }
+                            className="gap-1"
+                          >
+                            <Link2 className="w-3 h-3" />
+                            振分
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setAskDelete(v.id)}
+                          className="text-destructive hover:text-destructive"
+                          data-testid={`button-delete-${v.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={!!matchTarget}
+        onOpenChange={(o) => !o && setMatchTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>案件に紐付け</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              振分先の案件を選択してください。施工台帳に<span className="font-medium">想定原価</span>として登録されます。
+            </p>
+            <Select
+              value={matchTarget?.projectId ?? ""}
+              onValueChange={(v) =>
+                setMatchTarget((t) => (t ? { ...t, projectId: v } : t))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="案件を選択" />
+              </SelectTrigger>
+              <SelectContent>
+                {(projectsQ.data ?? []).map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                    {p.unitNumber ? ` (${p.unitNumber})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMatchTarget(null)}>
+              キャンセル
+            </Button>
+            <Button
+              onClick={handleMatch}
+              disabled={!matchTarget?.projectId || matchMut.isPending}
+            >
+              紐付ける
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={!!askDelete}
+        onOpenChange={(o) => !o && setAskDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>見積書を削除しますか?</AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground"
+            >
+              削除する
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

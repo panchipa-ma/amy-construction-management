@@ -18,6 +18,7 @@ tags:
   - name: schedule
   - name: progress
   - name: vendorInvoices
+  - name: vendorQuotes
   - name: Storage
   - name: ocr
   - name: users
@@ -915,6 +916,79 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/VendorInvoice" }
 
+  /vendor-quotes:
+    get:
+      operationId: listVendorQuotes
+      tags: [vendorQuotes]
+      parameters:
+        - in: query
+          name: projectId
+          schema: { type: string }
+        - in: query
+          name: staffId
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string, enum: [matched, unmatched] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/VendorQuote" }
+    post:
+      operationId: createVendorQuote
+      tags: [vendorQuotes]
+      summary: Submit a craftsman quote (想定原価); auto-matched to a project by unit number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateVendorQuoteBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VendorQuote" }
+
+  /vendor-quotes/{id}:
+    delete:
+      operationId: deleteVendorQuote
+      tags: [vendorQuotes]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /vendor-quotes/{id}/match:
+    post:
+      operationId: matchVendorQuote
+      tags: [vendorQuotes]
+      summary: Manually attach an unmatched quote to a project
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MatchVendorQuoteBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VendorQuote" }
+
   /receipts:
     get:
       operationId: listReceipts
@@ -1233,6 +1307,47 @@ components:
       required: [staffId]
       properties:
         staffId: { type: string, nullable: true, description: "nullで未割当に戻す" }
+
+    VendorQuote:
+      type: object
+      required: [id, vendorName, unitNumber, amount, quoteDate, fileUrl, fileName, status, uploadedAt]
+      properties:
+        id: { type: string }
+        staffId: { type: string, nullable: true }
+        staffName: { type: string, nullable: true }
+        vendorName: { type: string }
+        projectId: { type: string, nullable: true }
+        projectName: { type: string, nullable: true }
+        costEntryId: { type: string, nullable: true, description: "施工台帳に作成された想定原価のID" }
+        unitNumber: { type: string }
+        amount: { type: number, description: "見積合計（税込）" }
+        quoteDate: { type: string, format: date }
+        validUntil: { type: string, format: date, nullable: true }
+        fileUrl: { type: string }
+        fileName: { type: string }
+        notes: { type: string, nullable: true }
+        status: { type: string, enum: [matched, unmatched] }
+        uploadedAt: { type: string, format: date-time }
+
+    CreateVendorQuoteBody:
+      type: object
+      required: [vendorName, unitNumber, amount, quoteDate, fileUrl, fileName]
+      properties:
+        vendorName: { type: string }
+        staffId: { type: string, nullable: true }
+        unitNumber: { type: string }
+        amount: { type: number }
+        quoteDate: { type: string, format: date }
+        validUntil: { type: string, format: date, nullable: true }
+        fileUrl: { type: string }
+        fileName: { type: string }
+        notes: { type: string, nullable: true }
+
+    MatchVendorQuoteBody:
+      type: object
+      required: [projectId]
+      properties:
+        projectId: { type: string }
 
     Receipt:
       type: object

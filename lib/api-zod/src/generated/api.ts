@@ -1372,6 +1372,109 @@ export const MatchVendorInvoiceResponse = zod.object({
   uploadedAt: zod.coerce.date(),
 });
 
+export const ListVendorQuotesQueryParams = zod.object({
+  projectId: zod.coerce.string().optional(),
+  staffId: zod.coerce.string().optional(),
+  status: zod.enum(["matched", "unmatched"]).optional(),
+});
+
+export const ListVendorQuotesResponseItem = zod.object({
+  id: zod.string(),
+  staffId: zod.string().nullish(),
+  staffName: zod.string().nullish(),
+  vendorName: zod.string(),
+  projectId: zod.string().nullish(),
+  projectName: zod.string().nullish(),
+  costEntryId: zod
+    .string()
+    .nullish()
+    .describe("施工台帳に作成された想定原価のID"),
+  unitNumber: zod.string(),
+  amount: zod.number().describe("見積合計（税込）"),
+  quoteDate: zod.coerce.date(),
+  validUntil: zod.coerce.date().nullish(),
+  fileUrl: zod.string(),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["matched", "unmatched"]),
+  uploadedAt: zod.coerce.date(),
+});
+export const ListVendorQuotesResponse = zod.array(ListVendorQuotesResponseItem);
+
+/**
+ * @summary Submit a craftsman quote (想定原価); auto-matched to a project by unit number
+ */
+export const CreateVendorQuoteBody = zod.object({
+  vendorName: zod.string(),
+  staffId: zod.string().nullish(),
+  unitNumber: zod.string(),
+  amount: zod.number(),
+  quoteDate: zod.coerce.date(),
+  validUntil: zod.coerce.date().nullish(),
+  fileUrl: zod.string(),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+});
+
+export const CreateVendorQuoteResponse = zod.object({
+  id: zod.string(),
+  staffId: zod.string().nullish(),
+  staffName: zod.string().nullish(),
+  vendorName: zod.string(),
+  projectId: zod.string().nullish(),
+  projectName: zod.string().nullish(),
+  costEntryId: zod
+    .string()
+    .nullish()
+    .describe("施工台帳に作成された想定原価のID"),
+  unitNumber: zod.string(),
+  amount: zod.number().describe("見積合計（税込）"),
+  quoteDate: zod.coerce.date(),
+  validUntil: zod.coerce.date().nullish(),
+  fileUrl: zod.string(),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["matched", "unmatched"]),
+  uploadedAt: zod.coerce.date(),
+});
+
+export const DeleteVendorQuoteParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary Manually attach an unmatched quote to a project
+ */
+export const MatchVendorQuoteParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const MatchVendorQuoteBody = zod.object({
+  projectId: zod.string(),
+});
+
+export const MatchVendorQuoteResponse = zod.object({
+  id: zod.string(),
+  staffId: zod.string().nullish(),
+  staffName: zod.string().nullish(),
+  vendorName: zod.string(),
+  projectId: zod.string().nullish(),
+  projectName: zod.string().nullish(),
+  costEntryId: zod
+    .string()
+    .nullish()
+    .describe("施工台帳に作成された想定原価のID"),
+  unitNumber: zod.string(),
+  amount: zod.number().describe("見積合計（税込）"),
+  quoteDate: zod.coerce.date(),
+  validUntil: zod.coerce.date().nullish(),
+  fileUrl: zod.string(),
+  fileName: zod.string(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["matched", "unmatched"]),
+  uploadedAt: zod.coerce.date(),
+});
+
 export const ListReceiptsQueryParams = zod.object({
   projectId: zod.coerce.string().optional(),
   status: zod.enum(["matched", "unmatched"]).optional(),

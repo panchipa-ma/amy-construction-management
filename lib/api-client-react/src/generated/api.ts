@@ -34,6 +34,7 @@ import type {
   CreateScheduleEntryBody,
   CreateStaffBody,
   CreateVendorInvoiceBody,
+  CreateVendorQuoteBody,
   Customer,
   DashboardSummary,
   ExtractOcrBody,
@@ -51,8 +52,10 @@ import type {
   ListScheduleEntriesParams,
   ListStaffAssignmentsParams,
   ListVendorInvoicesParams,
+  ListVendorQuotesParams,
   MatchReceiptBody,
   MatchVendorInvoiceBody,
+  MatchVendorQuoteBody,
   PhaseOverview,
   ProgressLog,
   Project,
@@ -69,6 +72,7 @@ import type {
   UpdateProjectPhaseBody,
   UpdateUserBody,
   VendorInvoice,
+  VendorQuote,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -4538,6 +4542,347 @@ export const useMatchVendorInvoice = <
   TContext
 > => {
   return useMutation(getMatchVendorInvoiceMutationOptions(options));
+};
+
+export const getListVendorQuotesUrl = (params?: ListVendorQuotesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/vendor-quotes?${stringifiedParams}`
+    : `/api/vendor-quotes`;
+};
+
+export const listVendorQuotes = async (
+  params?: ListVendorQuotesParams,
+  options?: RequestInit,
+): Promise<VendorQuote[]> => {
+  return customFetch<VendorQuote[]>(getListVendorQuotesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListVendorQuotesQueryKey = (
+  params?: ListVendorQuotesParams,
+) => {
+  return [`/api/vendor-quotes`, ...(params ? [params] : [])] as const;
+};
+
+export const getListVendorQuotesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listVendorQuotes>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListVendorQuotesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listVendorQuotes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListVendorQuotesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listVendorQuotes>>
+  > = ({ signal }) => listVendorQuotes(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listVendorQuotes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListVendorQuotesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listVendorQuotes>>
+>;
+export type ListVendorQuotesQueryError = ErrorType<unknown>;
+
+export function useListVendorQuotes<
+  TData = Awaited<ReturnType<typeof listVendorQuotes>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListVendorQuotesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listVendorQuotes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListVendorQuotesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Submit a craftsman quote (想定原価); auto-matched to a project by unit number
+ */
+export const getCreateVendorQuoteUrl = () => {
+  return `/api/vendor-quotes`;
+};
+
+export const createVendorQuote = async (
+  createVendorQuoteBody: CreateVendorQuoteBody,
+  options?: RequestInit,
+): Promise<VendorQuote> => {
+  return customFetch<VendorQuote>(getCreateVendorQuoteUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createVendorQuoteBody),
+  });
+};
+
+export const getCreateVendorQuoteMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createVendorQuote>>,
+    TError,
+    { data: BodyType<CreateVendorQuoteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createVendorQuote>>,
+  TError,
+  { data: BodyType<CreateVendorQuoteBody> },
+  TContext
+> => {
+  const mutationKey = ["createVendorQuote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createVendorQuote>>,
+    { data: BodyType<CreateVendorQuoteBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createVendorQuote(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateVendorQuoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createVendorQuote>>
+>;
+export type CreateVendorQuoteMutationBody = BodyType<CreateVendorQuoteBody>;
+export type CreateVendorQuoteMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Submit a craftsman quote (想定原価); auto-matched to a project by unit number
+ */
+export const useCreateVendorQuote = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createVendorQuote>>,
+    TError,
+    { data: BodyType<CreateVendorQuoteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createVendorQuote>>,
+  TError,
+  { data: BodyType<CreateVendorQuoteBody> },
+  TContext
+> => {
+  return useMutation(getCreateVendorQuoteMutationOptions(options));
+};
+
+export const getDeleteVendorQuoteUrl = (id: string) => {
+  return `/api/vendor-quotes/${id}`;
+};
+
+export const deleteVendorQuote = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteVendorQuoteUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteVendorQuoteMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVendorQuote>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteVendorQuote>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteVendorQuote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteVendorQuote>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteVendorQuote(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteVendorQuoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteVendorQuote>>
+>;
+
+export type DeleteVendorQuoteMutationError = ErrorType<unknown>;
+
+export const useDeleteVendorQuote = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVendorQuote>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteVendorQuote>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteVendorQuoteMutationOptions(options));
+};
+
+/**
+ * @summary Manually attach an unmatched quote to a project
+ */
+export const getMatchVendorQuoteUrl = (id: string) => {
+  return `/api/vendor-quotes/${id}/match`;
+};
+
+export const matchVendorQuote = async (
+  id: string,
+  matchVendorQuoteBody: MatchVendorQuoteBody,
+  options?: RequestInit,
+): Promise<VendorQuote> => {
+  return customFetch<VendorQuote>(getMatchVendorQuoteUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(matchVendorQuoteBody),
+  });
+};
+
+export const getMatchVendorQuoteMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof matchVendorQuote>>,
+    TError,
+    { id: string; data: BodyType<MatchVendorQuoteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof matchVendorQuote>>,
+  TError,
+  { id: string; data: BodyType<MatchVendorQuoteBody> },
+  TContext
+> => {
+  const mutationKey = ["matchVendorQuote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof matchVendorQuote>>,
+    { id: string; data: BodyType<MatchVendorQuoteBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return matchVendorQuote(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MatchVendorQuoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof matchVendorQuote>>
+>;
+export type MatchVendorQuoteMutationBody = BodyType<MatchVendorQuoteBody>;
+export type MatchVendorQuoteMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Manually attach an unmatched quote to a project
+ */
+export const useMatchVendorQuote = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof matchVendorQuote>>,
+    TError,
+    { id: string; data: BodyType<MatchVendorQuoteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof matchVendorQuote>>,
+  TError,
+  { id: string; data: BodyType<MatchVendorQuoteBody> },
+  TContext
+> => {
+  return useMutation(getMatchVendorQuoteMutationOptions(options));
 };
 
 export const getListReceiptsUrl = (params?: ListReceiptsParams) => {

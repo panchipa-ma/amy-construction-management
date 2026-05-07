@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog, Shield } from "lucide-react";
+import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog, Shield, FileSignature } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { useRole, isPathAllowed } from "@/lib/role";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ const navItems = [
   { name: "工程表", href: "/gantt", icon: GanttChart, internalOnly: false },
   { name: "見積", href: "/quotes", icon: FileText, internalOnly: false },
   { name: "請求", href: "/invoices", icon: Receipt, internalOnly: false },
+  { name: "職人見積書", href: "/vendor-quotes", icon: FileSignature, internalOnly: false },
   { name: "職人請求書", href: "/vendor-invoices", icon: Upload, internalOnly: false },
   { name: "領収書", href: "/receipts", icon: ReceiptText, internalOnly: false },
   { name: "職人 出面表", href: "/staff-assignments", icon: ClipboardList, internalOnly: false },
