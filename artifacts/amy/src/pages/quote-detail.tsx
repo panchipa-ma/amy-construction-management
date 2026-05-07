@@ -391,13 +391,7 @@ export default function QuoteDetailPage() {
       </div>
 
       <div className="quote-paper max-w-[1040px] mx-auto px-8 py-8 text-[14px] text-foreground print:border-0 print:p-0 print:max-w-none print:mx-0 print:shadow-none">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="h-[3px] flex-1 bg-primary" />
-          <div className="text-[10px] tracking-[0.4em] text-primary font-semibold">
-            QUOTATION
-          </div>
-          <div className="h-[3px] flex-1 bg-primary" />
-        </div>
+        <div className="h-[3px] bg-primary mb-3" />
 
         <h1 className="quote-title text-center text-[32px] text-foreground mb-5">
           御&nbsp;&nbsp;見&nbsp;&nbsp;積&nbsp;&nbsp;書

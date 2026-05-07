@@ -333,13 +333,7 @@ export default function QuoteNewPage() {
         className="quote-paper max-w-[1040px] mx-auto px-8 py-8 text-[14px] text-foreground"
       >
         {/* Decorative top accent */}
-        <div className="flex items-center gap-3 mb-3">
-          <div className="h-[3px] flex-1 bg-primary" />
-          <div className="text-[10px] tracking-[0.4em] text-primary font-semibold">
-            QUOTATION
-          </div>
-          <div className="h-[3px] flex-1 bg-primary" />
-        </div>
+        <div className="h-[3px] bg-primary mb-3" />
 
         {/* Title */}
         <h1 className="quote-title text-center text-[32px] text-foreground mb-5">
