@@ -12,7 +12,7 @@ const navItems = [
   { name: "工程表", href: "/gantt", icon: GanttChart, internalOnly: false },
   { name: "見積", href: "/quotes", icon: FileText, internalOnly: false },
   { name: "請求", href: "/invoices", icon: Receipt, internalOnly: false },
-  { name: "請求済", href: "/invoices?paid=true", icon: BadgeCheck, internalOnly: false },
+  { name: "入金済", href: "/invoices?paid=true", icon: BadgeCheck, internalOnly: false },
   { name: "職人見積書", href: "/vendor-quotes", icon: FileSignature, internalOnly: false },
   { name: "職人請求書", href: "/vendor-invoices", icon: Upload, internalOnly: false },
   { name: "職人振込済", href: "/vendor-invoices?paid=true", icon: BadgeCheck, internalOnly: false },

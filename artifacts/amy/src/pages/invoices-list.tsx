@@ -44,7 +44,7 @@ import { apiErrorMessage } from "@/lib/api-error";
 import { useBulkSelection } from "@/lib/use-bulk-selection";
 import { BulkDeleteBar, runBulkDelete } from "@/components/bulk-delete-bar";
 
-// 入金済の請求書はサイドバーの「請求済」欄にしか表示しない。
+// 入金済の請求書はサイドバーの「入金済」欄にしか表示しない。
 // 通常の「請求」一覧は未入金のみ。
 type PaidFilter = "paid" | "unpaid";
 
@@ -158,12 +158,12 @@ export default function InvoicesListPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
-            {isPaidView ? "請求済（入金済）" : "請求書"}
+            {isPaidView ? "入金済" : "請求書"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isPaidView
               ? "入金済になった請求書はこちらに自動で移動します。"
-              : "未入金の請求書を管理します（入金済はサイドバー「請求済」へ自動移動）。"}
+              : "未入金の請求書を管理します（入金済はサイドバー「入金済」へ自動移動）。"}
           </p>
         </div>
         <Link href="/invoices/new">
