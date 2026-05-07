@@ -9,6 +9,12 @@ import {
 import { ProjectStatusBadge } from "@/components/status-badge";
 import { PROJECT_STATUS_OPTIONS } from "@/components/project-status-select";
 
+const EDITABLE_STATUS_VALUES: ProjectStatus[] = [
+  ProjectStatus.estimating,
+  ProjectStatus.in_progress,
+  ProjectStatus.completed,
+];
+
 export function EditableProjectStatusBadge({
   status,
   onChange,
@@ -39,7 +45,9 @@ export function EditableProjectStatusBadge({
         <ProjectStatusBadge status={display} />
       </SelectTrigger>
       <SelectContent>
-        {PROJECT_STATUS_OPTIONS.map((opt) => (
+        {PROJECT_STATUS_OPTIONS.filter((opt) =>
+          EDITABLE_STATUS_VALUES.includes(opt.value),
+        ).map((opt) => (
           <SelectItem key={opt.value} value={opt.value}>
             {opt.label}
           </SelectItem>
