@@ -100,24 +100,27 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
     .sort((a, b) => a.month.localeCompare(b.month));
 
   // Bucket projects into 5 dashboard categories. Buckets are derived, not the
-  // raw enum: a "completed" project that has any invoice is shown as 請求済 /
-  // 入金済 instead, so we get a real progress funnel (estimating → in_progress
-  // → completed → billed → paid). contracted/archived are intentionally
-  // omitted from the chart.
-  // Mirror the sidebar semantics: 「請求済」 link goes to /invoices?paid=true,
-  // so on the chart 入金済 = "this project has at least one paid invoice".
-  // 請求済 = "has invoices but none paid yet". A project with mixed paid +
-  // unpaid invoices counts as 入金済 (cash has come in for it).
+  // raw enum: a "completed" project that has been billed (sent to 元請) or
+  // paid is shown as 請求済 / 入金済 instead, so we get a real progress
+  // funnel (estimating → in_progress → completed → billed → paid).
+  // contracted/archived are intentionally omitted from the chart.
+  //
+  // Bucket semantics for completed projects:
+  //   入金済 = at least one invoice with paid=true (cash has come in)
+  //   請求済 = at least one invoice with sentToClient=true (sent to 元請)
+  //           but no paid invoice
+  //   竣工   = otherwise (no invoices, or invoices exist but none sent)
+  // Mixed paid + unpaid → 入金済 (cash takes precedence over send state).
   const invoicesByProject = new Map<
     string,
-    { hasAny: boolean; hasPaid: boolean }
+    { hasSent: boolean; hasPaid: boolean }
   >();
   for (const inv of invoices) {
     const cur = invoicesByProject.get(inv.projectId) ?? {
-      hasAny: false,
+      hasSent: false,
       hasPaid: false,
     };
-    cur.hasAny = true;
+    if (inv.sentToClient) cur.hasSent = true;
     if (inv.paid) cur.hasPaid = true;
     invoicesByProject.set(inv.projectId, cur);
   }
@@ -146,12 +149,13 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       buckets.in_progress += 1;
       continue;
     }
-    // completed projects get promoted by invoice state: 請求済 (any unpaid
-    // invoice) or 入金済 (any paid invoice). Mirror sidebar 「請求済」 link.
+    // completed projects get promoted by invoice state: 入金済 (any paid
+    // invoice) or 請求済 (any sentToClient=true invoice). An unsent invoice
+    // alone does NOT promote the project out of 竣工.
     if (p.status === "completed") {
       const inv = invoicesByProject.get(p.id);
       if (inv?.hasPaid) buckets.paid += 1;
-      else if (inv?.hasAny) buckets.billed += 1;
+      else if (inv?.hasSent) buckets.billed += 1;
       else buckets.completed += 1;
     }
   }
