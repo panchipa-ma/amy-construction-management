@@ -49,6 +49,54 @@ export interface CreateCustomerBody {
   notes?: string | null;
 }
 
+export type AppUserRole = (typeof AppUserRole)[keyof typeof AppUserRole];
+
+export const AppUserRole = {
+  internal: "internal",
+  external: "external",
+} as const;
+
+export type AppUserStatus = (typeof AppUserStatus)[keyof typeof AppUserStatus];
+
+export const AppUserStatus = {
+  pending: "pending",
+  approved: "approved",
+} as const;
+
+export interface AppUser {
+  id: string;
+  clerkUserId: string;
+  email?: string | null;
+  displayName?: string | null;
+  role: AppUserRole;
+  status: AppUserStatus;
+  approvedAt?: string | null;
+  approvedBy?: string | null;
+  createdAt: string;
+}
+
+export type UpdateUserBodyRole =
+  (typeof UpdateUserBodyRole)[keyof typeof UpdateUserBodyRole];
+
+export const UpdateUserBodyRole = {
+  internal: "internal",
+  external: "external",
+} as const;
+
+export type UpdateUserBodyStatus =
+  (typeof UpdateUserBodyStatus)[keyof typeof UpdateUserBodyStatus];
+
+export const UpdateUserBodyStatus = {
+  pending: "pending",
+  approved: "approved",
+} as const;
+
+export interface UpdateUserBody {
+  role?: UpdateUserBodyRole;
+  status?: UpdateUserBodyStatus;
+  displayName?: string | null;
+}
+
 export interface Staff {
   id: string;
   name: string;

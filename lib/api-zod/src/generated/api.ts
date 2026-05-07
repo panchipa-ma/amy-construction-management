@@ -400,6 +400,69 @@ export const DeleteCustomerParams = zod.object({
   id: zod.coerce.string(),
 });
 
+/**
+ * @summary Current signed-in user (creates app_users row on first call; first user is auto-admin)
+ */
+export const GetMeResponse = zod.object({
+  id: zod.string(),
+  clerkUserId: zod.string(),
+  email: zod.string().nullish(),
+  displayName: zod.string().nullish(),
+  role: zod.enum(["internal", "external"]),
+  status: zod.enum(["pending", "approved"]),
+  approvedAt: zod.coerce.date().nullish(),
+  approvedBy: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List all app users (internal admin only)
+ */
+export const ListUsersResponseItem = zod.object({
+  id: zod.string(),
+  clerkUserId: zod.string(),
+  email: zod.string().nullish(),
+  displayName: zod.string().nullish(),
+  role: zod.enum(["internal", "external"]),
+  status: zod.enum(["pending", "approved"]),
+  approvedAt: zod.coerce.date().nullish(),
+  approvedBy: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListUsersResponse = zod.array(ListUsersResponseItem);
+
+/**
+ * @summary Approve / change role / rename a user (internal admin only)
+ */
+export const UpdateUserParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateUserBody = zod.object({
+  role: zod.enum(["internal", "external"]).optional(),
+  status: zod.enum(["pending", "approved"]).optional(),
+  displayName: zod.string().nullish(),
+});
+
+export const UpdateUserResponse = zod.object({
+  id: zod.string(),
+  clerkUserId: zod.string(),
+  email: zod.string().nullish(),
+  displayName: zod.string().nullish(),
+  role: zod.enum(["internal", "external"]),
+  status: zod.enum(["pending", "approved"]),
+  approvedAt: zod.coerce.date().nullish(),
+  approvedBy: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a user (internal admin only; cannot delete self)
+ */
+export const DeleteUserParams = zod.object({
+  id: zod.coerce.string(),
+});
+
 export const ListStaffResponseItem = zod.object({
   id: zod.string(),
   name: zod.string(),

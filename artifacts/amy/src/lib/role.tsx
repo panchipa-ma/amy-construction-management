@@ -1,50 +1,71 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext } from "react";
+import { useGetMe } from "@workspace/api-client-react";
 
 export type Role = "internal" | "external";
+export type Status = "pending" | "approved";
 
-const STORAGE_KEY = "amy.role.v1";
-
-const RoleContext = createContext<{
+export type Me = {
+  id: string;
   role: Role;
-  setRole: (r: Role) => void;
-}>({
-  role: "internal",
-  setRole: () => {},
+  status: Status;
+  displayName: string | null;
+  email: string | null;
+};
+
+type Ctx = {
+  me: Me | null;
+  isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
+};
+
+const RoleContext = createContext<Ctx>({
+  me: null,
+  isLoading: true,
+  isError: false,
+  refetch: () => {},
 });
 
 export function RoleProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRoleState] = useState<Role>("internal");
-
-  useEffect(() => {
-    try {
-      const v = localStorage.getItem(STORAGE_KEY);
-      if (v === "internal" || v === "external") setRoleState(v);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const setRole = (r: Role) => {
-    setRoleState(r);
-    try {
-      localStorage.setItem(STORAGE_KEY, r);
-    } catch {
-      /* ignore */
-    }
-  };
-
+  const meQ = useGetMe();
+  const me: Me | null = meQ.data
+    ? {
+        id: meQ.data.id,
+        role: meQ.data.role,
+        status: meQ.data.status,
+        displayName: meQ.data.displayName ?? null,
+        email: meQ.data.email ?? null,
+      }
+    : null;
   return (
-    <RoleContext.Provider value={{ role, setRole }}>
+    <RoleContext.Provider
+      value={{
+        me,
+        isLoading: meQ.isLoading,
+        isError: meQ.isError,
+        refetch: () => {
+          void meQ.refetch();
+        },
+      }}
+    >
       {children}
     </RoleContext.Provider>
   );
 }
 
-export function useRole() {
+export function useMe() {
   return useContext(RoleContext);
 }
 
-// Paths the external role is allowed to access (prefix match).
+/** Backwards-compat shim used by sidebar & RoleGuard. */
+export function useRole(): { role: Role; status: Status } {
+  const { me } = useContext(RoleContext);
+  return {
+    role: me?.role ?? "external",
+    status: me?.status ?? "pending",
+  };
+}
+
 export const EXTERNAL_ALLOWED_PREFIXES = [
   "/vendor-invoices",
   "/staff-assignments",

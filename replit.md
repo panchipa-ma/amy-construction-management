@@ -33,13 +33,23 @@ After sign-up, every user must complete a profile that is auto-populated into �
 - `app-shell.tsx` — sidebar shows プロフィール button (UserCog icon, links to `/profile`) above サインアウト.
 - `pages/vendor-invoice-new.tsx` — issuer + bank sections are now read-only display cards populated from `readProfile(user)` with a "プロフィールを編集" button. Per-invoice form fields (`recipientName`, `authorName`) are still editable and persist to localStorage `amy.vendorInvoiceForm.v1` (the old `amy.vendorInvoiceCreator.v1` key is no longer written). `authorName` defaults from `user.fullName` when empty.
 
-## 権限分け (Role-based UI gating)
+## ユーザー管理・権限分け (Server-managed roles + approval)
 
-Client-side role switching only (no server-side enforcement — single-tenant tool). `lib/role.tsx` exposes `RoleProvider` + `useRole()` and stores the active role in `localStorage` key `amy.role.v1`. Two roles:
-- `internal` (社内) — 全機能
-- `external` (社外) — 「職人請求書」 (`/vendor-invoices*`) と 「職人 出面表」 (`/staff-assignments`) のみ
+Roles and approval are now **server-managed** (no localStorage). The `app_users` table stores one row per Clerk user (`clerkUserId` unique) with `role` (`internal` | `external`) and `status` (`pending` | `approved`).
 
-Sidebar in `app-shell.tsx` filters nav items via `isPathAllowed(role, href)` and renders a 権限 Select at the bottom. `RoleGuard` in `App.tsx` redirects external users to `/vendor-invoices` if they navigate to a restricted path. Sidebar is `sticky top-0 h-screen` so the role selector stays visible on long pages.
+**Bootstrap rule** (`artifacts/api-server/src/lib/auth.ts` `getOrCreateAppUser`): on first sign-in, if there are NO approved-internal users yet, that user is auto-promoted to `internal` + `approved` (so somebody can administer the app). Every subsequent new user defaults to `external` + `pending` and must be approved by an internal admin.
+
+**Backend** (`artifacts/api-server/src/routes/users.ts`):
+- `GET /api/me` — upserts the current user's app_users row from Clerk (email/name via `clerkClient.users.getUser`). Available to every signed-in user, even pending ones (they need it to know their status).
+- `GET /api/users`, `PATCH /api/users/:id`, `DELETE /api/users/:id` — gated by `requireInternal` middleware (403 unless `role==='internal' && status==='approved'`). PATCH/DELETE refuse to demote/delete self (lock-out guard). Approving sets `approvedAt` + `approvedBy`.
+
+**Frontend**:
+- `lib/role.tsx` — `RoleProvider` calls `useGetMe()`. `useMe()` returns `{me, isLoading, isError, refetch}`. `useRole()` is a back-compat shim returning `{role, status}`.
+- `App.tsx` — `<ApprovalGate>` placed AFTER `<ProfileGate>` inside `<Show signed-in>`. If `status !== 'approved'`, renders `pages/pending-approval.tsx` (承認待ち screen with サインアウト + 状況更新 buttons). Order: signed-in → profile complete → approved → app.
+- `pages/users.tsx` (`/users`) — internal-only admin page. Table with role Select, 承認/承認解除 button, 削除 button. Self-row protected (no demote/delete).
+- `app-shell.tsx` — removed the localStorage 権限 Select. Sidebar bottom now shows user name + read-only 権限 label, plus プロフィール / サインアウト. New nav item 「ユーザー管理」 (Shield icon) visible to internal only.
+
+External users still only see the same allowed paths via `EXTERNAL_ALLOWED_PREFIXES` (`/vendor-invoices`, `/staff-assignments`, `/profile`, `/profile-setup`). `RoleGuard` redirects external users to `/vendor-invoices` if they navigate to a restricted path.
 
 ## Architecture
 

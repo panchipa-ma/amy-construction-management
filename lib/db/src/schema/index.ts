@@ -9,6 +9,20 @@ import {
   jsonb,
 } from "drizzle-orm/pg-core";
 
+export const appUsersTable = pgTable("app_users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clerkUserId: text("clerk_user_id").notNull().unique(),
+  email: text("email"),
+  displayName: text("display_name"),
+  role: text("role").notNull().default("external"),
+  status: text("status").notNull().default("pending"),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  approvedBy: text("approved_by"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const customersTable = pgTable("customers", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),

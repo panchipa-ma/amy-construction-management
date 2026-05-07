@@ -8,6 +8,9 @@
 
 export * from "./activityItem";
 export * from "./activityItemKind";
+export * from "./appUser";
+export * from "./appUserRole";
+export * from "./appUserStatus";
 export * from "./assignVendorInvoiceStaffBody";
 export * from "./convertQuoteToInvoiceBody";
 export * from "./costCategory";
@@ -74,5 +77,8 @@ export * from "./staffAssignmentProjectsItem";
 export * from "./updateProjectBody";
 export * from "./updateProjectPhaseBody";
 export * from "./updateProjectPhaseBodyStatus";
+export * from "./updateUserBody";
+export * from "./updateUserBodyRole";
+export * from "./updateUserBodyStatus";
 export * from "./vendorInvoice";
 export * from "./vendorInvoiceStatus";

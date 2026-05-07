@@ -43,7 +43,11 @@ import StaffAssignmentsPage from "@/pages/staff-assignments";
 import GanttPage from "@/pages/gantt";
 import LandingPage from "@/pages/landing";
 import ProfileSetupPage from "@/pages/profile-setup";
+import PendingApprovalPage from "@/pages/pending-approval";
+import UsersPage from "@/pages/users";
 import { readProfile, isProfileComplete } from "@/lib/profile";
+import { useMe } from "@/lib/role";
+import { Loader2 } from "lucide-react";
 
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
@@ -185,6 +189,28 @@ function ProfileGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function ApprovalGate({ children }: { children: React.ReactNode }) {
+  const { me, isLoading, isError } = useMe();
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  if (isError || !me) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
+        ユーザー情報の取得に失敗しました。再読み込みしてください。
+      </div>
+    );
+  }
+  if (me.status !== "approved") {
+    return <PendingApprovalPage />;
+  }
+  return <>{children}</>;
+}
+
 function ProfileEditPage() {
   return <ProfileSetupPage mode="edit" />;
 }
@@ -216,6 +242,7 @@ function ProtectedRoutes() {
         <Route path="/receipts" component={ReceiptsPage} />
         <Route path="/ledger" component={LedgerPage} />
         <Route path="/staff-assignments" component={StaffAssignmentsPage} />
+        <Route path="/users" component={UsersPage} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>
@@ -231,7 +258,9 @@ function AppRoutes() {
         <Show when="signed-in">
           <RoleProvider>
             <ProfileGate>
-              <ProtectedRoutes />
+              <ApprovalGate>
+                <ProtectedRoutes />
+              </ApprovalGate>
             </ProfileGate>
           </RoleProvider>
         </Show>

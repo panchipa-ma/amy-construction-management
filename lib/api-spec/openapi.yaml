@@ -20,6 +20,7 @@ tags:
   - name: vendorInvoices
   - name: Storage
   - name: ocr
+  - name: users
 paths:
   /healthz:
     get:
@@ -217,6 +218,66 @@ paths:
     delete:
       operationId: deleteCustomer
       tags: [customers]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /me:
+    get:
+      operationId: getMe
+      tags: [users]
+      summary: Current signed-in user (creates app_users row on first call; first user is auto-admin)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AppUser" }
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all app users (internal admin only)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AppUser" }
+
+  /users/{id}:
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Approve / change role / rename a user (internal admin only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateUserBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AppUser" }
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete a user (internal admin only; cannot delete self)
       parameters:
         - in: path
           name: id
@@ -1010,6 +1071,27 @@ components:
         email: { type: string, nullable: true }
         address: { type: string, nullable: true }
         notes: { type: string, nullable: true }
+
+    AppUser:
+      type: object
+      required: [id, clerkUserId, role, status, createdAt]
+      properties:
+        id: { type: string }
+        clerkUserId: { type: string }
+        email: { type: string, nullable: true }
+        displayName: { type: string, nullable: true }
+        role: { type: string, enum: [internal, external] }
+        status: { type: string, enum: [pending, approved] }
+        approvedAt: { type: string, format: date-time, nullable: true }
+        approvedBy: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    UpdateUserBody:
+      type: object
+      properties:
+        role: { type: string, enum: [internal, external] }
+        status: { type: string, enum: [pending, approved] }
+        displayName: { type: string, nullable: true }
 
     Staff:
       type: object

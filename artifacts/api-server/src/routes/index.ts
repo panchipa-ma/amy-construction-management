@@ -15,6 +15,8 @@ import receiptsRouter from "./receipts";
 import phasesRouter from "./phases";
 import storageRouter from "./storage";
 import ocrRouter from "./ocr";
+import usersRouter from "./users";
+import { requireApproved } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -29,6 +31,8 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
 
 router.use(healthRouter);
 router.use(requireAuth);
+router.use(usersRouter);
+router.use(requireApproved);
 router.use(dashboardRouter);
 router.use(projectsRouter);
 router.use(customersRouter);
