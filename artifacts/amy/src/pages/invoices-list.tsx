@@ -35,11 +35,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Receipt, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { apiErrorMessage } from "@/lib/api-error";
+import { useBulkSelection } from "@/lib/use-bulk-selection";
+import { BulkDeleteBar, runBulkDelete } from "@/components/bulk-delete-bar";
 
 // 入金済の請求書はサイドバーの「請求済」欄にしか表示しない。
 // 通常の「請求」一覧は未入金のみ。
@@ -72,6 +75,27 @@ export default function InvoicesListPage() {
     id: string;
     label: string;
   } | null>(null);
+
+  const sel = useBulkSelection(rows.map((i) => i.id));
+
+  const handleBulkDelete = async () => {
+    const ids = sel.selectedIds;
+    const { ok, failed } = await runBulkDelete(ids, (id) =>
+      deleteMut.mutateAsync({ id }),
+    );
+    await queryClient.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
+    await invalidateDashboard(queryClient);
+    sel.clear();
+    if (failed.length === 0) {
+      toast({ title: `${ok}件の請求書を削除しました` });
+    } else {
+      toast({
+        title: `${ok}件削除、${failed.length}件失敗`,
+        description: apiErrorMessage(failed[0].error),
+        variant: "destructive",
+      });
+    }
+  };
 
   const togglePaid = async (
     id: string,
@@ -135,6 +159,14 @@ export default function InvoicesListPage() {
         </Link>
       </div>
 
+      <BulkDeleteBar
+        count={sel.count}
+        onClear={sel.clear}
+        onDelete={handleBulkDelete}
+        itemLabel="請求書"
+        isPending={deleteMut.isPending}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
@@ -165,6 +197,14 @@ export default function InvoicesListPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={sel.headerCheckedState}
+                      onCheckedChange={() => sel.toggleAll()}
+                      aria-label="全選択"
+                      data-testid="checkbox-select-all"
+                    />
+                  </TableHead>
                   <TableHead>請求番号</TableHead>
                   <TableHead>案件</TableHead>
                   <TableHead>発行日</TableHead>
@@ -176,7 +216,15 @@ export default function InvoicesListPage() {
               </TableHeader>
               <TableBody>
                 {rows.map((inv) => (
-                  <TableRow key={inv.id}>
+                  <TableRow key={inv.id} data-state={sel.isSelected(inv.id) ? "selected" : undefined}>
+                    <TableCell className="w-10">
+                      <Checkbox
+                        checked={sel.isSelected(inv.id)}
+                        onCheckedChange={() => sel.toggle(inv.id)}
+                        aria-label={`${inv.invoiceNumber}を選択`}
+                        data-testid={`checkbox-row-${inv.id}`}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Link
                         href={`/invoices/${inv.id}`}

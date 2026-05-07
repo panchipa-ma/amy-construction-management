@@ -36,6 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -48,6 +49,8 @@ import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { Plus, Pencil, Trash2, Users } from "lucide-react";
 import { apiErrorMessage } from "@/lib/api-error";
+import { useBulkSelection } from "@/lib/use-bulk-selection";
+import { BulkDeleteBar, runBulkDelete } from "@/components/bulk-delete-bar";
 
 const empty = {
   name: "",
@@ -136,6 +139,28 @@ export default function CustomersPage() {
   };
 
   const rows = customersQ.data ?? [];
+  const sel = useBulkSelection(rows.map((c) => c.id));
+
+  const handleBulkDelete = async () => {
+    const ids = sel.selectedIds;
+    const { ok, failed } = await runBulkDelete(ids, (id) =>
+      deleteMut.mutateAsync({ id }),
+    );
+    await queryClient.invalidateQueries({
+      queryKey: getListCustomersQueryKey(),
+    });
+    await invalidateDashboard(queryClient);
+    sel.clear();
+    if (failed.length === 0) {
+      toast({ title: `${ok}件の顧客を削除しました` });
+    } else {
+      toast({
+        title: `${ok}件削除、${failed.length}件失敗`,
+        description: apiErrorMessage(failed[0].error),
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-[1200px]">
@@ -151,6 +176,15 @@ export default function CustomersPage() {
           顧客を追加
         </Button>
       </div>
+
+      <BulkDeleteBar
+        count={sel.count}
+        onClear={sel.clear}
+        onDelete={handleBulkDelete}
+        itemLabel="顧客"
+        isPending={deleteMut.isPending}
+        description="関連する案件がある顧客は削除に失敗します。この操作は取り消せません。"
+      />
 
       <Card>
         <CardHeader>
@@ -178,6 +212,14 @@ export default function CustomersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={sel.headerCheckedState}
+                      onCheckedChange={() => sel.toggleAll()}
+                      aria-label="全選択"
+                      data-testid="checkbox-select-all"
+                    />
+                  </TableHead>
                   <TableHead>顧客名</TableHead>
                   <TableHead>担当者</TableHead>
                   <TableHead>電話</TableHead>
@@ -188,7 +230,15 @@ export default function CustomersPage() {
               </TableHeader>
               <TableBody>
                 {rows.map((c) => (
-                  <TableRow key={c.id}>
+                  <TableRow key={c.id} data-state={sel.isSelected(c.id) ? "selected" : undefined}>
+                    <TableCell className="w-10">
+                      <Checkbox
+                        checked={sel.isSelected(c.id)}
+                        onCheckedChange={() => sel.toggle(c.id)}
+                        aria-label={`${c.name}を選択`}
+                        data-testid={`checkbox-row-${c.id}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell>{c.contactName || "-"}</TableCell>
                     <TableCell>{c.phone || "-"}</TableCell>

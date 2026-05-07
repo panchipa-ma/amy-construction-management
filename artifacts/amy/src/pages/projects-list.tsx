@@ -48,6 +48,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useBulkSelection } from "@/lib/use-bulk-selection";
+import { BulkDeleteBar, runBulkDelete } from "@/components/bulk-delete-bar";
 import { ProjectStatusBadge } from "@/components/status-badge";
 import { PROJECT_STATUS_OPTIONS } from "@/components/project-status-select";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -98,6 +101,26 @@ export default function ProjectsListPage() {
   const [askDelete, setAskDelete] = useState<{ id: string; name: string } | null>(
     null,
   );
+  const sel = useBulkSelection(rows.map((p) => p.id));
+
+  const handleBulkDelete = async () => {
+    const ids = sel.selectedIds;
+    const { ok, failed } = await runBulkDelete(ids, (id) =>
+      deleteMut.mutateAsync({ id }),
+    );
+    await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+    await invalidateDashboard(queryClient);
+    sel.clear();
+    if (failed.length === 0) {
+      toast({ title: `${ok}件の案件を削除しました` });
+    } else {
+      toast({
+        title: `${ok}件削除、${failed.length}件失敗`,
+        description: apiErrorMessage(failed[0].error),
+        variant: "destructive",
+      });
+    }
+  };
   const [reuseFor, setReuseFor] = useState<{ id: string; name: string } | null>(
     null,
   );
@@ -138,6 +161,15 @@ export default function ProjectsListPage() {
           </Button>
         </Link>
       </div>
+
+      <BulkDeleteBar
+        count={sel.count}
+        onClear={sel.clear}
+        onDelete={handleBulkDelete}
+        itemLabel="案件"
+        isPending={deleteMut.isPending}
+        description="関連する見積書・請求書・施工台帳の原価エントリ・工程・進捗記録もすべて削除されます。この操作は取り消せません。"
+      />
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">
@@ -189,6 +221,14 @@ export default function ProjectsListPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={sel.headerCheckedState}
+                      onCheckedChange={() => sel.toggleAll()}
+                      aria-label="全選択"
+                      data-testid="checkbox-select-all"
+                    />
+                  </TableHead>
                   <TableHead>案件名</TableHead>
                   <TableHead>顧客</TableHead>
                   <TableHead>ステータス</TableHead>
@@ -205,7 +245,15 @@ export default function ProjectsListPage() {
                   const profit = p.contractAmount - p.actualCost;
                   const overrun = p.actualCost > p.plannedCost;
                   return (
-                    <TableRow key={p.id} className="cursor-pointer">
+                    <TableRow key={p.id} className="cursor-pointer" data-state={sel.isSelected(p.id) ? "selected" : undefined}>
+                      <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={sel.isSelected(p.id)}
+                          onCheckedChange={() => sel.toggle(p.id)}
+                          aria-label={`${p.name}を選択`}
+                          data-testid={`checkbox-row-${p.id}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <Link
                           href={`/projects/${p.id}`}

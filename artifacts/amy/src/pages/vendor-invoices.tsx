@@ -57,11 +57,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, Trash2, Link2, Sparkles, Loader2, FilePlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
+import { useBulkSelection } from "@/lib/use-bulk-selection";
+import { BulkDeleteBar, runBulkDelete } from "@/components/bulk-delete-bar";
 
 export default function VendorInvoicesPage() {
   const queryClient = useQueryClient();
@@ -88,6 +91,31 @@ export default function VendorInvoicesPage() {
   const [processing, setProcessing] = useState(0);
   const lastObjectPathRef = useRef<string>("");
   const lastContentTypeRef = useRef<string>("");
+
+  const listRows = listQ.data ?? [];
+  const sel = useBulkSelection(listRows.map((v) => v.id));
+
+  const handleBulkDelete = async () => {
+    const ids = sel.selectedIds;
+    const idSet = new Set<string>(ids);
+    const projectIds = listRows
+      .filter((v) => idSet.has(v.id))
+      .map((v) => v.projectId);
+    const { ok, failed } = await runBulkDelete(ids, (id) =>
+      deleteMut.mutateAsync({ id }),
+    );
+    await refresh(projectIds);
+    sel.clear();
+    if (failed.length === 0) {
+      toast({ title: `${ok}件の請求書を削除しました` });
+    } else {
+      toast({
+        title: `${ok}件削除、${failed.length}件失敗`,
+        description: apiErrorMessage(failed[0].error),
+        variant: "destructive",
+      });
+    }
+  };
 
   const refresh = async (projectIds?: (string | null | undefined)[]) => {
     await queryClient.invalidateQueries({
@@ -286,6 +314,15 @@ export default function VendorInvoicesPage() {
         </div>
       </div>
 
+      <BulkDeleteBar
+        count={sel.count}
+        onClear={sel.clear}
+        onDelete={handleBulkDelete}
+        itemLabel="請求書"
+        isPending={deleteMut.isPending}
+        description="関連する施工台帳の実績原価も削除されます。この操作は取り消せません。"
+      />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">請求書一覧</CardTitle>
@@ -301,6 +338,14 @@ export default function VendorInvoicesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={sel.headerCheckedState}
+                      onCheckedChange={() => sel.toggleAll()}
+                      aria-label="全選択"
+                      data-testid="checkbox-select-all"
+                    />
+                  </TableHead>
                   <TableHead>アップロード日</TableHead>
                   <TableHead>取引先</TableHead>
                   <TableHead>請求日</TableHead>
@@ -312,7 +357,15 @@ export default function VendorInvoicesPage() {
               </TableHeader>
               <TableBody>
                 {(listQ.data ?? []).map((v) => (
-                  <TableRow key={v.id}>
+                  <TableRow key={v.id} data-state={sel.isSelected(v.id) ? "selected" : undefined}>
+                    <TableCell className="w-10">
+                      <Checkbox
+                        checked={sel.isSelected(v.id)}
+                        onCheckedChange={() => sel.toggle(v.id)}
+                        aria-label={`${v.vendorName || v.fileName || v.id}を選択`}
+                        data-testid={`checkbox-row-${v.id}`}
+                      />
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(v.uploadedAt.slice(0, 10))}
                     </TableCell>

@@ -55,6 +55,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Upload,
   Trash2,
@@ -69,6 +70,8 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { CostCategoryBadge } from "@/components/cost-category-badge";
 import { cn } from "@/lib/utils";
+import { useBulkSelection } from "@/lib/use-bulk-selection";
+import { BulkDeleteBar, runBulkDelete } from "@/components/bulk-delete-bar";
 
 export default function ReceiptsPage() {
   const queryClient = useQueryClient();
@@ -87,6 +90,8 @@ export default function ReceiptsPage() {
   const lastContentTypeRef = useRef<string>("");
 
   const projects = projectsQ.data ?? [];
+  const listRows = listQ.data ?? [];
+  const sel = useBulkSelection(listRows.map((r) => r.id));
 
   const refresh = async (projectIds?: (string | null | undefined)[]) => {
     await queryClient.invalidateQueries({
@@ -176,6 +181,28 @@ export default function ReceiptsPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    const ids = sel.selectedIds;
+    const idSet = new Set<string>(ids);
+    const projectIds = listRows
+      .filter((r) => idSet.has(r.id))
+      .map((r) => r.projectId);
+    const { ok, failed } = await runBulkDelete(ids, (id) =>
+      deleteMut.mutateAsync({ id }),
+    );
+    await refresh(projectIds);
+    sel.clear();
+    if (failed.length === 0) {
+      toast({ title: `${ok}件の領収書を削除しました` });
+    } else {
+      toast({
+        title: `${ok}件削除、${failed.length}件失敗`,
+        description: apiErrorMessage(failed[0].error),
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleAssign = async (
     receiptId: string,
     nextProjectId: string,
@@ -245,6 +272,15 @@ export default function ReceiptsPage() {
         </div>
       </div>
 
+      <BulkDeleteBar
+        count={sel.count}
+        onClear={sel.clear}
+        onDelete={handleBulkDelete}
+        itemLabel="領収書"
+        isPending={deleteMut.isPending}
+        description="関連する施工台帳の実績原価も削除されます。この操作は取り消せません。"
+      />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">領収書一覧</CardTitle>
@@ -260,6 +296,14 @@ export default function ReceiptsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={sel.headerCheckedState}
+                      onCheckedChange={() => sel.toggleAll()}
+                      aria-label="全選択"
+                      data-testid="checkbox-select-all"
+                    />
+                  </TableHead>
                   <TableHead>アップロード日</TableHead>
                   <TableHead>店舗・支払先</TableHead>
                   <TableHead>カテゴリ</TableHead>
@@ -272,7 +316,15 @@ export default function ReceiptsPage() {
               </TableHeader>
               <TableBody>
                 {(listQ.data ?? []).map((r) => (
-                  <TableRow key={r.id}>
+                  <TableRow key={r.id} data-state={sel.isSelected(r.id) ? "selected" : undefined}>
+                    <TableCell className="w-10">
+                      <Checkbox
+                        checked={sel.isSelected(r.id)}
+                        onCheckedChange={() => sel.toggle(r.id)}
+                        aria-label={`${r.vendor || r.fileName || r.id}を選択`}
+                        data-testid={`checkbox-row-${r.id}`}
+                      />
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(r.uploadedAt.slice(0, 10))}
                     </TableCell>

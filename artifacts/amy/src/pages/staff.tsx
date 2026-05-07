@@ -37,6 +37,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useBulkSelection } from "@/lib/use-bulk-selection";
+import { BulkDeleteBar, runBulkDelete } from "@/components/bulk-delete-bar";
 import {
   Table,
   TableBody,
@@ -214,6 +217,26 @@ export default function StaffPage() {
   };
 
   const rows = data ?? [];
+  const sel = useBulkSelection(rows.map((s) => s.id));
+
+  const handleBulkDelete = async () => {
+    const ids = sel.selectedIds;
+    const { ok, failed } = await runBulkDelete(ids, (id) =>
+      deleteMut.mutateAsync({ id }),
+    );
+    await queryClient.invalidateQueries({ queryKey: getListStaffQueryKey() });
+    await invalidateDashboard(queryClient);
+    sel.clear();
+    if (failed.length === 0) {
+      toast({ title: `${ok}件の職人を削除しました` });
+    } else {
+      toast({
+        title: `${ok}件削除、${failed.length}件失敗`,
+        description: apiErrorMessage(failed[0].error),
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-[1200px]">
@@ -237,6 +260,14 @@ export default function StaffPage() {
           </Button>
         </div>
       </div>
+
+      <BulkDeleteBar
+        count={sel.count}
+        onClear={sel.clear}
+        onDelete={handleBulkDelete}
+        itemLabel="職人"
+        isPending={deleteMut.isPending}
+      />
 
       <Card>
         <CardHeader>
@@ -264,6 +295,14 @@ export default function StaffPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={sel.headerCheckedState}
+                      onCheckedChange={() => sel.toggleAll()}
+                      aria-label="全選択"
+                      data-testid="checkbox-select-all"
+                    />
+                  </TableHead>
                   <TableHead>氏名</TableHead>
                   <TableHead>職種</TableHead>
                   <TableHead>会社</TableHead>
@@ -277,7 +316,15 @@ export default function StaffPage() {
                 {rows.map((s) => {
                   const status = statusByStaff.get(s.id);
                   return (
-                    <TableRow key={s.id}>
+                    <TableRow key={s.id} data-state={sel.isSelected(s.id) ? "selected" : undefined}>
+                      <TableCell className="w-10 p-1">
+                        <Checkbox
+                          checked={sel.isSelected(s.id)}
+                          onCheckedChange={() => sel.toggle(s.id)}
+                          aria-label={`${s.name}を選択`}
+                          data-testid={`checkbox-row-${s.id}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium p-1">
                         <EditableText
                           value={s.name}

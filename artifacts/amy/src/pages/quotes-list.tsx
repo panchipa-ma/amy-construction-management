@@ -33,11 +33,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, FileText, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { apiErrorMessage } from "@/lib/api-error";
+import { useBulkSelection } from "@/lib/use-bulk-selection";
+import { BulkDeleteBar, runBulkDelete } from "@/components/bulk-delete-bar";
 
 export default function QuotesListPage() {
   const queryClient = useQueryClient();
@@ -45,11 +48,32 @@ export default function QuotesListPage() {
   const { data, isLoading } = useListQuotes();
   const deleteMut = useDeleteQuote();
   const rows = data ?? [];
+  const sel = useBulkSelection(rows.map((q) => q.id));
 
   const [askDelete, setAskDelete] = useState<{
     id: string;
     label: string;
   } | null>(null);
+
+  const handleBulkDelete = async () => {
+    const ids = sel.selectedIds;
+    const { ok, failed } = await runBulkDelete(ids, (id) =>
+      deleteMut.mutateAsync({ id }),
+    );
+    await queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
+    await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+    await invalidateDashboard(queryClient);
+    sel.clear();
+    if (failed.length === 0) {
+      toast({ title: `${ok}件の見積書を削除しました` });
+    } else {
+      toast({
+        title: `${ok}件削除、${failed.length}件失敗`,
+        description: apiErrorMessage(failed[0].error),
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleDelete = async () => {
     if (!askDelete) return;
@@ -86,6 +110,15 @@ export default function QuotesListPage() {
         </Link>
       </div>
 
+      <BulkDeleteBar
+        count={sel.count}
+        onClear={sel.clear}
+        onDelete={handleBulkDelete}
+        itemLabel="見積書"
+        isPending={deleteMut.isPending}
+        description="関連する案件の契約金額が再計算されます。この操作は取り消せません。"
+      />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">見積書一覧</CardTitle>
@@ -114,6 +147,14 @@ export default function QuotesListPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={sel.headerCheckedState}
+                      onCheckedChange={() => sel.toggleAll()}
+                      aria-label="全選択"
+                      data-testid="checkbox-select-all"
+                    />
+                  </TableHead>
                   <TableHead>見積番号</TableHead>
                   <TableHead>案件</TableHead>
                   <TableHead>発行日</TableHead>
@@ -124,7 +165,15 @@ export default function QuotesListPage() {
               </TableHeader>
               <TableBody>
                 {rows.map((q) => (
-                  <TableRow key={q.id}>
+                  <TableRow key={q.id} data-state={sel.isSelected(q.id) ? "selected" : undefined}>
+                    <TableCell className="w-10">
+                      <Checkbox
+                        checked={sel.isSelected(q.id)}
+                        onCheckedChange={() => sel.toggle(q.id)}
+                        aria-label={`${q.quoteNumber}を選択`}
+                        data-testid={`checkbox-row-${q.id}`}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Link
                         href={`/quotes/${q.id}`}
