@@ -86,6 +86,9 @@ export const vendorInvoicesTable = pgTable("vendor_invoices", {
   invoiceDate: date("invoice_date").notNull(),
   fileUrl: text("file_url").notNull(),
   fileName: text("file_name").notNull(),
+  // 職人見積書から請求書に変換したときに引き継ぐ見積書PDF (任意)。
+  quoteFileUrl: text("quote_file_url"),
+  quoteFileName: text("quote_file_name"),
   notes: text("notes"),
   status: text("status").notNull().default("unmatched"),
   // 職人への振込済みかどうか。元請から自社への入金 (invoices.paid) とは別。

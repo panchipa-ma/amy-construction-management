@@ -215,6 +215,9 @@ export interface VendorInvoice {
   /** objectPath (e.g. /objects/uploads/uuid) */
   fileUrl: string;
   fileName: string;
+  /** 見積書から引き継いだPDFのobjectPath */
+  quoteFileUrl?: string | null;
+  quoteFileName?: string | null;
   notes?: string | null;
   status: VendorInvoiceStatus;
   /** 職人への振込済みかどうか */
@@ -234,6 +237,8 @@ export interface CreateVendorInvoiceBody {
   invoiceDate: string;
   fileUrl: string;
   fileName: string;
+  quoteFileUrl?: string | null;
+  quoteFileName?: string | null;
   notes?: string | null;
 }
 

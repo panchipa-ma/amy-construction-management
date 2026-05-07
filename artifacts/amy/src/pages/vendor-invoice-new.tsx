@@ -5,6 +5,7 @@ import {
   useListProjects,
   useListVendorQuotes,
   useCreateVendorInvoice,
+  useDeleteVendorQuote,
   useRequestUploadUrl,
   getListVendorInvoicesQueryKey,
   getListVendorQuotesQueryKey,
@@ -134,6 +135,7 @@ export default function VendorInvoiceNewPage() {
   const { toast } = useToast();
   const projectsQ = useListProjects();
   const createMut = useCreateVendorInvoice();
+  const deleteVendorQuoteMut = useDeleteVendorQuote();
   const requestUrlMut = useRequestUploadUrl();
 
   const { user } = useUser();
@@ -306,46 +308,39 @@ export default function VendorInvoiceNewPage() {
         }),
       );
 
-      // 見積→請求変換の場合は、元の職人見積書のPDFファイルをそのまま
-      // 引き継ぐ (新しいPDFを生成しない / 元の見積書も削除しない)。
-      // 通常の新規作成時は html2canvas-pro + jsPDF でフォームから新規PDFを生成する。
-      let servePath: string;
-      let fileName: string;
-      const convertedFromQuote = !!sourceQuote;
-      if (sourceQuote) {
-        servePath = sourceQuote.fileUrl;
-        fileName = sourceQuote.fileName;
-      } else {
-        const [{ default: jsPDF }, html2canvas] = await Promise.all([
-          import("jspdf"),
-          import("html2canvas-pro").then((m) => m.default),
-        ]);
-        const canvas = await html2canvas(printRef.current, {
-          scale: 2,
-          backgroundColor: "#ffffff",
-        });
-        const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-        addCanvasToPdfWithRowBreaks(pdf, canvas, printRef.current);
-        const pdfBlob = pdf.output("blob");
+      // 請求書PDFを html2canvas-pro + jsPDF で生成してアップロード。
+      // 見積→請求変換の場合は、元の職人見積書のPDFファイル (fileUrl/fileName)
+      // も新請求書に「引き継ぎPDF」として添付し、元見積書は削除する。
+      const [{ default: jsPDF }, html2canvas] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas-pro").then((m) => m.default),
+      ]);
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+      });
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      addCanvasToPdfWithRowBreaks(pdf, canvas, printRef.current);
+      const pdfBlob = pdf.output("blob");
 
-        fileName = `請求書_${defaults.companyName || "vendor"}_${issueDate}.pdf`;
-        const contentType = "application/pdf";
+      const fileName = `請求書_${defaults.companyName || "vendor"}_${issueDate}.pdf`;
+      const contentType = "application/pdf";
 
-        const reqRes = await requestUrlMut.mutateAsync({
-          data: { name: fileName, size: pdfBlob.size, contentType },
-        });
-        const putRes = await fetch(reqRes.uploadURL, {
-          method: "PUT",
-          headers: { "Content-Type": contentType },
-          body: pdfBlob,
-        });
-        if (!putRes.ok) {
-          throw new Error("PDFのアップロードに失敗しました");
-        }
-        servePath = reqRes.objectPath.startsWith("/objects/")
-          ? `/api/storage${reqRes.objectPath}`
-          : reqRes.objectPath;
+      const reqRes = await requestUrlMut.mutateAsync({
+        data: { name: fileName, size: pdfBlob.size, contentType },
+      });
+      const putRes = await fetch(reqRes.uploadURL, {
+        method: "PUT",
+        headers: { "Content-Type": contentType },
+        body: pdfBlob,
+      });
+      if (!putRes.ok) {
+        throw new Error("PDFのアップロードに失敗しました");
       }
+      const servePath = reqRes.objectPath.startsWith("/objects/")
+        ? `/api/storage${reqRes.objectPath}`
+        : reqRes.objectPath;
+      const convertedFromQuote = !!sourceQuote;
 
       // Create vendor_invoice record (auto-routes via project's unitNumber)
       const unitNumber = project?.unitNumber || project?.name || "未設定";
@@ -363,11 +358,24 @@ export default function VendorInvoiceNewPage() {
           invoiceDate: issueDate,
           fileUrl: servePath,
           fileName,
+          quoteFileUrl: sourceQuote?.fileUrl ?? null,
+          quoteFileName: sourceQuote?.fileName ?? null,
           notes: noteParts.length > 0 ? noteParts.join(" / ") : null,
         },
       });
 
-      if (convertedFromQuote) {
+      // 変換元の職人見積書を削除して、見積一覧から請求一覧へ移行させる。
+      // 請求書作成は成功済みなので、削除に失敗しても処理は継続し警告のみ表示。
+      if (sourceQuote) {
+        try {
+          await deleteVendorQuoteMut.mutateAsync({ id: sourceQuote.id });
+        } catch (e) {
+          toast({
+            title: "元の職人見積書の削除に失敗しました",
+            description: apiErrorMessage(e),
+            variant: "destructive",
+          });
+        }
         await queryClient.invalidateQueries({
           queryKey: getListVendorQuotesQueryKey(),
         });
@@ -392,7 +400,7 @@ export default function VendorInvoiceNewPage() {
 
       toast({
         title: convertedFromQuote
-          ? "見積書ファイルを引き継いで請求書を作成しました"
+          ? "見積書を請求書に移行しました（見積PDFも添付）"
           : "請求書を作成しました",
         description: `${defaults.companyName} / ${formatCurrency(total)}`,
       });

@@ -1326,6 +1326,8 @@ components:
         invoiceDate: { type: string, format: date }
         fileUrl: { type: string, description: "objectPath (e.g. /objects/uploads/uuid)" }
         fileName: { type: string }
+        quoteFileUrl: { type: string, nullable: true, description: "見積書から引き継いだPDFのobjectPath" }
+        quoteFileName: { type: string, nullable: true }
         notes: { type: string, nullable: true }
         status: { type: string, enum: [matched, unmatched] }
         paid: { type: boolean, description: "職人への振込済みかどうか" }
@@ -1348,6 +1350,8 @@ components:
         invoiceDate: { type: string, format: date }
         fileUrl: { type: string }
         fileName: { type: string }
+        quoteFileUrl: { type: string, nullable: true }
+        quoteFileName: { type: string, nullable: true }
         notes: { type: string, nullable: true }
 
     MatchVendorInvoiceBody:

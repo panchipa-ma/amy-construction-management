@@ -14,5 +14,7 @@ export interface CreateVendorInvoiceBody {
   invoiceDate: Date;
   fileUrl: string;
   fileName: string;
+  quoteFileUrl?: string | null;
+  quoteFileName?: string | null;
   notes?: string | null;
 }

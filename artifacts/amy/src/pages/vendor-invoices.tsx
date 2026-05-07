@@ -454,14 +454,28 @@ export default function VendorInvoicesPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <a
-                        href={v.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary hover:underline text-sm"
-                      >
-                        {v.fileName}
-                      </a>
+                      <div className="flex flex-col gap-1">
+                        <a
+                          href={v.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary hover:underline text-sm"
+                        >
+                          {v.fileName}
+                        </a>
+                        {v.quoteFileUrl && (
+                          <a
+                            href={v.quoteFileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-muted-foreground hover:text-primary hover:underline text-xs"
+                            data-testid={`link-vendor-quote-file-${v.id}`}
+                          >
+                            <span className="inline-block px-1 py-0.5 mr-1 rounded bg-muted text-[10px] font-medium">見積</span>
+                            {v.quoteFileName || "見積書PDF"}
+                          </a>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

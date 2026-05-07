@@ -1282,6 +1282,11 @@ export const ListVendorInvoicesResponseItem = zod.object({
   invoiceDate: zod.coerce.date(),
   fileUrl: zod.string().describe("objectPath (e.g. \/objects\/uploads\/uuid)"),
   fileName: zod.string(),
+  quoteFileUrl: zod
+    .string()
+    .nullish()
+    .describe("見積書から引き継いだPDFのobjectPath"),
+  quoteFileName: zod.string().nullish(),
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
   paid: zod.boolean().describe("職人への振込済みかどうか"),
@@ -1302,6 +1307,8 @@ export const CreateVendorInvoiceBody = zod.object({
   invoiceDate: zod.coerce.date(),
   fileUrl: zod.string(),
   fileName: zod.string(),
+  quoteFileUrl: zod.string().nullish(),
+  quoteFileName: zod.string().nullish(),
   notes: zod.string().nullish(),
 });
 
@@ -1318,6 +1325,11 @@ export const CreateVendorInvoiceResponse = zod.object({
   invoiceDate: zod.coerce.date(),
   fileUrl: zod.string().describe("objectPath (e.g. \/objects\/uploads\/uuid)"),
   fileName: zod.string(),
+  quoteFileUrl: zod
+    .string()
+    .nullish()
+    .describe("見積書から引き継いだPDFのobjectPath"),
+  quoteFileName: zod.string().nullish(),
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
   paid: zod.boolean().describe("職人への振込済みかどうか"),
@@ -1352,6 +1364,11 @@ export const AssignVendorInvoiceStaffResponse = zod.object({
   invoiceDate: zod.coerce.date(),
   fileUrl: zod.string().describe("objectPath (e.g. \/objects\/uploads\/uuid)"),
   fileName: zod.string(),
+  quoteFileUrl: zod
+    .string()
+    .nullish()
+    .describe("見積書から引き継いだPDFのobjectPath"),
+  quoteFileName: zod.string().nullish(),
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
   paid: zod.boolean().describe("職人への振込済みかどうか"),
@@ -1382,6 +1399,11 @@ export const MarkVendorInvoicePaidResponse = zod.object({
   invoiceDate: zod.coerce.date(),
   fileUrl: zod.string().describe("objectPath (e.g. \/objects\/uploads\/uuid)"),
   fileName: zod.string(),
+  quoteFileUrl: zod
+    .string()
+    .nullish()
+    .describe("見積書から引き継いだPDFのobjectPath"),
+  quoteFileName: zod.string().nullish(),
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
   paid: zod.boolean().describe("職人への振込済みかどうか"),
@@ -1412,6 +1434,11 @@ export const MatchVendorInvoiceResponse = zod.object({
   invoiceDate: zod.coerce.date(),
   fileUrl: zod.string().describe("objectPath (e.g. \/objects\/uploads\/uuid)"),
   fileName: zod.string(),
+  quoteFileUrl: zod
+    .string()
+    .nullish()
+    .describe("見積書から引き継いだPDFのobjectPath"),
+  quoteFileName: zod.string().nullish(),
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
   paid: zod.boolean().describe("職人への振込済みかどうか"),
@@ -1546,6 +1573,11 @@ export const ConvertVendorQuoteToInvoiceResponse = zod.object({
   invoiceDate: zod.coerce.date(),
   fileUrl: zod.string().describe("objectPath (e.g. \/objects\/uploads\/uuid)"),
   fileName: zod.string(),
+  quoteFileUrl: zod
+    .string()
+    .nullish()
+    .describe("見積書から引き継いだPDFのobjectPath"),
+  quoteFileName: zod.string().nullish(),
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
   paid: zod.boolean().describe("職人への振込済みかどうか"),
