@@ -91,6 +91,8 @@ export type ProjectPatch = Partial<{
   endDate: string | null;
   contractAmount: number;
   salesCommissionRate: number | null;
+  standardProfitRate: number | null;
+  supervisorCommissionRate: number | null;
   salesRep: string | null;
   siteSupervisor: string | null;
   notes: string | null;
@@ -159,7 +161,8 @@ export function LedgerSpreadsheet({
 
   const finalProfit = grossProfit - salesCommission - supervisorCommission;
 
-  const budgetCost = orderCost;
+  // 予算組み目安: 売上 − 営業歩合 − 規定粗利額 を協力会社・経費の上限とする
+  const budgetCost = Math.max(0, orderAmount - salesCommission - standardProfit);
   const budgetProfit = orderAmount - budgetCost;
 
   const totalsByCat: Record<Cat, number> = {
@@ -242,6 +245,40 @@ export function LedgerSpreadsheet({
                     </div>
                   ) : (
                     `${(project.salesCommissionRate ?? 5).toFixed(1)}%`
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <th>規定利率</th>
+                <td className="tabular-nums">
+                  {editable ? (
+                    <div className="flex items-center justify-end gap-1">
+                      <EditableNumber
+                        value={project.standardProfitRate ?? 20}
+                        onSave={(v) =>
+                          onProjectUpdate!({ standardProfitRate: v })
+                        }
+                      />
+                      <span className="text-muted-foreground">%</span>
+                    </div>
+                  ) : (
+                    `${(project.standardProfitRate ?? 20).toFixed(1)}%`
+                  )}
+                </td>
+                <th>監督歩合率</th>
+                <td className="tabular-nums">
+                  {editable ? (
+                    <div className="flex items-center justify-end gap-1">
+                      <EditableNumber
+                        value={project.supervisorCommissionRate ?? 30}
+                        onSave={(v) =>
+                          onProjectUpdate!({ supervisorCommissionRate: v })
+                        }
+                      />
+                      <span className="text-muted-foreground">%</span>
+                    </div>
+                  ) : (
+                    `${(project.supervisorCommissionRate ?? 30).toFixed(1)}%`
                   )}
                 </td>
               </tr>
@@ -414,8 +451,11 @@ export function LedgerSpreadsheet({
                 <th className="border border-border bg-primary text-primary-foreground px-2 py-1.5 text-center font-semibold">
                   受注 (計画)
                 </th>
-                <th className="border border-border bg-primary text-primary-foreground px-2 py-1.5 text-center font-semibold">
-                  予算
+                <th
+                  className="border border-border bg-primary text-primary-foreground px-2 py-1.5 text-center font-semibold"
+                  title="売上 − 営業歩合 − 規定粗利額 = 協力会社・経費の上限"
+                >
+                  予算組み
                 </th>
                 <th className="border border-border bg-accent text-accent-foreground px-2 py-1.5 text-center font-semibold">
                   締め (実績)
@@ -445,7 +485,12 @@ export function LedgerSpreadsheet({
               <tr>
                 <th>原価</th>
                 <td className="text-right">{formatCurrency(orderCost)}</td>
-                <td className="text-right">{formatCurrency(budgetCost)}</td>
+                <td
+                  className="text-right text-muted-foreground"
+                  title="協力会社・経費の上限目安"
+                >
+                  ≤ {formatCurrency(budgetCost)}
+                </td>
                 <td className="text-right font-medium">
                   {formatCurrency(actualCost)}
                 </td>
@@ -453,7 +498,9 @@ export function LedgerSpreadsheet({
               <tr>
                 <th>粗利</th>
                 <td className="text-right">{formatCurrency(orderProfit)}</td>
-                <td className="text-right">{formatCurrency(budgetProfit)}</td>
+                <td className="text-right text-muted-foreground">
+                  ≥ {formatCurrency(budgetProfit)}
+                </td>
                 <td
                   className={`text-right font-semibold ${grossProfit < 0 ? "text-destructive" : "text-accent"}`}
                 >
@@ -463,7 +510,9 @@ export function LedgerSpreadsheet({
               <tr>
                 <th>粗利率</th>
                 <td className="text-right">{pct(orderProfit, orderAmount)}</td>
-                <td className="text-right">{pct(budgetProfit, orderAmount)}</td>
+                <td className="text-right text-muted-foreground">
+                  ≥ {pct(budgetProfit, orderAmount)}
+                </td>
                 <td
                   className={`text-right font-semibold ${grossProfit < 0 ? "text-destructive" : "text-accent"}`}
                 >
