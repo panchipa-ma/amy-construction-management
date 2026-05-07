@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { ArrowLeft, Save, Trash2, Plus } from "lucide-react";
 import { apiErrorMessage } from "@/lib/api-error";
-import { useCompanyInfo } from "@/lib/company-info";
+import { COMPANY_INFO } from "@/lib/company-info";
 import { formatCurrency } from "@/lib/format";
 import { UNIT_OPTIONS } from "@/lib/units";
 
@@ -77,7 +77,6 @@ function emptyItem(): LineItem {
 }
 
 export default function InvoiceNewPage() {
-  const COMPANY_INFO = useCompanyInfo();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();

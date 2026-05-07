@@ -50,15 +50,6 @@ Stored in `user.unsafeMetadata.profile` so each social member only sees their ow
 - `App.tsx` `<ProfileGate>` inside `<Show signed-in>` after `<RoleProvider>`. If incomplete and path ≠ `/profile-setup`, redirects there. `EXTERNAL_ALLOWED_PREFIXES` (lib/role.tsx) includes `/profile`, `/profile-setup`.
 - Vendor invoice/quote pages display issuer + bank as read-only cards from `readProfile(user)` with a "プロフィールを編集" button. Per-form fields (`recipientName`, `recipientContactName`, `authorName`) persist to localStorage `amy.vendorInvoiceForm.v1` / `amy.vendorQuoteForm.v1`. `authorName` defaults from `user.fullName`. `recipientContactName` (宛先のご担当者) and `authorName` (発行元の作成者) are independent — preview's recipient-side ご担当 row uses `recipientContactName`, issuer card 担当 row uses `authorName`. On save both are stamped into vendor_quotes/vendor_invoices `notes` (`作成者: X / ご担当: Y / 宛名: Z / freeform`); `parseAuthorRecipient` in `vendor-invoice-new.tsx` reads them back when prefilling from a source quote.
 
-## 会社プロフィール (株式会社AMY 発行元情報)
-
-シングルトン行 (`company_profile` テーブル, id=`'default'`)。請求書/見積書プレビューの発行元・振込先・取引条件として使用。
-
-- DB: `lib/db` `companyProfileTable` — name/postalCode/address/registrationNumber/tel/fax/email/contact + bankName/branchName/branchCode/accountType/accountNumber/accountHolder + termsDelivery/termsPayment/termsValidity。
-- API: `GET /api/company-profile` (任意の承認済ユーザー — 社外職人の見積/請求プレビューにも使用), `PUT /api/company-profile` (`requireInternal` のみ)。初回 GET 時に `DEFAULTS`（旧 `company-info.ts` の値）でシード。
-- フロント: `lib/company-info.ts` は依然として `COMPANY_INFO` / `BANK_INFO` / `QUOTE_TERMS` を fallback 定数として export しつつ、`useCompanyInfo()` / `useBankInfo()` / `useQuoteTerms()` フックを提供。`useGetCompanyProfile()` のデータが取れるまでは fallback を返す。各消費ページ (`invoice-detail` / `invoice-new` / `quote-new` / `quote-detail` / `vendor-quote-new`) はコンポーネント先頭でフックを呼び、同名のローカル変数 (`const COMPANY_INFO = useCompanyInfo()`) で旧定数参照を上書きする最小差分。
-- ページ: `pages/company-profile.tsx` (`/company-profile`)。サイドバー Building2 アイコン、`internalOnly: true`。社外ユーザーは閲覧不可。
-
 ## ユーザー管理・権限 (server-managed roles + approval)
 
 `app_users` table stores one row per Clerk user (`clerkUserId` unique) with `role` (`internal`|`external`) and `status` (`pending`|`approved`).

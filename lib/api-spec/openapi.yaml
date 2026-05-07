@@ -22,7 +22,6 @@ tags:
   - name: Storage
   - name: ocr
   - name: users
-  - name: companyProfile
 paths:
   /healthz:
     get:
@@ -228,33 +227,6 @@ paths:
       responses:
         "204":
           description: Deleted
-
-  /company-profile:
-    get:
-      operationId: getCompanyProfile
-      tags: [companyProfile]
-      summary: 株式会社AMY のプロフィール (請求書・見積書の発行元情報)
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/CompanyProfile" }
-    put:
-      operationId: updateCompanyProfile
-      tags: [companyProfile]
-      summary: 株式会社AMY のプロフィールを更新 (社内管理者のみ)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CompanyProfileBody" }
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/CompanyProfile" }
 
   /me:
     get:
@@ -1220,55 +1192,6 @@ components:
         email: { type: string, nullable: true }
         address: { type: string, nullable: true }
         notes: { type: string, nullable: true }
-
-    CompanyProfileBody:
-      type: object
-      required:
-        [
-          name,
-          postalCode,
-          address,
-          registrationNumber,
-          tel,
-          fax,
-          email,
-          contact,
-          bankName,
-          branchName,
-          branchCode,
-          accountType,
-          accountNumber,
-          accountHolder,
-          termsDelivery,
-          termsPayment,
-          termsValidity,
-        ]
-      properties:
-        name: { type: string }
-        postalCode: { type: string }
-        address: { type: string }
-        registrationNumber: { type: string }
-        tel: { type: string }
-        fax: { type: string }
-        email: { type: string }
-        contact: { type: string }
-        bankName: { type: string }
-        branchName: { type: string }
-        branchCode: { type: string }
-        accountType: { type: string }
-        accountNumber: { type: string }
-        accountHolder: { type: string }
-        termsDelivery: { type: string }
-        termsPayment: { type: string }
-        termsValidity: { type: string }
-
-    CompanyProfile:
-      allOf:
-        - $ref: "#/components/schemas/CompanyProfileBody"
-        - type: object
-          required: [updatedAt]
-          properties:
-            updatedAt: { type: string, format: date-time }
 
     AppUser:
       type: object

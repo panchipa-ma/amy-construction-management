@@ -12,8 +12,6 @@ export * from "./appUser";
 export * from "./appUserRole";
 export * from "./appUserStatus";
 export * from "./assignVendorInvoiceStaffBody";
-export * from "./companyProfile";
-export * from "./companyProfileBody";
 export * from "./convertQuoteToInvoiceBody";
 export * from "./convertVendorQuoteToInvoiceBody";
 export * from "./costCategory";

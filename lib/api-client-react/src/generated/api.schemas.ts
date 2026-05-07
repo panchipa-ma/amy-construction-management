@@ -49,30 +49,6 @@ export interface CreateCustomerBody {
   notes?: string | null;
 }
 
-export interface CompanyProfileBody {
-  name: string;
-  postalCode: string;
-  address: string;
-  registrationNumber: string;
-  tel: string;
-  fax: string;
-  email: string;
-  contact: string;
-  bankName: string;
-  branchName: string;
-  branchCode: string;
-  accountType: string;
-  accountNumber: string;
-  accountHolder: string;
-  termsDelivery: string;
-  termsPayment: string;
-  termsValidity: string;
-}
-
-export type CompanyProfile = CompanyProfileBody & {
-  updatedAt: string;
-};
-
 export type AppUserRole = (typeof AppUserRole)[keyof typeof AppUserRole];
 
 export const AppUserRole = {
