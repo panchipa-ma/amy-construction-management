@@ -326,12 +326,15 @@ export default function QuotesListPage() {
                   id="cIssueDate"
                   type="date"
                   value={convertForm.issueDate}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const next = e.target.value;
                     setConvertForm({
                       ...convertForm,
-                      issueDate: e.target.value,
-                    })
-                  }
+                      issueDate: next,
+                      // 発行日が変わったら支払期日も自動で翌月末に追従させる
+                      dueDate: next ? endOfNextMonthISO(next) : convertForm.dueDate,
+                    });
+                  }}
                 />
               </div>
               <div>

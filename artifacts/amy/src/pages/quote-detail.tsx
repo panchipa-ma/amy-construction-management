@@ -61,7 +61,7 @@ import {
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, endOfNextMonthISO } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { COMPANY_INFO, QUOTE_TERMS } from "@/lib/company-info";
 
@@ -117,7 +117,7 @@ export default function QuoteDetailPage() {
   const [convertForm, setConvertForm] = useState({
     invoiceNumber: "",
     issueDate: today,
-    dueDate: "",
+    dueDate: endOfNextMonthISO(today),
   });
   const [importForm, setImportForm] = useState({
     category: CostCategory.material as CostCategory,
@@ -369,7 +369,7 @@ export default function QuoteDetailPage() {
                   setConvertForm({
                     invoiceNumber: quote.quoteNumber.replace(/^Q/i, "INV"),
                     issueDate: today,
-                    dueDate: "",
+                    dueDate: endOfNextMonthISO(today),
                   });
                   setConvertOpen(true);
                 }}
@@ -818,12 +818,15 @@ export default function QuoteDetailPage() {
                   id="cIssueDate"
                   type="date"
                   value={convertForm.issueDate}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const next = e.target.value;
                     setConvertForm({
                       ...convertForm,
-                      issueDate: e.target.value,
-                    })
-                  }
+                      issueDate: next,
+                      // 発行日が変わったら支払期日も自動で翌月末に追従させる
+                      dueDate: next ? endOfNextMonthISO(next) : convertForm.dueDate,
+                    });
+                  }}
                 />
               </div>
               <div>
