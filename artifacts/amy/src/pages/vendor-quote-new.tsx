@@ -524,6 +524,21 @@ export default function VendorQuoteNewPage() {
         production. Inline styles are guaranteed to render the same in dev and
         prod.
       */}
+      {/*
+        Outer wrapper: visual A4 page outline (NOT captured by html2canvas).
+        Inner printRef sizes to actual content so the PDF only uses as many
+        A4 pages as needed.
+      */}
+      <div
+        style={{
+          width: "210mm",
+          minHeight: "297mm",
+          background: "#ffffff",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+          boxSizing: "border-box",
+        }}
+      >
       <div
         ref={printRef}
         style={{
@@ -532,8 +547,6 @@ export default function VendorQuoteNewPage() {
           padding: "32px",
           background: "#ffffff",
           color: "#0f172a",
-          border: "1px solid #e2e8f0",
-          boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
           fontFamily:
             "-apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif",
           fontSize: "13px",
@@ -708,6 +721,7 @@ export default function VendorQuoteNewPage() {
             <p style={{ whiteSpace: "pre-wrap", paddingLeft: "4px" }}>{notes}</p>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

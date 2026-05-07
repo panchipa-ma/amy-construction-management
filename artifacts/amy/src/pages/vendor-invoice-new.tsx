@@ -653,6 +653,22 @@ export default function VendorInvoiceNewPage() {
         the production CSS bundle. Inline styles are guaranteed to render the
         same in dev and prod and are always seen by html2canvas.
       */}
+      {/*
+        Outer wrapper: shows an A4-sized white "page" so the user can visually
+        gauge how much fits on one A4. NOT captured by html2canvas — the inner
+        printRef sizes to actual content, so the generated PDF only uses as
+        many A4 pages as needed.
+      */}
+      <div
+        style={{
+          width: "210mm",
+          minHeight: "297mm",
+          background: "#ffffff",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+          boxSizing: "border-box",
+        }}
+      >
       <div
         ref={printRef}
         style={{
@@ -661,8 +677,6 @@ export default function VendorInvoiceNewPage() {
           padding: "32px",
           background: "#ffffff",
           color: "#0f172a",
-          border: "1px solid #e2e8f0",
-          boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
           fontFamily:
             "-apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif",
           fontSize: "13px",
@@ -1028,6 +1042,7 @@ export default function VendorInvoiceNewPage() {
             <p style={{ whiteSpace: "pre-wrap", paddingLeft: "4px" }}>{notes}</p>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
