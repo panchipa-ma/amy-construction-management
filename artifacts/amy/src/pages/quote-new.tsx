@@ -3,8 +3,10 @@ import { useLocation, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useCreateQuote,
+  useGetQuote,
   useListProjects,
   useListCustomers,
+  getGetQuoteQueryKey,
   getListQuotesQueryKey,
   type LineItem,
 } from "@workspace/api-client-react";
@@ -71,6 +73,12 @@ function searchParamProjectId(): string {
   return params.get("projectId") ?? "";
 }
 
+function searchParamFromQuoteId(): string {
+  if (typeof window === "undefined") return "";
+  const params = new URLSearchParams(window.location.search);
+  return params.get("fromQuoteId") ?? "";
+}
+
 function emptyItem(): LineItem {
   return { description: "", unit: "", quantity: 0, unitPrice: 0, notes: "" };
 }
@@ -101,6 +109,48 @@ export default function QuoteNewPage() {
   );
 
   const subjectTouched = useRef(false);
+
+  // 既存見積書から複製：?fromQuoteId=<id> をフェッチして本文・明細を流用。
+  // 案件・顧客・見積No・見積日は引き継がない（新規案件用のため）。
+  const [fromQuoteId] = useState(searchParamFromQuoteId);
+  const fromQuoteQ = useGetQuote(fromQuoteId, {
+    query: {
+      enabled: !!fromQuoteId,
+      queryKey: getGetQuoteQueryKey(fromQuoteId),
+    },
+  });
+  const prefilledRef = useRef(false);
+  useEffect(() => {
+    if (!fromQuoteId || prefilledRef.current) return;
+    const src = fromQuoteQ.data;
+    if (!src) return;
+    prefilledRef.current = true;
+    if (src.subject) {
+      setSubject(src.subject);
+      // Mark as user-edited so the project picker doesn't overwrite it.
+      subjectTouched.current = true;
+    }
+    if (src.contactName) setContactName(src.contactName);
+    if (src.notes) setNotes(src.notes);
+    if (Array.isArray(src.items) && src.items.length > 0) {
+      const copied: LineItem[] = src.items.map((it) => ({
+        description: it.description ?? "",
+        unit: it.unit ?? "",
+        quantity: it.quantity ?? 0,
+        unitPrice: it.unitPrice ?? 0,
+        notes: it.notes ?? "",
+      }));
+      // Pad to at least ROWS so the empty-row UX still works.
+      while (copied.length < ROWS) copied.push(emptyItem());
+      // Append a trailing empty row so typing into the last copied row appends.
+      copied.push(emptyItem());
+      setRows(copied);
+    }
+    toast({
+      title: "見積書を複製しました",
+      description: "案件・見積No・見積日を選び直してください。",
+    });
+  }, [fromQuoteId, fromQuoteQ.data, toast]);
 
   const selectedProject = useMemo(
     () => (projectsQ.data ?? []).find((p) => p.id === projectId),

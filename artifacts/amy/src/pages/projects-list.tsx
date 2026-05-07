@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link, useSearch } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProjects,
+  useListQuotes,
   useDeleteProject,
   getListProjectsQueryKey,
   ProjectStatus,
@@ -40,10 +41,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { ProjectStatusBadge } from "@/components/status-badge";
 import { PROJECT_STATUS_OPTIONS } from "@/components/project-status-select";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { Plus, FolderKanban, Trash2 } from "lucide-react";
+import { Plus, FolderKanban, Trash2, Copy, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { apiErrorMessage } from "@/lib/api-error";
@@ -90,6 +98,10 @@ export default function ProjectsListPage() {
   const [askDelete, setAskDelete] = useState<{ id: string; name: string } | null>(
     null,
   );
+  const [reuseFor, setReuseFor] = useState<{ id: string; name: string } | null>(
+    null,
+  );
+  const [, navigate] = useLocation();
 
   const handleDelete = async () => {
     if (!askDelete) return;
@@ -184,6 +196,7 @@ export default function ProjectsListPage() {
                   <TableHead className="text-right">契約金額</TableHead>
                   <TableHead className="text-right">実績原価</TableHead>
                   <TableHead className="text-right">粗利</TableHead>
+                  {isCompletedView && <TableHead className="w-32"></TableHead>}
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -226,6 +239,23 @@ export default function ProjectsListPage() {
                       >
                         {formatCurrency(profit)}
                       </TableCell>
+                      {isCompletedView && (
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReuseFor({ id: p.id, name: p.name });
+                            }}
+                            className="gap-1.5 h-7 px-2 text-xs"
+                            title="この案件の見積書を複製して新規作成"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            見積を流用
+                          </Button>
+                        </TableCell>
+                      )}
                       <TableCell className="text-right">
                         <Button
                           size="sm"
@@ -272,6 +302,89 @@ export default function ProjectsListPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={!!reuseFor}
+        onOpenChange={(o) => !o && setReuseFor(null)}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>見積書を流用して新規作成</DialogTitle>
+            <DialogDescription>
+              「{reuseFor?.name}」の見積書を選択してください。内容を引き継いで新しい見積書を作成します（案件・見積No・見積日は選び直し）。
+            </DialogDescription>
+          </DialogHeader>
+          {reuseFor && (
+            <ReuseQuotePicker
+              projectId={reuseFor.id}
+              onPick={(quoteId) => {
+                setReuseFor(null);
+                navigate(`/quotes/new?fromQuoteId=${quoteId}`);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function ReuseQuotePicker({
+  projectId,
+  onPick,
+}: {
+  projectId: string;
+  onPick: (quoteId: string) => void;
+}) {
+  const { data, isLoading } = useListQuotes({ projectId });
+  if (isLoading) {
+    return (
+      <div className="py-6 text-center text-sm text-muted-foreground">
+        読み込み中...
+      </div>
+    );
+  }
+  const quotes = data ?? [];
+  if (quotes.length === 0) {
+    return (
+      <div className="py-6 flex flex-col items-center text-center gap-2 text-sm text-muted-foreground">
+        <FileText className="w-8 h-8 opacity-40" />
+        この案件には見積書がありません。
+      </div>
+    );
+  }
+  return (
+    <div className="max-h-80 overflow-y-auto space-y-1.5 pr-1">
+      {quotes.map((q) => {
+        const subtotal = (q.items ?? []).reduce(
+          (s, it) => s + (it.quantity || 0) * (it.unitPrice || 0),
+          0,
+        );
+        const total = subtotal + Math.floor(subtotal * 0.1);
+        return (
+          <button
+            key={q.id}
+            type="button"
+            onClick={() => onPick(q.id)}
+            className="w-full text-left px-3 py-2.5 rounded-md border hover:bg-accent hover:border-accent-foreground/20 transition-colors flex items-start gap-3"
+          >
+            <FileText className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-sm truncate">
+                {q.subject || q.quoteNumber}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-3">
+                <span>{q.quoteNumber}</span>
+                <span>{formatDate(q.issueDate)}</span>
+                <span className="tabular-nums">
+                  {formatCurrency(total)}（税込）
+                </span>
+              </div>
+            </div>
+            <Copy className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+          </button>
+        );
+      })}
     </div>
   );
 }

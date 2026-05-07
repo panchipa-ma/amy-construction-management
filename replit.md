@@ -102,6 +102,16 @@ pnpm monorepo with TypeScript project references.
 - **職人請求書を作成** (`/vendor-invoices/new`): Form-based vendor-invoice creation. Fields: 宛名 (default 株式会社AMY, custom入力可), 作成者, 件名 (案件 dropdown — drives unitNumber for auto-routing), 発行日, 支払期限, 発行元 (会社名/インボイス番号/郵便番号/住所/メール), 振込先 (銀行/支店/種別/口座番号/名義), 明細 (摘要/数量/単価). Uses `html2canvas-pro` + `jsPDF` to render the preview area to PDF, uploads via `/api/storage/uploads/request-url`, then POSTs to `/api/vendor-invoices` with the resulting servePath. Creator inputs (発行元 + 振込先 + 宛名 + 作成者) persist in `localStorage` under key `amy.vendorInvoiceCreator.v1` so 2回目以降は自動入力.
 - **File uploads**: `POST /api/storage/uploads/request-url` returns `{uploadURL, objectPath}`. Frontend captures `objectPath` from this call (via ref in onGetUploadParameters), then constructs serve path `/api/storage${objectPath}` for `vendor_invoices.fileUrl`. Files are served by `GET /api/storage/objects/*` (currently unauthenticated — fine for single-tenant).
 
+## 見積書の流用 (Duplicate-from-existing-quote)
+
+過去案件（特に竣工済み）の見積書をひな型として新規見積書を作成できる。
+
+- **エントリーポイント**:
+  1. `/quotes/:id` 詳細ページの「複製して新規作成」ボタン (Copy icon, between 印刷 and 請求書に変換) → `/quotes/new?fromQuoteId=<id>`.
+  2. `/projects?status=completed` (竣工) 一覧の各行に「見積を流用」ボタン → 案件の見積一覧 Dialog (`ReuseQuotePicker` in `pages/projects-list.tsx`, calls `useListQuotes({ projectId })`) → 選択で `/quotes/new?fromQuoteId=<id>` に遷移。一般の案件一覧には表示しない（`isCompletedView` ガード）。
+- **`pages/quote-new.tsx`**: `?fromQuoteId=` を読んで `useGetQuote` でフェッチ。`prefilledRef` で1度だけ `subject` / `contactName` / `notes` / `items` を流入（`subjectTouched=true` にして案件選択時の上書きを防ぐ）。**意図的に引き継がない**もの: `projectId` / `customerId` / `quoteNumber` / `issueDate` / `validUntil`（新規案件用なので必ず選び直し）。流用後は toast で通知。
+- **バックエンドは無変更**: 既存の `GET /api/quotes/:id` で取得→ 既存の `POST /api/quotes` で保存するだけ。新エンドポイント不要。
+
 ## 竣工 / 請求済 自動移動 (sidebar shortcuts)
 
 - Sidebar 「竣工」 → `/projects?status=completed`, 「請求済」 → `/invoices?paid=true` (`app-shell.tsx`).

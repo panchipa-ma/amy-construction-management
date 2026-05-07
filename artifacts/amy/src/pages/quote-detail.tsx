@@ -53,6 +53,7 @@ import {
   Save,
   X,
   Plus,
+  Copy,
 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -339,6 +340,16 @@ export default function QuoteDetailPage() {
               >
                 <Printer className="w-4 h-4" />
                 印刷
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation(`/quotes/new?fromQuoteId=${id}`)}
+                className="gap-2"
+                title="この見積書の内容で新規見積書を作成します"
+              >
+                <Copy className="w-4 h-4" />
+                複製して新規作成
               </Button>
               <Button
                 variant="outline"
