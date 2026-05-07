@@ -17,6 +17,7 @@ export interface CreateInvoiceBody {
   dueDate?: Date | null;
   notes?: string | null;
   paid?: boolean;
+  paidAt?: Date | null;
   sentToClient?: boolean;
   sentAt?: Date | null;
   items: LineItem[];

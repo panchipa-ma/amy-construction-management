@@ -23,6 +23,8 @@ export interface Invoice {
   tax: number;
   total: number;
   paid: boolean;
+  /** 入金済にした日付。「入金済」サイドバーの月絞り込み基準 */
+  paidAt?: Date | null;
   /** 元請（顧客）へ請求書を送付済かどうか */
   sentToClient: boolean;
   /** 送付済にした日付。月次歩合計算 (/commissions) のグルーピング基準 */

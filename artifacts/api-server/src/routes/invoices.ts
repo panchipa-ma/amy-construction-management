@@ -42,6 +42,7 @@ async function serialize(inv: typeof invoicesTable.$inferSelect) {
     tax,
     total,
     paid: inv.paid,
+    paidAt: isoDate(inv.paidAt),
     sentToClient: inv.sentToClient,
     sentAt: isoDate(inv.sentAt),
     createdAt: isoDateTime(inv.createdAt),
@@ -80,6 +81,10 @@ router.post("/invoices", async (req, res): Promise<void> => {
   const sentAt =
     (parsed.data.sentAt as unknown as string | null | undefined) ??
     (sentToClient ? todayIso() : null);
+  const paid = parsed.data.paid ?? false;
+  const paidAt =
+    (parsed.data.paidAt as unknown as string | null | undefined) ??
+    (paid ? todayIso() : null);
   const [row] = await db
     .insert(invoicesTable)
     .values({
@@ -91,7 +96,8 @@ router.post("/invoices", async (req, res): Promise<void> => {
       issueDate: parsed.data.issueDate as unknown as string,
       dueDate: (parsed.data.dueDate as unknown as string | null) ?? null,
       notes: parsed.data.notes ?? null,
-      paid: parsed.data.paid ?? false,
+      paid,
+      paidAt,
       sentToClient,
       sentAt,
       items: parsed.data.items as LineItemJson[],
@@ -150,6 +156,20 @@ router.patch("/invoices/:id", async (req, res): Promise<void> => {
   } else {
     sentAt = existing.sentAt;
   }
+  // paid: 明示指定なしなら既存値を維持 (PATCH の partial update 対応)
+  const paid = parsed.data.paid ?? existing.paid;
+  // paidAt: client-supplied wins; else if paid が false→true なら本日;
+  // 入金済 を解除 (true→false) したら null にリセット; 変化なしなら既存値を維持。
+  let paidAt: string | null;
+  if (parsed.data.paidAt !== undefined) {
+    paidAt = (parsed.data.paidAt as unknown as string | null) ?? null;
+  } else if (paid && !existing.paid) {
+    paidAt = todayIso();
+  } else if (!paid && existing.paid) {
+    paidAt = null;
+  } else {
+    paidAt = existing.paidAt;
+  }
   const [row] = await db
     .update(invoicesTable)
     .set({
@@ -161,7 +181,8 @@ router.patch("/invoices/:id", async (req, res): Promise<void> => {
       issueDate: parsed.data.issueDate as unknown as string,
       dueDate: (parsed.data.dueDate as unknown as string | null) ?? null,
       notes: parsed.data.notes ?? null,
-      paid: parsed.data.paid ?? false,
+      paid,
+      paidAt,
       sentToClient,
       sentAt,
       items: parsed.data.items as LineItemJson[],

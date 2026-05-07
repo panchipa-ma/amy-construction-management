@@ -1457,6 +1457,7 @@ components:
         notes: { type: string, nullable: true }
         status: { type: string, enum: [matched, unmatched] }
         paid: { type: boolean, description: "職人への振込済みかどうか" }
+        paidAt: { type: string, format: date, nullable: true, description: "振込済にした日付。「職人振込済」サイドバーの月絞り込み基準" }
         uploadedAt: { type: string, format: date-time }
 
     MarkVendorInvoicePaidBody:
@@ -1464,6 +1465,7 @@ components:
       required: [paid]
       properties:
         paid: { type: boolean }
+        paidAt: { type: string, format: date, nullable: true }
 
     CreateVendorInvoiceBody:
       type: object
@@ -1774,6 +1776,7 @@ components:
         tax: { type: number }
         total: { type: number }
         paid: { type: boolean }
+        paidAt: { type: string, format: date, nullable: true, description: "入金済にした日付。「入金済」サイドバーの月絞り込み基準" }
         sentToClient: { type: boolean, description: "元請（顧客）へ請求書を送付済かどうか" }
         sentAt: { type: string, format: date, nullable: true, description: "送付済にした日付。月次歩合計算 (/commissions) のグルーピング基準" }
         createdAt: { type: string, format: date-time }
@@ -1791,6 +1794,7 @@ components:
         dueDate: { type: string, format: date, nullable: true }
         notes: { type: string, nullable: true }
         paid: { type: boolean }
+        paidAt: { type: string, format: date, nullable: true }
         sentToClient: { type: boolean }
         sentAt: { type: string, format: date, nullable: true }
         items:

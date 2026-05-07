@@ -107,12 +107,38 @@ export default function VendorInvoicesPage() {
   const lastObjectPathRef = useRef<string>("");
   const lastContentTypeRef = useRef<string>("");
 
-  const listRows = useMemo(() => {
+  const baseRows = useMemo(() => {
     const all = listQ.data ?? [];
     return paidFilter === "paid"
       ? all.filter((v) => v.paid)
       : all.filter((v) => !v.paid);
   }, [listQ.data, paidFilter]);
+
+  // 振込済 view: optional month filter on paidAt
+  const [paidMonth, setPaidMonth] = useState<string>("all");
+  useEffect(() => {
+    setPaidMonth("all");
+  }, [paidFilter]);
+  const paidMonthOptions = useMemo(() => {
+    if (paidFilter !== "paid") return [] as { value: string; label: string }[];
+    const set = new Set<string>();
+    for (const v of baseRows) {
+      const d = v.paidAt ? String(v.paidAt).slice(0, 7) : "";
+      if (d) set.add(d);
+    }
+    return Array.from(set)
+      .sort((a, b) => (a < b ? 1 : -1))
+      .map((m) => ({
+        value: m,
+        label: `${m.slice(0, 4)}年${m.slice(5, 7)}月`,
+      }));
+  }, [baseRows, paidFilter]);
+  const listRows = useMemo(() => {
+    if (paidFilter !== "paid" || paidMonth === "all") return baseRows;
+    return baseRows.filter(
+      (v) => v.paidAt && String(v.paidAt).slice(0, 7) === paidMonth,
+    );
+  }, [baseRows, paidFilter, paidMonth]);
   const sel = useBulkSelection(listRows.map((v) => v.id));
 
   const togglePaid = async (
@@ -366,10 +392,28 @@ export default function VendorInvoicesPage() {
       />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">
             {isPaidView ? "振込済の職人請求書" : "未振込の職人請求書"}
           </CardTitle>
+          {isPaidView && (
+            <Select value={paidMonth} onValueChange={setPaidMonth}>
+              <SelectTrigger
+                className="w-44"
+                data-testid="select-vendor-paid-month"
+              >
+                <SelectValue placeholder="月で絞り込み" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全体（すべての月）</SelectItem>
+                {paidMonthOptions.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </CardHeader>
         <CardContent>
           {listQ.isLoading ? (

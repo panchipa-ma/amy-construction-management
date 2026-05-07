@@ -923,6 +923,10 @@ export const ListInvoicesResponseItem = zod.object({
   tax: zod.number(),
   total: zod.number(),
   paid: zod.boolean(),
+  paidAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("入金済にした日付。「入金済」サイドバーの月絞り込み基準"),
   sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
   sentAt: zod.coerce
     .date()
@@ -944,6 +948,7 @@ export const CreateInvoiceBody = zod.object({
   dueDate: zod.coerce.date().nullish(),
   notes: zod.string().nullish(),
   paid: zod.boolean().optional(),
+  paidAt: zod.coerce.date().nullish(),
   sentToClient: zod.boolean().optional(),
   sentAt: zod.coerce.date().nullish(),
   items: zod.array(
@@ -981,6 +986,10 @@ export const CreateInvoiceResponse = zod.object({
   tax: zod.number(),
   total: zod.number(),
   paid: zod.boolean(),
+  paidAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("入金済にした日付。「入金済」サイドバーの月絞り込み基準"),
   sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
   sentAt: zod.coerce
     .date()
@@ -1019,6 +1028,10 @@ export const GetInvoiceResponse = zod.object({
   tax: zod.number(),
   total: zod.number(),
   paid: zod.boolean(),
+  paidAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("入金済にした日付。「入金済」サイドバーの月絞り込み基準"),
   sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
   sentAt: zod.coerce
     .date()
@@ -1043,6 +1056,7 @@ export const UpdateInvoiceBody = zod.object({
   dueDate: zod.coerce.date().nullish(),
   notes: zod.string().nullish(),
   paid: zod.boolean().optional(),
+  paidAt: zod.coerce.date().nullish(),
   sentToClient: zod.boolean().optional(),
   sentAt: zod.coerce.date().nullish(),
   items: zod.array(
@@ -1080,6 +1094,10 @@ export const UpdateInvoiceResponse = zod.object({
   tax: zod.number(),
   total: zod.number(),
   paid: zod.boolean(),
+  paidAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("入金済にした日付。「入金済」サイドバーの月絞り込み基準"),
   sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
   sentAt: zod.coerce
     .date()
@@ -1524,6 +1542,10 @@ export const ConvertQuoteToInvoiceResponse = zod.object({
   tax: zod.number(),
   total: zod.number(),
   paid: zod.boolean(),
+  paidAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("入金済にした日付。「入金済」サイドバーの月絞り込み基準"),
   sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
   sentAt: zod.coerce
     .date()
@@ -1597,6 +1619,10 @@ export const ListVendorInvoicesResponseItem = zod.object({
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
   paid: zod.boolean().describe("職人への振込済みかどうか"),
+  paidAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("振込済にした日付。「職人振込済」サイドバーの月絞り込み基準"),
   uploadedAt: zod.coerce.date(),
 });
 export const ListVendorInvoicesResponse = zod.array(
@@ -1640,6 +1666,10 @@ export const CreateVendorInvoiceResponse = zod.object({
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
   paid: zod.boolean().describe("職人への振込済みかどうか"),
+  paidAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("振込済にした日付。「職人振込済」サイドバーの月絞り込み基準"),
   uploadedAt: zod.coerce.date(),
 });
 
@@ -1679,6 +1709,10 @@ export const AssignVendorInvoiceStaffResponse = zod.object({
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
   paid: zod.boolean().describe("職人への振込済みかどうか"),
+  paidAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("振込済にした日付。「職人振込済」サイドバーの月絞り込み基準"),
   uploadedAt: zod.coerce.date(),
 });
 
@@ -1691,6 +1725,7 @@ export const MarkVendorInvoicePaidParams = zod.object({
 
 export const MarkVendorInvoicePaidBody = zod.object({
   paid: zod.boolean(),
+  paidAt: zod.coerce.date().nullish(),
 });
 
 export const MarkVendorInvoicePaidResponse = zod.object({
@@ -1714,6 +1749,10 @@ export const MarkVendorInvoicePaidResponse = zod.object({
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
   paid: zod.boolean().describe("職人への振込済みかどうか"),
+  paidAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("振込済にした日付。「職人振込済」サイドバーの月絞り込み基準"),
   uploadedAt: zod.coerce.date(),
 });
 
@@ -1749,6 +1788,10 @@ export const MatchVendorInvoiceResponse = zod.object({
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
   paid: zod.boolean().describe("職人への振込済みかどうか"),
+  paidAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("振込済にした日付。「職人振込済」サイドバーの月絞り込み基準"),
   uploadedAt: zod.coerce.date(),
 });
 
@@ -1888,6 +1931,10 @@ export const ConvertVendorQuoteToInvoiceResponse = zod.object({
   notes: zod.string().nullish(),
   status: zod.enum(["matched", "unmatched"]),
   paid: zod.boolean().describe("職人への振込済みかどうか"),
+  paidAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("振込済にした日付。「職人振込済」サイドバーの月絞り込み基準"),
   uploadedAt: zod.coerce.date(),
 });
 

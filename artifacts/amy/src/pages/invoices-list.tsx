@@ -36,6 +36,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Receipt, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
@@ -64,12 +71,38 @@ export default function InvoicesListPage() {
   const { data, isLoading } = useListInvoices();
   const updateMut = useUpdateInvoice();
   const deleteMut = useDeleteInvoice();
-  const rows = useMemo(() => {
+  const baseRows = useMemo(() => {
     const list = data ?? [];
     return paidFilter === "paid"
       ? list.filter((i) => i.paid)
       : list.filter((i) => !i.paid);
   }, [data, paidFilter]);
+
+  // 入金済 view: optional month filter on paidAt (入金済へ移行した月)
+  const [paidMonth, setPaidMonth] = useState<string>("all");
+  useEffect(() => {
+    setPaidMonth("all");
+  }, [paidFilter]);
+  const paidMonthOptions = useMemo(() => {
+    if (paidFilter !== "paid") return [] as { value: string; label: string }[];
+    const set = new Set<string>();
+    for (const inv of baseRows) {
+      const d = inv.paidAt ? String(inv.paidAt).slice(0, 7) : "";
+      if (d) set.add(d);
+    }
+    return Array.from(set)
+      .sort((a, b) => (a < b ? 1 : -1))
+      .map((m) => ({
+        value: m,
+        label: `${m.slice(0, 4)}年${m.slice(5, 7)}月`,
+      }));
+  }, [baseRows, paidFilter]);
+  const rows = useMemo(() => {
+    if (paidFilter !== "paid" || paidMonth === "all") return baseRows;
+    return baseRows.filter(
+      (i) => i.paidAt && String(i.paidAt).slice(0, 7) === paidMonth,
+    );
+  }, [baseRows, paidFilter, paidMonth]);
 
   const [askDelete, setAskDelete] = useState<{
     id: string;
@@ -183,10 +216,25 @@ export default function InvoicesListPage() {
       />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">
             {isPaidView ? "入金済の請求書" : "未入金の請求書"}
           </CardTitle>
+          {isPaidView && (
+            <Select value={paidMonth} onValueChange={setPaidMonth}>
+              <SelectTrigger className="w-44" data-testid="select-paid-month">
+                <SelectValue placeholder="月で絞り込み" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全体（すべての月）</SelectItem>
+                {paidMonthOptions.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </CardHeader>
         <CardContent>
           {isLoading ? (

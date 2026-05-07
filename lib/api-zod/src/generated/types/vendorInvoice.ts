@@ -30,5 +30,7 @@ export interface VendorInvoice {
   status: VendorInvoiceStatus;
   /** 職人への振込済みかどうか */
   paid: boolean;
+  /** 振込済にした日付。「職人振込済」サイドバーの月絞り込み基準 */
+  paidAt?: Date | null;
   uploadedAt: Date;
 }

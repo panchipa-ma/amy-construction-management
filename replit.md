@@ -122,6 +122,7 @@ Page (`pages/commissions.tsx`): month picker (default = 当月) + 3 つの **ク
 - 「竣工」 → `/projects?status=completed`、「請求済」 → `/invoices?paid=true`。
 - `pages/projects-list.tsx` default `"active"` (completed 除外)。`?status=completed` view では status `<Select>` を hide、それ以外は `ACTIVE_STATUS_OPTIONS` (PROJECT_STATUS_OPTIONS minus completed) を使用。Title/subtitle も切替。
 - `pages/invoices-list.tsx` default `"unpaid"`、Select 廃止 — URL param が単一スイッチ。
+- 月絞り込み: 竣工 = `endDate.slice(0,7)`、入金済 = `invoices.paidAt`、職人振込済 = `vendor_invoices.paidAt`。`paidAt` (date) は `paid` を false→true で本日自動 stamp、true→false で null。client-supplied 値が優先 (sentAt と同じパターン)。default は「全体（すべての月）」、選択肢は対象データから自動生成 (新→旧)。`MarkVendorInvoicePaidBody` も `paidAt?` 受け付け。
 - `app-shell.tsx` は `isPathAllowed` 判定で query を strip し、フィルタ shortcut は `path+query` exact match で判定 (案件 vs 竣工、請求 vs 請求済 が両方 highlight しない)。
 
 ## Standalone pages

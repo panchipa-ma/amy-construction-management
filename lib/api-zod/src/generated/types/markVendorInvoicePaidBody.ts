@@ -8,4 +8,5 @@
 
 export interface MarkVendorInvoicePaidBody {
   paid: boolean;
+  paidAt?: Date | null;
 }

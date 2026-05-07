@@ -140,6 +140,9 @@ export const vendorInvoicesTable = pgTable("vendor_invoices", {
   status: text("status").notNull().default("unmatched"),
   // 職人への振込済みかどうか。元請から自社への入金 (invoices.paid) とは別。
   paid: boolean("paid").notNull().default(false),
+  // 振込済にした日付。paid を false→true にした際に自動で当日が入る。
+  // 「職人振込済」サイドバーの月絞り込みグルーピング基準。
+  paidAt: date("paid_at"),
   createdBy: text("created_by"),
   uploadedAt: timestamp("uploaded_at", { withTimezone: true })
     .notNull()
@@ -228,6 +231,9 @@ export const invoicesTable = pgTable("invoices", {
   subject: text("subject"),
   notes: text("notes"),
   paid: boolean("paid").notNull().default(false),
+  // 入金済にした日付。paid を false→true にした際に自動で当日が入る。
+  // 「入金済」サイドバーの月絞り込みグルーピング基準。
+  paidAt: date("paid_at"),
   // 元請（顧客）へ請求書を送付済かどうか。入金状況とは独立。
   sentToClient: boolean("sent_to_client").notNull().default(false),
   // 元請へ送付した日付。sentToClient を false→true にした際に自動で当日が入る。

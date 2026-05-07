@@ -65,8 +65,13 @@ async function serialize(v: VendorInvoiceRow) {
     notes: v.notes,
     status: v.status as "matched" | "unmatched",
     paid: v.paid,
+    paidAt: isoDate(v.paidAt),
     uploadedAt: isoDateTime(v.uploadedAt),
   };
+}
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function normalizeName(s: string): string {
@@ -395,9 +400,21 @@ router.post(
       });
       return;
     }
+    // paidAt: client-supplied wins; else if paid が false→true なら本日;
+    // 解除 (true→false) したら null; 変化なしなら既存値維持。
+    let paidAt: string | null;
+    if (parsed.data.paidAt !== undefined) {
+      paidAt = (parsed.data.paidAt as unknown as string | null) ?? null;
+    } else if (parsed.data.paid && !existing.paid) {
+      paidAt = todayIso();
+    } else if (!parsed.data.paid && existing.paid) {
+      paidAt = null;
+    } else {
+      paidAt = existing.paidAt;
+    }
     const [row] = await db
       .update(vendorInvoicesTable)
-      .set({ paid: parsed.data.paid })
+      .set({ paid: parsed.data.paid, paidAt })
       .where(eq(vendorInvoicesTable.id, params.data.id))
       .returning();
     res.json(MarkVendorInvoicePaidResponse.parse(await serialize(row)));

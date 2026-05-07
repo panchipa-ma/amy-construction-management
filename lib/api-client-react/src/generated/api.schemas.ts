@@ -280,11 +280,14 @@ export interface VendorInvoice {
   status: VendorInvoiceStatus;
   /** 職人への振込済みかどうか */
   paid: boolean;
+  /** 振込済にした日付。「職人振込済」サイドバーの月絞り込み基準 */
+  paidAt?: string | null;
   uploadedAt: string;
 }
 
 export interface MarkVendorInvoicePaidBody {
   paid: boolean;
+  paidAt?: string | null;
 }
 
 export interface CreateVendorInvoiceBody {
@@ -623,6 +626,8 @@ export interface Invoice {
   tax: number;
   total: number;
   paid: boolean;
+  /** 入金済にした日付。「入金済」サイドバーの月絞り込み基準 */
+  paidAt?: string | null;
   /** 元請（顧客）へ請求書を送付済かどうか */
   sentToClient: boolean;
   /** 送付済にした日付。月次歩合計算 (/commissions) のグルーピング基準 */
@@ -640,6 +645,7 @@ export interface CreateInvoiceBody {
   dueDate?: string | null;
   notes?: string | null;
   paid?: boolean;
+  paidAt?: string | null;
   sentToClient?: boolean;
   sentAt?: string | null;
   items: LineItem[];
