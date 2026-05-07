@@ -433,6 +433,15 @@ export const ListCustomersResponseItem = zod.object({
   defaultSupervisorCommissionRate: zod
     .number()
     .describe("現場監督歩合の規定値 (%, 規定超過粗利に対する配分率)"),
+  defaultSalesRep: zod.string().nullish().describe("担当営業の規定値"),
+  defaultOtherSalesBonusRecipient: zod
+    .string()
+    .nullish()
+    .describe("他人売上ボーナス受取人の規定値"),
+  defaultOtherSalesBonusRate: zod
+    .number()
+    .nullish()
+    .describe("他人売上ボーナス率の規定値 (%)"),
   createdAt: zod.coerce.date(),
 });
 export const ListCustomersResponse = zod.array(ListCustomersResponseItem);
@@ -447,6 +456,9 @@ export const CreateCustomerBody = zod.object({
   defaultProfitRate: zod.number().nullish(),
   defaultSalesCommissionRate: zod.number().nullish(),
   defaultSupervisorCommissionRate: zod.number().nullish(),
+  defaultSalesRep: zod.string().nullish(),
+  defaultOtherSalesBonusRecipient: zod.string().nullish(),
+  defaultOtherSalesBonusRate: zod.number().nullish(),
 });
 
 export const CreateCustomerResponse = zod.object({
@@ -466,6 +478,15 @@ export const CreateCustomerResponse = zod.object({
   defaultSupervisorCommissionRate: zod
     .number()
     .describe("現場監督歩合の規定値 (%, 規定超過粗利に対する配分率)"),
+  defaultSalesRep: zod.string().nullish().describe("担当営業の規定値"),
+  defaultOtherSalesBonusRecipient: zod
+    .string()
+    .nullish()
+    .describe("他人売上ボーナス受取人の規定値"),
+  defaultOtherSalesBonusRate: zod
+    .number()
+    .nullish()
+    .describe("他人売上ボーナス率の規定値 (%)"),
   createdAt: zod.coerce.date(),
 });
 
@@ -483,6 +504,9 @@ export const UpdateCustomerBody = zod.object({
   defaultProfitRate: zod.number().nullish(),
   defaultSalesCommissionRate: zod.number().nullish(),
   defaultSupervisorCommissionRate: zod.number().nullish(),
+  defaultSalesRep: zod.string().nullish(),
+  defaultOtherSalesBonusRecipient: zod.string().nullish(),
+  defaultOtherSalesBonusRate: zod.number().nullish(),
 });
 
 export const UpdateCustomerResponse = zod.object({
@@ -502,6 +526,15 @@ export const UpdateCustomerResponse = zod.object({
   defaultSupervisorCommissionRate: zod
     .number()
     .describe("現場監督歩合の規定値 (%, 規定超過粗利に対する配分率)"),
+  defaultSalesRep: zod.string().nullish().describe("担当営業の規定値"),
+  defaultOtherSalesBonusRecipient: zod
+    .string()
+    .nullish()
+    .describe("他人売上ボーナス受取人の規定値"),
+  defaultOtherSalesBonusRate: zod
+    .number()
+    .nullish()
+    .describe("他人売上ボーナス率の規定値 (%)"),
   createdAt: zod.coerce.date(),
 });
 

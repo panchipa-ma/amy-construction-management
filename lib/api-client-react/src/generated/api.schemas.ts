@@ -43,6 +43,12 @@ export interface Customer {
   defaultSalesCommissionRate: number;
   /** 現場監督歩合の規定値 (%, 規定超過粗利に対する配分率) */
   defaultSupervisorCommissionRate: number;
+  /** 担当営業の規定値 */
+  defaultSalesRep?: string | null;
+  /** 他人売上ボーナス受取人の規定値 */
+  defaultOtherSalesBonusRecipient?: string | null;
+  /** 他人売上ボーナス率の規定値 (%) */
+  defaultOtherSalesBonusRate?: number | null;
   createdAt: string;
 }
 
@@ -56,6 +62,9 @@ export interface CreateCustomerBody {
   defaultProfitRate?: number | null;
   defaultSalesCommissionRate?: number | null;
   defaultSupervisorCommissionRate?: number | null;
+  defaultSalesRep?: string | null;
+  defaultOtherSalesBonusRecipient?: string | null;
+  defaultOtherSalesBonusRate?: number | null;
 }
 
 export type AppUserRole = (typeof AppUserRole)[keyof typeof AppUserRole];

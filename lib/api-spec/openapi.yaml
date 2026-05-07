@@ -1260,6 +1260,9 @@ components:
         defaultProfitRate: { type: number, description: "規定利率 (%, 施工台帳の規定粗利額算出に使用)" }
         defaultSalesCommissionRate: { type: number, description: "営業歩合の規定値 (%, 案件作成時にプリフィル)" }
         defaultSupervisorCommissionRate: { type: number, description: "現場監督歩合の規定値 (%, 規定超過粗利に対する配分率)" }
+        defaultSalesRep: { type: string, nullable: true, description: "担当営業の規定値" }
+        defaultOtherSalesBonusRecipient: { type: string, nullable: true, description: "他人売上ボーナス受取人の規定値" }
+        defaultOtherSalesBonusRate: { type: number, nullable: true, description: "他人売上ボーナス率の規定値 (%)" }
         createdAt: { type: string, format: date-time }
 
     CreateCustomerBody:
@@ -1275,6 +1278,9 @@ components:
         defaultProfitRate: { type: number, nullable: true }
         defaultSalesCommissionRate: { type: number, nullable: true }
         defaultSupervisorCommissionRate: { type: number, nullable: true }
+        defaultSalesRep: { type: string, nullable: true }
+        defaultOtherSalesBonusRecipient: { type: string, nullable: true }
+        defaultOtherSalesBonusRate: { type: number, nullable: true }
 
     AppUser:
       type: object

@@ -187,6 +187,14 @@ export default function ProjectNewPage() {
                         cust?.defaultSupervisorCommissionRate != null
                           ? String(cust.defaultSupervisorCommissionRate)
                           : f.supervisorCommissionRate,
+                      salesRep: cust?.defaultSalesRep || f.salesRep,
+                      otherSalesBonusRecipient:
+                        cust?.defaultOtherSalesBonusRecipient ||
+                        f.otherSalesBonusRecipient,
+                      otherSalesBonusRate:
+                        cust?.defaultOtherSalesBonusRate != null
+                          ? String(cust.defaultOtherSalesBonusRate)
+                          : f.otherSalesBonusRate,
                     }));
                   }}
                 >

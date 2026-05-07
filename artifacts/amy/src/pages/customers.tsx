@@ -6,6 +6,7 @@ import {
   useUpdateCustomer,
   useDeleteCustomer,
   getListCustomersQueryKey,
+  useListEmployees,
   type Customer,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -62,12 +63,16 @@ const empty = {
   defaultProfitRate: "20",
   defaultSalesCommissionRate: "5",
   defaultSupervisorCommissionRate: "30",
+  defaultSalesRep: "",
+  defaultOtherSalesBonusRecipient: "",
+  defaultOtherSalesBonusRate: "",
 };
 
 export default function CustomersPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const customersQ = useListCustomers();
+  const employeesQ = useListEmployees();
   const createMut = useCreateCustomer();
   const updateMut = useUpdateCustomer();
   const deleteMut = useDeleteCustomer();
@@ -96,6 +101,12 @@ export default function CustomersPage() {
       defaultSupervisorCommissionRate: String(
         c.defaultSupervisorCommissionRate ?? 30,
       ),
+      defaultSalesRep: c.defaultSalesRep ?? "",
+      defaultOtherSalesBonusRecipient: c.defaultOtherSalesBonusRecipient ?? "",
+      defaultOtherSalesBonusRate:
+        c.defaultOtherSalesBonusRate != null
+          ? String(c.defaultOtherSalesBonusRate)
+          : "",
     });
     setOpen(true);
   };
@@ -118,6 +129,13 @@ export default function CustomersPage() {
         Number(form.defaultSalesCommissionRate) || 5,
       defaultSupervisorCommissionRate:
         Number(form.defaultSupervisorCommissionRate) || 30,
+      defaultSalesRep: form.defaultSalesRep || null,
+      defaultOtherSalesBonusRecipient:
+        form.defaultOtherSalesBonusRecipient || null,
+      defaultOtherSalesBonusRate:
+        form.defaultOtherSalesBonusRate === ""
+          ? null
+          : Number(form.defaultOtherSalesBonusRate),
     };
     try {
       if (editing) {
@@ -351,26 +369,6 @@ export default function CustomersPage() {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="defaultProfitRate">
-                  規定利率 (%)
-                </Label>
-                <Input
-                  id="defaultProfitRate"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  value={form.defaultProfitRate}
-                  onChange={(e) =>
-                    setForm({ ...form, defaultProfitRate: e.target.value })
-                  }
-                  placeholder="例: 20"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  施工台帳の「規定粗利額」算出に使用
-                </p>
-              </div>
-              <div>
                 <Label htmlFor="defaultSalesCommissionRate">
                   営業歩合 (%)
                 </Label>
@@ -414,6 +412,97 @@ export default function CustomersPage() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   規定超過粗利のうち監督への配分率
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="defaultSalesRep">担当営業</Label>
+                <Input
+                  id="defaultSalesRep"
+                  list="customerSalesRepList"
+                  value={form.defaultSalesRep}
+                  onChange={(e) =>
+                    setForm({ ...form, defaultSalesRep: e.target.value })
+                  }
+                  placeholder="例: エディ"
+                />
+                <datalist id="customerSalesRepList">
+                  {(employeesQ.data ?? [])
+                    .filter((e) => /営業|sales/i.test(e.role))
+                    .map((e) => (
+                      <option key={e.id} value={e.name} />
+                    ))}
+                </datalist>
+                <p className="text-xs text-muted-foreground mt-1">
+                  案件作成時に「担当営業」へ自動入力
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="defaultProfitRate">規定利率 (%)</Label>
+                <Input
+                  id="defaultProfitRate"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={form.defaultProfitRate}
+                  onChange={(e) =>
+                    setForm({ ...form, defaultProfitRate: e.target.value })
+                  }
+                  placeholder="例: 20"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  施工台帳の「規定粗利額」算出に使用
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="defaultOtherSalesBonusRecipient">
+                  他人売上ボーナス 受取人
+                </Label>
+                <Input
+                  id="defaultOtherSalesBonusRecipient"
+                  list="customerBonusRecipientList"
+                  value={form.defaultOtherSalesBonusRecipient}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      defaultOtherSalesBonusRecipient: e.target.value,
+                    })
+                  }
+                  placeholder="例: 亘 (空欄で対象外)"
+                />
+                <datalist id="customerBonusRecipientList">
+                  {(employeesQ.data ?? []).map((e) => (
+                    <option key={e.id} value={e.name} />
+                  ))}
+                </datalist>
+                <p className="text-xs text-muted-foreground mt-1">
+                  案件作成時に既定値としてプリフィル
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="defaultOtherSalesBonusRate">
+                  他人売上ボーナス率 (%)
+                </Label>
+                <Input
+                  id="defaultOtherSalesBonusRate"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={form.defaultOtherSalesBonusRate}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      defaultOtherSalesBonusRate: e.target.value,
+                    })
+                  }
+                  placeholder="例: 2.5"
+                  disabled={!form.defaultOtherSalesBonusRecipient}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  営業歩合からこの率分を差し引いて受取人へ
                 </p>
               </div>
             </div>

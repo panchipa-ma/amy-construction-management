@@ -41,6 +41,12 @@ export const customersTable = pgTable("customers", {
   defaultSupervisorCommissionRate: numeric("default_supervisor_commission_rate")
     .notNull()
     .default("30"),
+  // 担当営業の規定値 — 案件作成時に salesRep のプリフィルに使用。
+  defaultSalesRep: text("default_sales_rep"),
+  // 他人売上ボーナス受取人の規定値 — 案件作成時に otherSalesBonusRecipient のプリフィル。
+  defaultOtherSalesBonusRecipient: text("default_other_sales_bonus_recipient"),
+  // 他人売上ボーナス率の規定値 (%) — 案件作成時に otherSalesBonusRate のプリフィル。
+  defaultOtherSalesBonusRate: numeric("default_other_sales_bonus_rate"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

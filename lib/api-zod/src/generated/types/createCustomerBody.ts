@@ -16,4 +16,7 @@ export interface CreateCustomerBody {
   defaultProfitRate?: number | null;
   defaultSalesCommissionRate?: number | null;
   defaultSupervisorCommissionRate?: number | null;
+  defaultSalesRep?: string | null;
+  defaultOtherSalesBonusRecipient?: string | null;
+  defaultOtherSalesBonusRate?: number | null;
 }

@@ -26,6 +26,12 @@ function serialize(c: typeof customersTable.$inferSelect) {
     defaultProfitRate: n(c.defaultProfitRate),
     defaultSalesCommissionRate: n(c.defaultSalesCommissionRate),
     defaultSupervisorCommissionRate: n(c.defaultSupervisorCommissionRate),
+    defaultSalesRep: c.defaultSalesRep,
+    defaultOtherSalesBonusRecipient: c.defaultOtherSalesBonusRecipient,
+    defaultOtherSalesBonusRate:
+      c.defaultOtherSalesBonusRate == null
+        ? null
+        : n(c.defaultOtherSalesBonusRate),
     createdAt: isoDateTime(c.createdAt),
   };
 }
@@ -40,6 +46,9 @@ function toDbValues(input: {
   defaultProfitRate?: number | null;
   defaultSalesCommissionRate?: number | null;
   defaultSupervisorCommissionRate?: number | null;
+  defaultSalesRep?: string | null;
+  defaultOtherSalesBonusRecipient?: string | null;
+  defaultOtherSalesBonusRate?: number | null;
 }) {
   const data: Record<string, unknown> = {};
   if (input.name !== undefined) data.name = input.name;
@@ -56,6 +65,16 @@ function toDbValues(input: {
     data.defaultSupervisorCommissionRate = String(
       input.defaultSupervisorCommissionRate,
     );
+  if (input.defaultSalesRep !== undefined)
+    data.defaultSalesRep = input.defaultSalesRep || null;
+  if (input.defaultOtherSalesBonusRecipient !== undefined)
+    data.defaultOtherSalesBonusRecipient =
+      input.defaultOtherSalesBonusRecipient || null;
+  if (input.defaultOtherSalesBonusRate !== undefined)
+    data.defaultOtherSalesBonusRate =
+      input.defaultOtherSalesBonusRate == null
+        ? null
+        : String(input.defaultOtherSalesBonusRate);
   return data;
 }
 
