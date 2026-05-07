@@ -1,5 +1,5 @@
 import { Link, useLocation, useSearch } from "wouter";
-import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog, Shield, FileSignature, CheckCircle2, BadgeCheck } from "lucide-react";
+import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog, Shield, FileSignature, CheckCircle2, BadgeCheck, Calculator } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { useRole, isPathAllowed } from "@/lib/role";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ const navItems = [
   { name: "職人 出面表", href: "/staff-assignments", icon: ClipboardList, internalOnly: false },
   { name: "顧客", href: "/customers", icon: Users, internalOnly: false },
   { name: "職人", href: "/staff", icon: HardHat, internalOnly: false },
+  { name: "月次歩合", href: "/commissions", icon: Calculator, internalOnly: true },
   { name: "ユーザー管理", href: "/users", icon: Shield, internalOnly: true },
 ];
 

@@ -43,8 +43,13 @@ async function serialize(inv: typeof invoicesTable.$inferSelect) {
     total,
     paid: inv.paid,
     sentToClient: inv.sentToClient,
+    sentAt: isoDate(inv.sentAt),
     createdAt: isoDateTime(inv.createdAt),
   };
+}
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 router.get("/invoices", async (req, res): Promise<void> => {
@@ -71,6 +76,10 @@ router.post("/invoices", async (req, res): Promise<void> => {
     return;
   }
   const me = await getOrCreateAppUser(req);
+  const sentToClient = parsed.data.sentToClient ?? false;
+  const sentAt =
+    (parsed.data.sentAt as unknown as string | null | undefined) ??
+    (sentToClient ? todayIso() : null);
   const [row] = await db
     .insert(invoicesTable)
     .values({
@@ -83,7 +92,8 @@ router.post("/invoices", async (req, res): Promise<void> => {
       dueDate: (parsed.data.dueDate as unknown as string | null) ?? null,
       notes: parsed.data.notes ?? null,
       paid: parsed.data.paid ?? false,
-      sentToClient: parsed.data.sentToClient ?? false,
+      sentToClient,
+      sentAt,
       items: parsed.data.items as LineItemJson[],
       createdBy: me.clerkUserId,
     })
@@ -119,6 +129,27 @@ router.patch("/invoices/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const [existing] = await db
+    .select()
+    .from(invoicesTable)
+    .where(eq(invoicesTable.id, params.data.id));
+  if (!existing) {
+    res.status(404).json({ error: "Invoice not found" });
+    return;
+  }
+  const sentToClient = parsed.data.sentToClient ?? false;
+  // sentAt: client-supplied wins; else if 送付済 が false→true なら本日;
+  // 送付済 を解除 (true→false) したら null にリセット; 変化なしなら既存値を維持。
+  let sentAt: string | null;
+  if (parsed.data.sentAt !== undefined) {
+    sentAt = (parsed.data.sentAt as unknown as string | null) ?? null;
+  } else if (sentToClient && !existing.sentToClient) {
+    sentAt = todayIso();
+  } else if (!sentToClient && existing.sentToClient) {
+    sentAt = null;
+  } else {
+    sentAt = existing.sentAt;
+  }
   const [row] = await db
     .update(invoicesTable)
     .set({
@@ -131,7 +162,8 @@ router.patch("/invoices/:id", async (req, res): Promise<void> => {
       dueDate: (parsed.data.dueDate as unknown as string | null) ?? null,
       notes: parsed.data.notes ?? null,
       paid: parsed.data.paid ?? false,
-      sentToClient: parsed.data.sentToClient ?? false,
+      sentToClient,
+      sentAt,
       items: parsed.data.items as LineItemJson[],
     })
     .where(eq(invoicesTable.id, params.data.id))

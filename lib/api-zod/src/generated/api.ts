@@ -543,6 +543,12 @@ export const ListStaffResponseItem = zod.object({
   phone: zod.string().nullish(),
   dailyRate: zod.number().nullish().describe("日当 (円)"),
   company: zod.string().nullish(),
+  otherSalesBonusRate: zod
+    .number()
+    .nullish()
+    .describe(
+      "他人売上ボーナス率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5)",
+    ),
   createdAt: zod.coerce.date(),
 });
 export const ListStaffResponse = zod.array(ListStaffResponseItem);
@@ -553,6 +559,7 @@ export const CreateStaffBody = zod.object({
   phone: zod.string().nullish(),
   dailyRate: zod.number().nullish(),
   company: zod.string().nullish(),
+  otherSalesBonusRate: zod.number().nullish(),
 });
 
 export const CreateStaffResponse = zod.object({
@@ -562,6 +569,12 @@ export const CreateStaffResponse = zod.object({
   phone: zod.string().nullish(),
   dailyRate: zod.number().nullish().describe("日当 (円)"),
   company: zod.string().nullish(),
+  otherSalesBonusRate: zod
+    .number()
+    .nullish()
+    .describe(
+      "他人売上ボーナス率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5)",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -575,6 +588,7 @@ export const UpdateStaffBody = zod.object({
   phone: zod.string().nullish(),
   dailyRate: zod.number().nullish(),
   company: zod.string().nullish(),
+  otherSalesBonusRate: zod.number().nullish(),
 });
 
 export const UpdateStaffResponse = zod.object({
@@ -584,6 +598,12 @@ export const UpdateStaffResponse = zod.object({
   phone: zod.string().nullish(),
   dailyRate: zod.number().nullish().describe("日当 (円)"),
   company: zod.string().nullish(),
+  otherSalesBonusRate: zod
+    .number()
+    .nullish()
+    .describe(
+      "他人売上ボーナス率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5)",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -783,6 +803,12 @@ export const ListInvoicesResponseItem = zod.object({
   total: zod.number(),
   paid: zod.boolean(),
   sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
+  sentAt: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "送付済にした日付。月次歩合計算 (\/commissions) のグルーピング基準",
+    ),
   createdAt: zod.coerce.date(),
 });
 export const ListInvoicesResponse = zod.array(ListInvoicesResponseItem);
@@ -798,6 +824,7 @@ export const CreateInvoiceBody = zod.object({
   notes: zod.string().nullish(),
   paid: zod.boolean().optional(),
   sentToClient: zod.boolean().optional(),
+  sentAt: zod.coerce.date().nullish(),
   items: zod.array(
     zod.object({
       description: zod.string(),
@@ -834,6 +861,12 @@ export const CreateInvoiceResponse = zod.object({
   total: zod.number(),
   paid: zod.boolean(),
   sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
+  sentAt: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "送付済にした日付。月次歩合計算 (\/commissions) のグルーピング基準",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -866,6 +899,12 @@ export const GetInvoiceResponse = zod.object({
   total: zod.number(),
   paid: zod.boolean(),
   sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
+  sentAt: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "送付済にした日付。月次歩合計算 (\/commissions) のグルーピング基準",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -884,6 +923,7 @@ export const UpdateInvoiceBody = zod.object({
   notes: zod.string().nullish(),
   paid: zod.boolean().optional(),
   sentToClient: zod.boolean().optional(),
+  sentAt: zod.coerce.date().nullish(),
   items: zod.array(
     zod.object({
       description: zod.string(),
@@ -920,11 +960,82 @@ export const UpdateInvoiceResponse = zod.object({
   total: zod.number(),
   paid: zod.boolean(),
   sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
+  sentAt: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "送付済にした日付。月次歩合計算 (\/commissions) のグルーピング基準",
+    ),
   createdAt: zod.coerce.date(),
 });
 
 export const DeleteInvoiceParams = zod.object({
   id: zod.coerce.string(),
+});
+
+/**
+ * @summary 月次の営業歩合・現場監督歩合・他人売上ボーナスを担当者ごとに集計
+ */
+export const GetCommissionsQueryParams = zod.object({
+  month: zod.coerce
+    .string()
+    .describe("対象月 (YYYY-MM)。請求書の sentAt がこの月内のものを集計"),
+});
+
+export const GetCommissionsResponse = zod.object({
+  month: zod.string().describe("YYYY-MM"),
+  totals: zod.object({
+    salesCommission: zod.number(),
+    supervisorCommission: zod.number(),
+    otherSalesBonus: zod.number(),
+    total: zod.number(),
+    invoiceCount: zod.number(),
+    invoiceTotal: zod
+      .number()
+      .describe("対象月に送付済みになった請求書の税込合計"),
+  }),
+  people: zod.array(
+    zod.object({
+      name: zod
+        .string()
+        .describe(
+          "担当者名 (project.salesRep \/ siteSupervisor の文字列、または staff.name)",
+        ),
+      staffId: zod
+        .string()
+        .nullish()
+        .describe("staff マスタに一致した場合のみ"),
+      salesCommission: zod.number().describe("営業歩合 合計"),
+      supervisorCommission: zod.number().describe("現場監督歩合 合計"),
+      otherSalesBonus: zod.number().describe("他人売上ボーナス 合計"),
+      total: zod.number(),
+      lines: zod.array(
+        zod.object({
+          invoiceId: zod.string(),
+          invoiceNumber: zod.string(),
+          projectId: zod.string(),
+          projectName: zod.string(),
+          salesRep: zod.string().nullish(),
+          siteSupervisor: zod.string().nullish(),
+          sentAt: zod.coerce.date(),
+          invoiceTotal: zod.number().describe("税込合計"),
+          kind: zod
+            .enum(["sales", "supervisor", "other_sales_bonus"])
+            .describe("歩合種別"),
+          amount: zod.number().describe("歩合金額 (円)"),
+          rate: zod.number().describe("適用した率 (%)"),
+          baseAmount: zod
+            .number()
+            .nullish()
+            .describe("歩合計算の基礎額 (例: 規定超過粗利)"),
+          note: zod
+            .string()
+            .nullish()
+            .describe("案件竣工前など、対象外\/特記事項"),
+        }),
+      ),
+    }),
+  ),
 });
 
 export const ListCostEntriesQueryParams = zod.object({
@@ -1293,6 +1404,12 @@ export const ConvertQuoteToInvoiceResponse = zod.object({
   total: zod.number(),
   paid: zod.boolean(),
   sentToClient: zod.boolean().describe("元請（顧客）へ請求書を送付済かどうか"),
+  sentAt: zod.coerce
+    .date()
+    .nullish()
+    .describe(
+      "送付済にした日付。月次歩合計算 (\/commissions) のグルーピング基準",
+    ),
   createdAt: zod.coerce.date(),
 });
 

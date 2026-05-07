@@ -115,6 +115,8 @@ export interface Staff {
   /** 日当 (円) */
   dailyRate?: number | null;
   company?: string | null;
+  /** 他人売上ボーナス率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5) */
+  otherSalesBonusRate?: number | null;
   createdAt: string;
 }
 
@@ -124,6 +126,7 @@ export interface CreateStaffBody {
   phone?: string | null;
   dailyRate?: number | null;
   company?: string | null;
+  otherSalesBonusRate?: number | null;
 }
 
 export interface Project {
@@ -584,6 +587,8 @@ export interface Invoice {
   paid: boolean;
   /** 元請（顧客）へ請求書を送付済かどうか */
   sentToClient: boolean;
+  /** 送付済にした日付。月次歩合計算 (/commissions) のグルーピング基準 */
+  sentAt?: string | null;
   createdAt: string;
 }
 
@@ -598,7 +603,74 @@ export interface CreateInvoiceBody {
   notes?: string | null;
   paid?: boolean;
   sentToClient?: boolean;
+  sentAt?: string | null;
   items: LineItem[];
+}
+
+/**
+ * 歩合種別
+ */
+export type CommissionInvoiceLineKind =
+  (typeof CommissionInvoiceLineKind)[keyof typeof CommissionInvoiceLineKind];
+
+export const CommissionInvoiceLineKind = {
+  sales: "sales",
+  supervisor: "supervisor",
+  other_sales_bonus: "other_sales_bonus",
+} as const;
+
+export interface CommissionInvoiceLine {
+  invoiceId: string;
+  invoiceNumber: string;
+  projectId: string;
+  projectName: string;
+  salesRep?: string | null;
+  siteSupervisor?: string | null;
+  sentAt: string;
+  /** 税込合計 */
+  invoiceTotal: number;
+  /** 歩合種別 */
+  kind: CommissionInvoiceLineKind;
+  /** 歩合金額 (円) */
+  amount: number;
+  /** 適用した率 (%) */
+  rate: number;
+  /** 歩合計算の基礎額 (例: 規定超過粗利) */
+  baseAmount?: number | null;
+  /** 案件竣工前など、対象外/特記事項 */
+  note?: string | null;
+}
+
+export interface CommissionPersonRow {
+  /** 担当者名 (project.salesRep / siteSupervisor の文字列、または staff.name) */
+  name: string;
+  /** staff マスタに一致した場合のみ */
+  staffId?: string | null;
+  /** 営業歩合 合計 */
+  salesCommission: number;
+  /** 現場監督歩合 合計 */
+  supervisorCommission: number;
+  /** 他人売上ボーナス 合計 */
+  otherSalesBonus: number;
+  total: number;
+  lines: CommissionInvoiceLine[];
+}
+
+export type CommissionMonthReportTotals = {
+  salesCommission: number;
+  supervisorCommission: number;
+  otherSalesBonus: number;
+  total: number;
+  invoiceCount: number;
+  /** 対象月に送付済みになった請求書の税込合計 */
+  invoiceTotal: number;
+};
+
+export interface CommissionMonthReport {
+  /** YYYY-MM */
+  month: string;
+  totals: CommissionMonthReportTotals;
+  people: CommissionPersonRow[];
 }
 
 export interface CostEntry {
@@ -774,6 +846,13 @@ export type ListQuotesParams = {
 
 export type ListInvoicesParams = {
   projectId?: string;
+};
+
+export type GetCommissionsParams = {
+  /**
+   * 対象月 (YYYY-MM)。請求書の sentAt がこの月内のものを集計
+   */
+  month: string;
 };
 
 export type ListCostEntriesParams = {

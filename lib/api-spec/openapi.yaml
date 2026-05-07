@@ -501,6 +501,24 @@ paths:
         "204":
           description: Deleted
 
+  /commissions:
+    get:
+      operationId: getCommissions
+      tags: [commissions]
+      summary: 月次の営業歩合・現場監督歩合・他人売上ボーナスを担当者ごとに集計
+      parameters:
+        - in: query
+          name: month
+          required: true
+          description: "対象月 (YYYY-MM)。請求書の sentAt がこの月内のものを集計"
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommissionMonthReport" }
+
   /cost-entries:
     get:
       operationId: listCostEntries
@@ -1230,6 +1248,7 @@ components:
         phone: { type: string, nullable: true }
         dailyRate: { type: number, nullable: true, description: "日当 (円)" }
         company: { type: string, nullable: true }
+        otherSalesBonusRate: { type: number, nullable: true, description: "他人売上ボーナス率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5)" }
         createdAt: { type: string, format: date-time }
 
     CreateStaffBody:
@@ -1241,6 +1260,7 @@ components:
         phone: { type: string, nullable: true }
         dailyRate: { type: number, nullable: true }
         company: { type: string, nullable: true }
+        otherSalesBonusRate: { type: number, nullable: true }
 
     Project:
       type: object
@@ -1661,6 +1681,7 @@ components:
         total: { type: number }
         paid: { type: boolean }
         sentToClient: { type: boolean, description: "元請（顧客）へ請求書を送付済かどうか" }
+        sentAt: { type: string, format: date, nullable: true, description: "送付済にした日付。月次歩合計算 (/commissions) のグルーピング基準" }
         createdAt: { type: string, format: date-time }
 
     CreateInvoiceBody:
@@ -1677,9 +1698,61 @@ components:
         notes: { type: string, nullable: true }
         paid: { type: boolean }
         sentToClient: { type: boolean }
+        sentAt: { type: string, format: date, nullable: true }
         items:
           type: array
           items: { $ref: "#/components/schemas/LineItem" }
+
+    CommissionInvoiceLine:
+      type: object
+      required: [invoiceId, invoiceNumber, projectId, projectName, sentAt, invoiceTotal, kind, amount, rate]
+      properties:
+        invoiceId: { type: string }
+        invoiceNumber: { type: string }
+        projectId: { type: string }
+        projectName: { type: string }
+        salesRep: { type: string, nullable: true }
+        siteSupervisor: { type: string, nullable: true }
+        sentAt: { type: string, format: date }
+        invoiceTotal: { type: number, description: "税込合計" }
+        kind: { type: string, enum: [sales, supervisor, other_sales_bonus], description: "歩合種別" }
+        amount: { type: number, description: "歩合金額 (円)" }
+        rate: { type: number, description: "適用した率 (%)" }
+        baseAmount: { type: number, nullable: true, description: "歩合計算の基礎額 (例: 規定超過粗利)" }
+        note: { type: string, nullable: true, description: "案件竣工前など、対象外/特記事項" }
+
+    CommissionPersonRow:
+      type: object
+      required: [name, salesCommission, supervisorCommission, otherSalesBonus, total, lines]
+      properties:
+        name: { type: string, description: "担当者名 (project.salesRep / siteSupervisor の文字列、または staff.name)" }
+        staffId: { type: string, nullable: true, description: "staff マスタに一致した場合のみ" }
+        salesCommission: { type: number, description: "営業歩合 合計" }
+        supervisorCommission: { type: number, description: "現場監督歩合 合計" }
+        otherSalesBonus: { type: number, description: "他人売上ボーナス 合計" }
+        total: { type: number }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/CommissionInvoiceLine" }
+
+    CommissionMonthReport:
+      type: object
+      required: [month, totals, people]
+      properties:
+        month: { type: string, description: "YYYY-MM" }
+        totals:
+          type: object
+          required: [salesCommission, supervisorCommission, otherSalesBonus, total, invoiceCount, invoiceTotal]
+          properties:
+            salesCommission: { type: number }
+            supervisorCommission: { type: number }
+            otherSalesBonus: { type: number }
+            total: { type: number }
+            invoiceCount: { type: integer }
+            invoiceTotal: { type: number, description: "対象月に送付済みになった請求書の税込合計" }
+        people:
+          type: array
+          items: { $ref: "#/components/schemas/CommissionPersonRow" }
 
     CostEntry:
       type: object

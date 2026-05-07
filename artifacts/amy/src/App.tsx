@@ -49,6 +49,7 @@ import LandingPage from "@/pages/landing";
 import ProfileSetupPage from "@/pages/profile-setup";
 import PendingApprovalPage from "@/pages/pending-approval";
 import UsersPage from "@/pages/users";
+import CommissionsPage from "@/pages/commissions";
 import { readProfile, isProfileComplete } from "@/lib/profile";
 import { useMe } from "@/lib/role";
 import { Loader2 } from "lucide-react";
@@ -281,6 +282,7 @@ function ProtectedRoutes() {
         <Route path="/ledger" component={LedgerPage} />
         <Route path="/staff-assignments" component={StaffAssignmentsPage} />
         <Route path="/users" component={UsersPage} />
+        <Route path="/commissions" component={CommissionsPage} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>

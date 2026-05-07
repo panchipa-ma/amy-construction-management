@@ -25,5 +25,7 @@ export interface Invoice {
   paid: boolean;
   /** 元請（顧客）へ請求書を送付済かどうか */
   sentToClient: boolean;
+  /** 送付済にした日付。月次歩合計算 (/commissions) のグルーピング基準 */
+  sentAt?: Date | null;
   createdAt: Date;
 }

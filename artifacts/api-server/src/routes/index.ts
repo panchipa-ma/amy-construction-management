@@ -17,6 +17,7 @@ import phasesRouter from "./phases";
 import storageRouter from "./storage";
 import ocrRouter from "./ocr";
 import usersRouter from "./users";
+import commissionsRouter from "./commissions";
 import { requireApproved, requireInternal } from "../lib/auth";
 
 const router: IRouter = Router();
@@ -57,5 +58,7 @@ router.use(vendorQuotesRouter);
 router.use(receiptsRouter);
 router.use(phasesRouter);
 router.use(ocrRouter);
+// 月次歩合は社内全体の数字 (他人の売上を含む) を返すため社内のみ
+router.use(requireInternal, commissionsRouter);
 
 export default router;

@@ -62,6 +62,8 @@ function serialize(s: typeof staffTable.$inferSelect) {
     phone: s.phone,
     dailyRate: s.dailyRate == null ? null : n(s.dailyRate),
     company: s.company,
+    otherSalesBonusRate:
+      s.otherSalesBonusRate == null ? null : n(s.otherSalesBonusRate),
     createdAt: isoDateTime(s.createdAt),
   };
 }
@@ -214,6 +216,10 @@ router.post("/staff", async (req, res): Promise<void> => {
   const data = {
     ...parsed.data,
     dailyRate: parsed.data.dailyRate == null ? null : String(parsed.data.dailyRate),
+    otherSalesBonusRate:
+      parsed.data.otherSalesBonusRate == null
+        ? null
+        : String(parsed.data.otherSalesBonusRate),
   };
   const [row] = await db.insert(staffTable).values(data).returning();
   res.json(CreateStaffResponse.parse(serialize(row)));
@@ -230,10 +236,17 @@ router.patch("/staff/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const data = {
-    ...parsed.data,
-    dailyRate: parsed.data.dailyRate == null ? null : String(parsed.data.dailyRate),
-  };
+  const data: Record<string, unknown> = { ...parsed.data };
+  if ("dailyRate" in parsed.data) {
+    data.dailyRate =
+      parsed.data.dailyRate == null ? null : String(parsed.data.dailyRate);
+  }
+  if ("otherSalesBonusRate" in parsed.data) {
+    data.otherSalesBonusRate =
+      parsed.data.otherSalesBonusRate == null
+        ? null
+        : String(parsed.data.otherSalesBonusRate);
+  }
   const [row] = await db
     .update(staffTable)
     .set(data)

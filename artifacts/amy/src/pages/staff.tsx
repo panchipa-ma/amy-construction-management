@@ -55,7 +55,7 @@ import { Plus, Trash2, HardHat, MapPin, CalendarClock, Users } from "lucide-reac
 import { formatCurrency, formatDate, todayLocalISO, addDaysISO } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 
-const empty = { name: "", role: "", phone: "", dailyRate: "0", company: "" };
+const empty = { name: "", role: "", phone: "", dailyRate: "0", company: "", otherSalesBonusRate: "" };
 
 type StaffStatusEntry = { name: string; firstDate: string; lastDate: string };
 type StaffStatus = {
@@ -159,7 +159,7 @@ export default function StaffPage() {
     setOpen(true);
   };
 
-  const inlineUpdate = async (s: Staff, patch: Partial<{ name: string; role: string; phone: string | null; dailyRate: number | null; company: string | null }>) => {
+  const inlineUpdate = async (s: Staff, patch: Partial<{ name: string; role: string; phone: string | null; dailyRate: number | null; company: string | null; otherSalesBonusRate: number | null }>) => {
     try {
       await updateMut.mutateAsync({
         id: s.id,
@@ -169,6 +169,10 @@ export default function StaffPage() {
           phone: patch.phone !== undefined ? patch.phone : (s.phone ?? null),
           dailyRate: patch.dailyRate !== undefined ? patch.dailyRate : (s.dailyRate ?? null),
           company: patch.company !== undefined ? patch.company : (s.company ?? null),
+          otherSalesBonusRate:
+            patch.otherSalesBonusRate !== undefined
+              ? patch.otherSalesBonusRate
+              : (s.otherSalesBonusRate ?? null),
         },
       });
       await queryClient.invalidateQueries({ queryKey: getListStaffQueryKey() });
@@ -191,6 +195,9 @@ export default function StaffPage() {
       phone: form.phone || null,
       dailyRate: form.dailyRate ? Number(form.dailyRate) : null,
       company: form.company || null,
+      otherSalesBonusRate: form.otherSalesBonusRate
+        ? Number(form.otherSalesBonusRate)
+        : null,
     };
     try {
       await createMut.mutateAsync({ data });
@@ -309,6 +316,7 @@ export default function StaffPage() {
                   <TableHead className="min-w-[260px]">現状況 (発注の参考)</TableHead>
                   <TableHead>電話</TableHead>
                   <TableHead className="text-right">日当</TableHead>
+                  <TableHead className="text-right">他人売上ボーナス</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -364,6 +372,18 @@ export default function StaffPage() {
                           onSave={(v) => inlineUpdate(s, { dailyRate: v || null })}
                           placeholder="日当"
                         />
+                      </TableCell>
+                      <TableCell className="text-right p-1 tabular-nums">
+                        <div className="flex items-center justify-end gap-1">
+                          <EditableNumber
+                            value={s.otherSalesBonusRate ?? 0}
+                            onSave={(v) =>
+                              inlineUpdate(s, { otherSalesBonusRate: v || null })
+                            }
+                            placeholder="0"
+                          />
+                          <span className="text-muted-foreground text-xs">%</span>
+                        </div>
                       </TableCell>
                       <TableCell className="p-1">
                         <Button
@@ -426,7 +446,7 @@ export default function StaffPage() {
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 />
               </div>
-              <div className="col-span-2">
+              <div>
                 <Label htmlFor="rate">日当 (円)</Label>
                 <Input
                   id="rate"
@@ -436,6 +456,22 @@ export default function StaffPage() {
                     setForm({ ...form, dailyRate: e.target.value })
                   }
                 />
+              </div>
+              <div>
+                <Label htmlFor="bonus">他人売上ボーナス率 (%)</Label>
+                <Input
+                  id="bonus"
+                  type="number"
+                  step="0.1"
+                  placeholder="例: 亘 → 2.5"
+                  value={form.otherSalesBonusRate}
+                  onChange={(e) =>
+                    setForm({ ...form, otherSalesBonusRate: e.target.value })
+                  }
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  自分以外の営業が獲得した売上から受け取る歩合率
+                </p>
               </div>
             </div>
             <DialogFooter>

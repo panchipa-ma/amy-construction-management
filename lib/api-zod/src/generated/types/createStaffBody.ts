@@ -12,4 +12,5 @@ export interface CreateStaffBody {
   phone?: string | null;
   dailyRate?: number | null;
   company?: string | null;
+  otherSalesBonusRate?: number | null;
 }

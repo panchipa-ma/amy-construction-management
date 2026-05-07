@@ -20,6 +20,7 @@ import type {
   ActivityItem,
   AppUser,
   AssignVendorInvoiceStaffBody,
+  CommissionMonthReport,
   ConvertQuoteToInvoiceBody,
   ConvertVendorQuoteToInvoiceBody,
   CostEntry,
@@ -40,6 +41,7 @@ import type {
   DashboardSummary,
   ExtractOcrBody,
   ExtractOcrResponse,
+  GetCommissionsParams,
   HealthStatus,
   ImportQuoteToLedgerBody,
   Invoice,
@@ -2591,6 +2593,100 @@ export const useDeleteInvoice = <
 > => {
   return useMutation(getDeleteInvoiceMutationOptions(options));
 };
+
+/**
+ * @summary 月次の営業歩合・現場監督歩合・他人売上ボーナスを担当者ごとに集計
+ */
+export const getGetCommissionsUrl = (params: GetCommissionsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/commissions?${stringifiedParams}`
+    : `/api/commissions`;
+};
+
+export const getCommissions = async (
+  params: GetCommissionsParams,
+  options?: RequestInit,
+): Promise<CommissionMonthReport> => {
+  return customFetch<CommissionMonthReport>(getGetCommissionsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCommissionsQueryKey = (params?: GetCommissionsParams) => {
+  return [`/api/commissions`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetCommissionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCommissions>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetCommissionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCommissions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCommissionsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCommissions>>> = ({
+    signal,
+  }) => getCommissions(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCommissions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCommissionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCommissions>>
+>;
+export type GetCommissionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary 月次の営業歩合・現場監督歩合・他人売上ボーナスを担当者ごとに集計
+ */
+
+export function useGetCommissions<
+  TData = Awaited<ReturnType<typeof getCommissions>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetCommissionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCommissions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCommissionsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getListCostEntriesUrl = (params?: ListCostEntriesParams) => {
   const normalizedParams = new URLSearchParams();

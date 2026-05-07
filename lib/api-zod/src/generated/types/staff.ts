@@ -15,5 +15,7 @@ export interface Staff {
   /** 日当 (円) */
   dailyRate?: number | null;
   company?: string | null;
+  /** 他人売上ボーナス率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5) */
+  otherSalesBonusRate?: number | null;
   createdAt: Date;
 }

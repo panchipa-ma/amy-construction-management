@@ -73,6 +73,18 @@ Stored in `user.unsafeMetadata.profile` so each social member only sees their ow
 - **Mutations** (PATCH/DELETE on the 3 tables, plus `POST /api/vendor-quotes/:id/convert-to-invoice`): external caller + foreign `created_by` → 403. Convert stamps the new invoice's `created_by` to the caller.
 - Legacy `created_by = NULL` rows: invisible to external (by design).
 
+## 月次歩合 (`/commissions`, internal-only)
+
+`GET /api/commissions?month=YYYY-MM` (`requireInternal`) groups commissions by person from invoices whose `sentAt` falls in the target month. `invoices.sentAt` is auto-stamped on `sentToClient` false→true (and cleared on true→false) in the POST/PATCH handlers; client-supplied `sentAt` wins when provided.
+
+Three components per person:
+
+1. **営業歩合** — per invoice: `invoice税込合計 × project.salesCommissionRate%` → attributed to `project.salesRep`.
+2. **現場監督歩合** — only for **completed** projects whose latest sent invoice falls in the target month (so each project is counted exactly once, in the month its final invoice goes out). Formula: `規定超過粗利 × project.supervisorCommissionRate%`, where `規定超過粗利 = max(0, sum(invoice税込) − 営業歩合 − sum(invoice税込) × standardProfitRate% − sum(actualAmount))`. Falls back to `customer.defaultProfitRate` when project has no `standardProfitRate`. Attributed to `project.siteSupervisor`.
+3. **他人売上ボーナス** — `staff.otherSalesBonusRate` (numeric, nullable, %) is the per-staff "亘ルール" rate. For each staff with a positive rate, sum tax-incl invoice totals where `project.salesRep ≠ staff.name` and multiply by the rate. Excludes 監督歩合 by design (separate calc).
+
+Page (`pages/commissions.tsx`): month picker (defaults to current), 4 summary tiles (営業/監督/他人/合計+invoice count), expandable per-person table with kind-tagged invoice lines linking to the project. Sidebar entry "月次歩合" with `Calculator` icon, `internalOnly: true`. Staff page exposes `otherSalesBonusRate` as both a dialog field and inline-editable column ("他人売上ボーナス %").
+
 ## Cross-document workflows
 
 - **見積 → 請求書**: `POST /api/quotes/:id/convert-to-invoice` — creates a single summarized line item (description = subject or project name, unit "式", quantity 1, unitPrice = quote subtotal). Customer/contact/subject auto-filled.

@@ -53,6 +53,9 @@ export const staffTable = pgTable("staff", {
   phone: text("phone"),
   dailyRate: numeric("daily_rate"),
   company: text("company"),
+  // 他人売上ボーナス率 (%) — この職員が「自分以外の営業が獲得した売上」に対して
+  // 受け取る歩合の率。例: 亘=2.5%。月次歩合計算で監督歩合とは別建てで集計される。
+  otherSalesBonusRate: numeric("other_sales_bonus_rate"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -199,6 +202,9 @@ export const invoicesTable = pgTable("invoices", {
   paid: boolean("paid").notNull().default(false),
   // 元請（顧客）へ請求書を送付済かどうか。入金状況とは独立。
   sentToClient: boolean("sent_to_client").notNull().default(false),
+  // 元請へ送付した日付。sentToClient を false→true にした際に自動で当日が入る。
+  // 月次歩合計算 (commissions) はこの日付の月でグルーピングする。
+  sentAt: date("sent_at"),
   items: jsonb("items").$type<LineItemJson[]>().notNull().default([]),
   createdBy: text("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
