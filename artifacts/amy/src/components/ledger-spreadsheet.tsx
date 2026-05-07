@@ -203,17 +203,20 @@ export function LedgerSpreadsheet({
                     project.code ?? ""
                   )}
                 </td>
-                <th>担当現場監督</th>
-                <td>
+                <th>規定利率</th>
+                <td className="tabular-nums">
                   {editable ? (
-                    <EditableText
-                      value={project.siteSupervisor ?? ""}
-                      onSave={(v) =>
-                        onProjectUpdate!({ siteSupervisor: v || null })
-                      }
-                    />
+                    <div className="flex items-center justify-end gap-1">
+                      <EditableNumber
+                        value={project.standardProfitRate ?? 20}
+                        onSave={(v) =>
+                          onProjectUpdate!({ standardProfitRate: v })
+                        }
+                      />
+                      <span className="text-muted-foreground">%</span>
+                    </div>
                   ) : (
-                    project.siteSupervisor ?? ""
+                    `${(project.standardProfitRate ?? 20).toFixed(1)}%`
                   )}
                 </td>
               </tr>
@@ -249,20 +252,17 @@ export function LedgerSpreadsheet({
                 </td>
               </tr>
               <tr>
-                <th>規定利率</th>
-                <td className="tabular-nums">
+                <th>担当現場監督</th>
+                <td>
                   {editable ? (
-                    <div className="flex items-center justify-end gap-1">
-                      <EditableNumber
-                        value={project.standardProfitRate ?? 20}
-                        onSave={(v) =>
-                          onProjectUpdate!({ standardProfitRate: v })
-                        }
-                      />
-                      <span className="text-muted-foreground">%</span>
-                    </div>
+                    <EditableText
+                      value={project.siteSupervisor ?? ""}
+                      onSave={(v) =>
+                        onProjectUpdate!({ siteSupervisor: v || null })
+                      }
+                    />
                   ) : (
-                    `${(project.standardProfitRate ?? 20).toFixed(1)}%`
+                    project.siteSupervisor ?? ""
                   )}
                 </td>
                 <th>監督歩合率</th>
