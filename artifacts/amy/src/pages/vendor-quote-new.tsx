@@ -31,6 +31,7 @@ import { readProfile } from "@/lib/profile";
 import { UNIT_OPTIONS } from "@/lib/units";
 import { QUOTE_TERMS } from "@/lib/company-info";
 import { addCanvasToPdfWithRowBreaks } from "@/lib/pdf-row-breaks";
+import { freezeInputsForCapture } from "@/lib/pdf-freeze-inputs";
 
 // Per-quote form state (recipient + author). Issuer + bank info come from the
 // signed-in user's Clerk profile (same as 職人請求書).
@@ -247,6 +248,10 @@ export default function VendorQuoteNewPage() {
           hidden.push(el);
           el.style.visibility = "hidden";
         });
+      // Replace inputs/textareas/selects with plain text spans so html2canvas
+      // captures readable Japanese characters instead of clipped form-control
+      // glyphs. Restored in finally even on error.
+      const unfreeze = freezeInputsForCapture(printRef.current);
       let canvas;
       try {
         canvas = await html2canvas(printRef.current, {
@@ -254,6 +259,7 @@ export default function VendorQuoteNewPage() {
           backgroundColor: "#ffffff",
         });
       } finally {
+        unfreeze();
         hidden.forEach((el) => (el.style.visibility = ""));
       }
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
