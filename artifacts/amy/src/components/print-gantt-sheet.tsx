@@ -24,14 +24,17 @@ export type SheetProject = {
 const DAY_W = 26;
 const LABEL_W = 140;
 const ROW_H = 34;
-const HEADER_ROW_H = 26;
+const HEADER_ROW_H = 28;
+const TOP_HEADER_H = 56;
+const GRID_BORDER = "1px solid #444";
+const WEEKEND_BG = "#e8e8e8";
 
 const FONT_FAMILY =
   '"Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif';
 
 function cellBase(extra?: CSSProperties): CSSProperties {
   return {
-    border: "1px solid #000",
+    border: GRID_BORDER,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -91,69 +94,34 @@ export function PrintGanttSheet({
         boxSizing: "border-box",
       }}
     >
-      {/* ─── 上部 ヘッダ ─── */}
+      {/* ─── 上部 ヘッダ (1 行) ─── */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `${LABEL_W}px 1fr 60px 110px 80px 130px`,
+          gridTemplateColumns: `${LABEL_W}px 1fr 70px 140px 80px 150px`,
           width: totalWidth,
         }}
       >
-        {/* 工事名 (rowspan 3) */}
-        <div
-          style={cellBase({
-            gridRow: "span 3",
-            fontSize: 14,
-            padding: 6,
-          })}
-        >
+        <div style={cellBase({ height: TOP_HEADER_H, fontSize: 14, padding: 6 })}>
           工事名
         </div>
-        {/* 案件名 (rowspan 3) */}
         <div
           style={cellBase({
-            gridRow: "span 3",
-            fontSize: 16,
+            height: TOP_HEADER_H,
+            fontSize: 18,
             fontWeight: 600,
-            textDecoration: "underline",
             padding: 8,
           })}
         >
           {project.name}
         </div>
-        {/* row1: 構造 / (空) / unitNumber (colspan2) */}
-        <div style={cellBase({ height: HEADER_ROW_H })}>構造</div>
-        <div style={cellBase({ height: HEADER_ROW_H })}></div>
-        <div
-          style={cellBase({
-            height: HEADER_ROW_H,
-            gridColumn: "span 2",
-            fontSize: 13,
-          })}
-        >
-          {project.unitNumber ?? ""}
-        </div>
-        {/* row2: 計画 / startDate / 作成者 (rowspan2) / supervisor (rowspan2) */}
-        <div style={cellBase({ height: HEADER_ROW_H })}>計画</div>
-        <div style={cellBase({ height: HEADER_ROW_H, fontSize: 13 })}>
-          {fmtDot(project.startDate)}
-        </div>
-        <div style={cellBase({ height: HEADER_ROW_H, gridRow: "span 2" })}>
+        <div style={cellBase({ height: TOP_HEADER_H, fontSize: 13 })}>構造</div>
+        <div style={cellBase({ height: TOP_HEADER_H, fontSize: 13 })}></div>
+        <div style={cellBase({ height: TOP_HEADER_H, fontSize: 13 })}>
           作成者
         </div>
-        <div
-          style={cellBase({
-            height: HEADER_ROW_H,
-            gridRow: "span 2",
-            fontSize: 13,
-          })}
-        >
+        <div style={cellBase({ height: TOP_HEADER_H, fontSize: 14 })}>
           {project.siteSupervisor ?? ""}
-        </div>
-        {/* row3: 実施 / endDate */}
-        <div style={cellBase({ height: HEADER_ROW_H })}>実施</div>
-        <div style={cellBase({ height: HEADER_ROW_H, fontSize: 13 })}>
-          {fmtDot(project.endDate)}
         </div>
       </div>
 
@@ -185,7 +153,7 @@ export function PrintGanttSheet({
                 style={cellBase({
                   height: HEADER_ROW_H,
                   fontSize: 11,
-                  background: wknd ? "#dcdcdc" : "#fff",
+                  background: wknd ? WEEKEND_BG : "#fff",
                 })}
               >
                 {d}
@@ -207,7 +175,7 @@ export function PrintGanttSheet({
                 style={cellBase({
                   height: HEADER_ROW_H,
                   fontSize: 11,
-                  background: wknd ? "#dcdcdc" : "#fff",
+                  background: wknd ? WEEKEND_BG : "#fff",
                   color,
                 })}
               >
@@ -241,9 +209,9 @@ export function PrintGanttSheet({
                     <div
                       key={`c-${idx}-${d}`}
                       style={{
-                        border: "1px dashed #888",
+                        border: GRID_BORDER,
                         boxSizing: "border-box",
-                        background: wknd ? "#ececec" : "#fff",
+                        background: wknd ? WEEKEND_BG : "#fff",
                         height: ROW_H,
                       }}
                     />
@@ -276,7 +244,8 @@ export function PrintGanttSheet({
             const right = LABEL_W + (endDay - 1) * DAY_W + DAY_W * 0.75;
             const width = Math.max(10, right - left);
             const top = gridHeaderH + idx * ROW_H + ROW_H / 2;
-            const arrowSize = 5;
+            const lineH = 3;
+            const arrowSize = 7;
             const showArrowHead = pe <= monthEndDate;
             return (
               <div
@@ -284,16 +253,17 @@ export function PrintGanttSheet({
                 style={{
                   position: "absolute",
                   left,
-                  top: top - 1,
+                  top: top - lineH / 2,
                   width,
-                  height: 2,
+                  height: lineH,
                 }}
               >
                 <div
                   style={{
                     width: "100%",
-                    height: 2,
-                    background: "#cc0000",
+                    height: lineH,
+                    background: "#d92020",
+                    borderRadius: 1,
                   }}
                 />
                 {showArrowHead && (
@@ -301,10 +271,10 @@ export function PrintGanttSheet({
                     style={{
                       position: "absolute",
                       right: -arrowSize,
-                      top: -arrowSize + 1,
+                      top: -arrowSize + lineH / 2,
                       width: 0,
                       height: 0,
-                      borderLeft: `${arrowSize}px solid #cc0000`,
+                      borderLeft: `${arrowSize}px solid #d92020`,
                       borderTop: `${arrowSize}px solid transparent`,
                       borderBottom: `${arrowSize}px solid transparent`,
                     }}
