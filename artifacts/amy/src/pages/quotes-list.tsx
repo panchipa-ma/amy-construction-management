@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, FileText, Trash2, FileOutput } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, endOfNextMonthISO } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { apiErrorMessage } from "@/lib/api-error";
@@ -79,14 +79,14 @@ export default function QuotesListPage() {
   const [convertForm, setConvertForm] = useState({
     invoiceNumber: "",
     issueDate: today,
-    dueDate: "",
+    dueDate: endOfNextMonthISO(today),
   });
 
   const openConvert = (q: { id: string; quoteNumber: string }) => {
     setConvertForm({
       invoiceNumber: q.quoteNumber.replace(/^Q/i, "INV"),
       issueDate: today,
-      dueDate: "",
+      dueDate: endOfNextMonthISO(today),
     });
     setConvertFor(q);
   };
