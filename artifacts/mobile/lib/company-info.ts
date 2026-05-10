@@ -1,6 +1,6 @@
 export const COMPANY_INFO = {
   name: "株式会社AMY",
-  postalCode: "〒570-0000",
+  postalCode: "〒570-0036",
   address: "大阪府守口市大枝東町5-10",
   registrationNumber: "T8120001231483",
   tel: "06-6780-9124",
