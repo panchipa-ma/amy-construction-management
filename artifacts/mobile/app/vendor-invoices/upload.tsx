@@ -27,11 +27,7 @@ import {
 } from "@/components/form";
 import { Body, Muted } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
-import {
-  pickFromLibraryOrFile,
-  pickUploadAndOcr,
-  uploadAsset,
-} from "@/lib/upload";
+import { pickFromFile, pickUploadAndOcr, uploadAsset } from "@/lib/upload";
 
 function todayStr() {
   const d = new Date();
@@ -71,7 +67,7 @@ export default function VendorInvoiceUpload() {
     ...(staffQ.data ?? []).map((s) => ({ value: s.id, label: s.name })),
   ];
 
-  const runPickUpload = async (source: "camera" | "library-or-file") => {
+  const runPickUpload = async (source: "camera" | "file") => {
     try {
       setBusy("uploading");
       const r = await pickUploadAndOcr("vendor_invoice", source);
@@ -105,7 +101,7 @@ export default function VendorInvoiceUpload() {
 
   const handleReplace = async () => {
     try {
-      const asset = await pickFromLibraryOrFile();
+      const asset = await pickFromFile();
       if (!asset) return;
       setBusy("uploading");
       const upload = await uploadAsset(asset);
@@ -236,7 +232,7 @@ export default function VendorInvoiceUpload() {
                 </Body>
               </Pressable>
               <Pressable
-                onPress={() => runPickUpload("library-or-file")}
+                onPress={() => runPickUpload("file")}
                 style={({ pressed }) => [
                   {
                     flex: 1,
@@ -251,12 +247,15 @@ export default function VendorInvoiceUpload() {
                   pressed && { opacity: 0.7 },
                 ]}
               >
-                <Feather name="upload" size={26} color={c.primary} />
+                <Feather name="folder" size={26} color={c.primary} />
                 <Body style={{ color: c.primary, fontWeight: "700" }}>
-                  アップロード
+                  ファイルを選択
                 </Body>
               </Pressable>
             </View>
+            <Muted style={{ fontSize: 11, textAlign: "center" }}>
+              写真ライブラリ・ファイル・Dropbox・Google ドライブ等から選択できます
+            </Muted>
             <Muted style={{ fontSize: 12, textAlign: "center" }}>
               自動で 業者名・金額・日付・号室 を読み取ります
             </Muted>

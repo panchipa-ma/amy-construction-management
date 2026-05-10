@@ -26,11 +26,7 @@ import {
 import { Body, Muted } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { COST_CATEGORY_LABEL } from "@/lib/format";
-import {
-  pickFromLibraryOrFile,
-  pickUploadAndOcr,
-  uploadAsset,
-} from "@/lib/upload";
+import { pickFromFile, pickUploadAndOcr, uploadAsset } from "@/lib/upload";
 
 type Category = "material" | "subcontract" | "labor" | "expense" | "other";
 
@@ -72,7 +68,7 @@ export default function NewReceipt() {
     })),
   ];
 
-  const runPickAndUpload = async (source: "camera" | "library-or-file") => {
+  const runPickAndUpload = async (source: "camera" | "file") => {
     try {
       setBusy("uploading");
       const result = await pickUploadAndOcr("receipt", source);
@@ -109,7 +105,7 @@ export default function NewReceipt() {
 
   const handleReplaceImage = async () => {
     try {
-      const asset = await pickFromLibraryOrFile();
+      const asset = await pickFromFile();
       if (!asset) return;
       setBusy("uploading");
       const upload = await uploadAsset(asset);
@@ -247,7 +243,7 @@ export default function NewReceipt() {
                 </Body>
               </Pressable>
               <Pressable
-                onPress={() => runPickAndUpload("library-or-file")}
+                onPress={() => runPickAndUpload("file")}
                 style={({ pressed }) => [
                   {
                     flex: 1,
@@ -262,12 +258,15 @@ export default function NewReceipt() {
                   pressed && { opacity: 0.7 },
                 ]}
               >
-                <Feather name="upload" size={26} color={c.primary} />
+                <Feather name="folder" size={26} color={c.primary} />
                 <Body style={{ color: c.primary, fontWeight: "700" }}>
-                  アップロード
+                  ファイルを選択
                 </Body>
               </Pressable>
             </View>
+            <Muted style={{ fontSize: 11, textAlign: "center" }}>
+              写真ライブラリ・ファイル・Dropbox・Google ドライブ等から選択できます
+            </Muted>
             <Muted style={{ fontSize: 12, textAlign: "center" }}>
               自動で 店名・金額・日付 を読み取ります
             </Muted>

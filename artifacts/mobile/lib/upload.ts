@@ -228,10 +228,14 @@ export async function tryOcr(
 /** High-level helper: pick → upload → OCR. Returns null if user cancels. */
 export async function pickUploadAndOcr(
   kind: "receipt" | "vendor_invoice",
-  source: "camera" | "library-or-file" = "library-or-file",
+  source: "camera" | "file" | "library-or-file" = "file",
 ): Promise<{ upload: UploadResult; ocr: ExtractOcrResponse | null } | null> {
   const asset =
-    source === "camera" ? await pickFromCamera() : await pickFromLibraryOrFile();
+    source === "camera"
+      ? await pickFromCamera()
+      : source === "library-or-file"
+        ? await pickFromLibraryOrFile()
+        : await pickFromFile();
   if (!asset) return null;
   const upload = await uploadAsset(asset);
   const ocr = await tryOcr(upload.objectPath, upload.contentType, kind);
