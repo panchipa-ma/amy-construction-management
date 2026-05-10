@@ -9,6 +9,7 @@ import React, { useState } from "react";
 import { FlatList, Linking, RefreshControl, View } from "react-native";
 
 import { Fab } from "@/components/form";
+import { SelectButton } from "@/components/select-button";
 import { SelectionBar } from "@/components/selection-bar";
 import {
   Badge,
@@ -71,7 +72,11 @@ export default function ReceiptsScreen() {
           onDelete={onDelete}
           busy={busy}
         />
-      ) : null}
+      ) : (
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 12, paddingTop: 10 }}>
+          <SelectButton onPress={sel.enter} disabled={items.length === 0} />
+        </View>
+      )}
       <FlatList
         style={{ backgroundColor: c.background }}
         data={items}
@@ -126,7 +131,7 @@ export default function ReceiptsScreen() {
         )}
       />
       {!sel.selectionMode ? (
-        <Fab onPress={() => router.push("/receipts/new")} label="撮影" />
+        <Fab onPress={() => router.push("/receipts/new")} label="撮影" inTabs />
       ) : null}
     </View>
   );

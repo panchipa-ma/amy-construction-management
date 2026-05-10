@@ -21,6 +21,7 @@ import {
 } from "react-native";
 
 import { Fab } from "@/components/form";
+import { ListToolbar } from "@/components/select-button";
 import { SelectionBar } from "@/components/selection-bar";
 import { StatusPicker } from "@/components/status-picker";
 import {
@@ -139,11 +140,12 @@ export default function ProjectsTab() {
           onDelete={onBulkDelete}
           busy={busy}
         />
-      ) : null}
+      ) : (
+        <ListToolbar onSelect={sel.enter} selectDisabled={data.length === 0}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10, gap: 8 }}
+        contentContainerStyle={{ gap: 8 }}
       >
         {FILTERS.map((f) => {
           const active = filter === f.value;
@@ -176,6 +178,8 @@ export default function ProjectsTab() {
           );
         })}
       </ScrollView>
+        </ListToolbar>
+      )}
 
       <FlatList
         data={data}
@@ -253,7 +257,7 @@ export default function ProjectsTab() {
         }}
       />
       {!sel.selectionMode ? (
-        <Fab onPress={() => router.push("/projects/edit")} label="新規案件" />
+        <Fab onPress={() => router.push("/projects/edit")} label="新規案件" inTabs />
       ) : null}
       <StatusPicker<ProjectStatus>
         open={!!statusTarget}

@@ -700,12 +700,16 @@ export function Fab({
   onPress,
   icon = "plus",
   label,
+  inTabs,
 }: {
   onPress: () => void;
   icon?: keyof typeof Feather.glyphMap;
   label?: string;
+  /** When inside a bottom-tab screen, raise the FAB above the tab bar. */
+  inTabs?: boolean;
 }) {
   const c = useColors();
+  const bottom = inTabs ? (Platform.OS === "ios" ? 100 : 80) : 24;
   return (
     <Pressable
       onPress={onPress}
@@ -713,7 +717,7 @@ export function Fab({
         {
           position: "absolute",
           right: 18,
-          bottom: 24,
+          bottom,
           backgroundColor: c.primary,
           borderRadius: label ? 28 : 32,
           paddingHorizontal: label ? 18 : 0,

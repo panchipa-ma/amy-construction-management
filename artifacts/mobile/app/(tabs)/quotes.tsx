@@ -9,6 +9,7 @@ import React, { useState } from "react";
 import { FlatList, RefreshControl, View } from "react-native";
 
 import { Fab } from "@/components/form";
+import { SelectButton } from "@/components/select-button";
 import { SelectionBar } from "@/components/selection-bar";
 import {
   Body,
@@ -61,7 +62,11 @@ export default function QuotesTab() {
           onDelete={onDelete}
           busy={busy}
         />
-      ) : null}
+      ) : (
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 12, paddingTop: 10 }}>
+          <SelectButton onPress={sel.enter} disabled={items.length === 0} />
+        </View>
+      )}
       <FlatList
         data={items}
         keyExtractor={(x) => x.id}
@@ -102,7 +107,7 @@ export default function QuotesTab() {
         )}
       />
       {!sel.selectionMode ? (
-        <Fab onPress={() => router.push("/quotes/edit")} label="新規見積" />
+        <Fab onPress={() => router.push("/quotes/edit")} label="新規見積" inTabs />
       ) : null}
     </View>
   );

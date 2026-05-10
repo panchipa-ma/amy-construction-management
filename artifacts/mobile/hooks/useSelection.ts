@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export function useSelection<T extends { id: string }>(items: T[]) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [manualMode, setManualMode] = useState(false);
 
   // Prune ids that no longer exist in the current items list (after refetch,
   // filter change, or successful delete). Using a stable signature avoids
@@ -27,7 +28,7 @@ export function useSelection<T extends { id: string }>(items: T[]) {
     });
   }, [idSignature, items]);
 
-  const selectionMode = selectedIds.size > 0;
+  const selectionMode = manualMode || selectedIds.size > 0;
 
   const isSelected = useCallback(
     (id: string) => selectedIds.has(id),
@@ -43,7 +44,12 @@ export function useSelection<T extends { id: string }>(items: T[]) {
     });
   }, []);
 
-  const clear = useCallback(() => setSelectedIds(new Set()), []);
+  const enter = useCallback(() => setManualMode(true), []);
+
+  const clear = useCallback(() => {
+    setSelectedIds(new Set());
+    setManualMode(false);
+  }, []);
 
   const selectAll = useCallback(() => {
     setSelectedIds(new Set(items.map((i) => i.id)));
@@ -61,6 +67,7 @@ export function useSelection<T extends { id: string }>(items: T[]) {
     count: selectedIds.size,
     isSelected,
     toggle,
+    enter,
     clear,
     selectAll,
   };

@@ -11,6 +11,7 @@ import React, { useState } from "react";
 import { Alert, FlatList, RefreshControl, View } from "react-native";
 
 import { InternalOnly } from "@/components/InternalOnly";
+import { SelectButton } from "@/components/select-button";
 import { SelectionBar } from "@/components/selection-bar";
 import { isInternal } from "@/lib/role";
 import {
@@ -127,7 +128,11 @@ function UsersList() {
           onDelete={onDelete}
           busy={busy}
         />
-      ) : null}
+      ) : (
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 12, paddingTop: 10 }}>
+          <SelectButton onPress={sel.enter} disabled={items.length === 0} />
+        </View>
+      )}
       <FlatList
         style={{ backgroundColor: c.background }}
         data={allRows}

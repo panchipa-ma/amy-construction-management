@@ -10,6 +10,7 @@ import { FlatList, RefreshControl, View } from "react-native";
 
 import { InternalOnly } from "@/components/InternalOnly";
 import { Fab } from "@/components/form";
+import { SelectButton } from "@/components/select-button";
 import { SelectionBar } from "@/components/selection-bar";
 import { Badge, Body, Card, EmptyState, ErrorState, Loader, Muted } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
@@ -63,7 +64,11 @@ function StaffScreen() {
           onDelete={onDelete}
           busy={busy}
         />
-      ) : null}
+      ) : (
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 12, paddingTop: 10 }}>
+          <SelectButton onPress={sel.enter} disabled={items.length === 0} />
+        </View>
+      )}
       <FlatList
         data={items}
         keyExtractor={(x) => x.id}

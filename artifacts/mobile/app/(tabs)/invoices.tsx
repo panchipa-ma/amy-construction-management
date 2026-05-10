@@ -9,6 +9,7 @@ import React, { useEffect, useState } from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, View } from "react-native";
 
 import { Fab } from "@/components/form";
+import { ListToolbar } from "@/components/select-button";
 import { SelectionBar } from "@/components/selection-bar";
 import {
   Badge,
@@ -84,10 +85,11 @@ export default function InvoicesTab() {
           busy={busy}
         />
       ) : (
+        <ListToolbar onSelect={sel.enter} selectDisabled={filtered.length === 0}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10, gap: 8 }}
+          contentContainerStyle={{ gap: 8 }}
         >
           {FILTERS.map((f) => {
             const active = filter === f.value;
@@ -120,6 +122,7 @@ export default function InvoicesTab() {
             );
           })}
         </ScrollView>
+        </ListToolbar>
       )}
 
       <FlatList
@@ -171,7 +174,7 @@ export default function InvoicesTab() {
         )}
       />
       {!sel.selectionMode ? (
-        <Fab onPress={() => router.push("/invoices/edit")} label="新規請求書" />
+        <Fab onPress={() => router.push("/invoices/edit")} label="新規請求書" inTabs />
       ) : null}
     </View>
   );
