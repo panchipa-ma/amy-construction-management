@@ -1,7 +1,7 @@
 import { useListVendorInvoices } from "@workspace/api-client-react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { FlatList, Pressable, RefreshControl, ScrollView, View } from "react-native";
+import { Alert, FlatList, Pressable, RefreshControl, ScrollView, View } from "react-native";
 
 import { Fab } from "@/components/form";
 import {
@@ -122,7 +122,22 @@ export default function VendorInvoicesScreen() {
           </Card>
         )}
       />
-      <Fab onPress={() => router.push("/vendor-invoices/new")} label="請求書を作成" />
+      <Fab
+        onPress={() =>
+          Alert.alert("職人請求書を追加", "どちらの方法で追加しますか?", [
+            {
+              text: "写真をアップロード",
+              onPress: () => router.push("/vendor-invoices/upload"),
+            },
+            {
+              text: "フォームから作成 (PDF生成)",
+              onPress: () => router.push("/vendor-invoices/new"),
+            },
+            { text: "キャンセル", style: "cancel" },
+          ])
+        }
+        label="追加"
+      />
     </View>
   );
 }

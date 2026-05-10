@@ -86,25 +86,41 @@ export function H2({ children, style }: { children: React.ReactNode; style?: Tex
 export function Muted({
   children,
   style,
+  numberOfLines,
 }: {
   children: React.ReactNode;
   style?: TextStyle;
+  numberOfLines?: number;
 }) {
   const c = useColors();
   return (
-    <Text style={[{ fontSize: 13, color: c.mutedForeground }, style]}>{children}</Text>
+    <Text
+      numberOfLines={numberOfLines}
+      style={[{ fontSize: 13, color: c.mutedForeground }, style]}
+    >
+      {children}
+    </Text>
   );
 }
 
 export function Body({
   children,
   style,
+  numberOfLines,
 }: {
   children: React.ReactNode;
   style?: TextStyle | TextStyle[];
+  numberOfLines?: number;
 }) {
   const c = useColors();
-  return <Text style={[{ fontSize: 15, color: c.foreground }, style]}>{children}</Text>;
+  return (
+    <Text
+      numberOfLines={numberOfLines}
+      style={[{ fontSize: 15, color: c.foreground }, style]}
+    >
+      {children}
+    </Text>
+  );
 }
 
 export function Badge({

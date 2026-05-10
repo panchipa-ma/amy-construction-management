@@ -62,6 +62,14 @@ function RootLayoutNav() {
         name="vendor-invoices/new"
         options={{ headerShown: false, presentation: "modal" }}
       />
+      <Stack.Screen
+        name="vendor-invoices/upload"
+        options={{ headerShown: false, presentation: "modal" }}
+      />
+      <Stack.Screen
+        name="receipts/new"
+        options={{ headerShown: false, presentation: "modal" }}
+      />
       <Stack.Screen name="vendor-quotes" options={{ title: "職人見積書" }} />
       <Stack.Screen
         name="vendor-quotes/new"

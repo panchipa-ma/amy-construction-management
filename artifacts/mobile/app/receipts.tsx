@@ -1,8 +1,9 @@
 import { useListReceipts } from "@workspace/api-client-react";
-import { Linking } from "react-native";
+import { useRouter } from "expo-router";
 import React from "react";
-import { FlatList, RefreshControl, View } from "react-native";
+import { FlatList, Linking, RefreshControl, View } from "react-native";
 
+import { Fab } from "@/components/form";
 import {
   Badge,
   Body,
@@ -26,6 +27,7 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 export default function ReceiptsScreen() {
   const c = useColors();
+  const router = useRouter();
   const q = useListReceipts();
 
   if (q.isLoading) return <Loader />;
@@ -34,19 +36,20 @@ export default function ReceiptsScreen() {
   const data = q.data ?? [];
 
   return (
+    <View style={{ flex: 1, backgroundColor: c.background }}>
     <FlatList
       style={{ backgroundColor: c.background }}
       data={data}
       keyExtractor={(r) => r.id}
-      contentContainerStyle={{ padding: 12, gap: 10, paddingBottom: 40 }}
+      contentContainerStyle={{ padding: 12, gap: 10, paddingBottom: 96 }}
       refreshControl={
         <RefreshControl refreshing={q.isFetching} onRefresh={() => q.refetch()} />
       }
       ListEmptyComponent={
         <EmptyState
-          icon="file"
+          icon="camera"
           title="領収書がありません"
-          subtitle="領収書アップロードは Web 版から行えます"
+          subtitle="右下の「+」から撮影またはアルバムから追加できます"
         />
       }
       renderItem={({ item }) => (
@@ -76,5 +79,7 @@ export default function ReceiptsScreen() {
         </Card>
       )}
     />
+    <Fab onPress={() => router.push("/receipts/new")} label="撮影" />
+    </View>
   );
 }
