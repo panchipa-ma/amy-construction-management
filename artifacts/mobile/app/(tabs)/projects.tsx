@@ -1,11 +1,25 @@
 import { Feather } from "@expo/vector-icons";
+import { useQueryClient } from "@tanstack/react-query";
 import {
+  getGetProjectQueryKey,
+  getListProjectsQueryKey,
+  type Project,
   type ProjectStatus,
   useListProjects,
+  useUpdateProject,
 } from "@workspace/api-client-react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { FlatList, Pressable, RefreshControl, ScrollView, View } from "react-native";
+import {
+  ActionSheetIOS,
+  Alert,
+  FlatList,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  View,
+} from "react-native";
 
 import { Fab } from "@/components/form";
 import {
@@ -57,11 +71,63 @@ export default function ProjectsTab() {
 
   const queryParams = filter === "all" ? undefined : { status: filter };
   const q = useListProjects(queryParams);
+  const qc = useQueryClient();
+  const updateMut = useUpdateProject();
 
   if (q.isLoading) return <Loader />;
   if (q.isError) return <ErrorState onRetry={() => q.refetch()} />;
 
   const data = q.data ?? [];
+
+  const handleChangeStatus = (project: Project) => {
+    const options: { label: string; value: ProjectStatus }[] = [
+      { label: PROJECT_STATUS_LABEL.estimating, value: "estimating" },
+      { label: PROJECT_STATUS_LABEL.contracted, value: "contracted" },
+      { label: PROJECT_STATUS_LABEL.in_progress, value: "in_progress" },
+      { label: PROJECT_STATUS_LABEL.completed, value: "completed" },
+      { label: PROJECT_STATUS_LABEL.archived, value: "archived" },
+    ];
+    const apply = async (value: ProjectStatus) => {
+      if (value === project.status) return;
+      try {
+        await updateMut.mutateAsync({
+          id: project.id,
+          data: { status: value },
+        });
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: getListProjectsQueryKey() }),
+          qc.invalidateQueries({
+            queryKey: getListProjectsQueryKey(queryParams),
+          }),
+          qc.invalidateQueries({
+            queryKey: getGetProjectQueryKey(project.id),
+          }),
+        ]);
+      } catch (e) {
+        Alert.alert("更新失敗", e instanceof Error ? e.message : String(e));
+      }
+    };
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: "ステータスを変更",
+          options: [...options.map((o) => o.label), "キャンセル"],
+          cancelButtonIndex: options.length,
+        },
+        (idx) => {
+          if (idx >= 0 && idx < options.length) apply(options[idx].value);
+        },
+      );
+    } else {
+      Alert.alert("ステータスを変更", undefined, [
+        ...options.map((o) => ({
+          text: o.label,
+          onPress: () => apply(o.value),
+        })),
+        { text: "キャンセル", style: "cancel" as const },
+      ]);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
@@ -126,10 +192,27 @@ export default function ProjectsTab() {
                   <Muted style={{ marginTop: 2 }}>
                     {fmtDate(item.startDate)}{item.endDate ? ` 〜 ${fmtDate(item.endDate)}` : ""}
                   </Muted>
-                  <View style={{ marginTop: 8, flexDirection: "row", gap: 6 }}>
-                    <Badge tone={statusTone(item.status)}>
-                      {PROJECT_STATUS_LABEL[item.status] ?? item.status}
-                    </Badge>
+                  <View style={{ marginTop: 8, flexDirection: "row", gap: 6, alignItems: "center" }}>
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        handleChangeStatus(item);
+                      }}
+                      hitSlop={6}
+                      style={({ pressed }) => [
+                        { flexDirection: "row", alignItems: "center", gap: 2 },
+                        pressed && { opacity: 0.6 },
+                      ]}
+                    >
+                      <Badge tone={statusTone(item.status)}>
+                        {PROJECT_STATUS_LABEL[item.status] ?? item.status}
+                      </Badge>
+                      <Feather
+                        name="chevron-down"
+                        size={12}
+                        color={c.mutedForeground}
+                      />
+                    </Pressable>
                     {item.salesRep ? <Badge>{item.salesRep}</Badge> : null}
                   </View>
                 </View>
