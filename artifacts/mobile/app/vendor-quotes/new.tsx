@@ -145,7 +145,16 @@ export default function VendorQuoteNew() {
       title="新規 職人見積書"
       onSave={submit}
       saving={createMut.isPending}
-      saveDisabled={!projectId || !vendorName.trim() || !docNumber.trim() || !profileOk}
+      validate={() => {
+        const missing: string[] = [];
+        if (!projectId) missing.push("案件");
+        if (!vendorName.trim()) missing.push("発行者 (職人/業者)");
+        if (!docNumber.trim()) missing.push("見積No");
+        if (!issueDate) missing.push("見積日");
+        if (!recipientName.trim()) missing.push("宛先 (御中)");
+        if (!profileOk) missing.push("プロフィール (発行元情報)");
+        return missing;
+      }}
     >
       {!profileOk ? (
         <FormSection>

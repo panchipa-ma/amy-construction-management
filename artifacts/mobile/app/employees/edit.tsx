@@ -57,8 +57,6 @@ function EmployeeEdit() {
     setForm((s) => ({ ...s, [k]: v }));
 
   const submit = async () => {
-    if (!form.name.trim()) throw new Error("名前は必須です");
-    if (!form.role.trim()) throw new Error("役職は必須です");
     const data = {
       name: form.name.trim(),
       role: form.role.trim(),
@@ -85,7 +83,12 @@ function EmployeeEdit() {
       title={isEdit ? "社員を編集" : "新規社員"}
       onSave={submit}
       saving={createMut.isPending || updateMut.isPending}
-      saveDisabled={!form.name.trim() || !form.role.trim()}
+      validate={() => {
+        const missing: string[] = [];
+        if (!form.name.trim()) missing.push("名前");
+        if (!form.role.trim()) missing.push("役職");
+        return missing;
+      }}
       onDelete={onDelete}
       deleting={deleteMut.isPending}
     >

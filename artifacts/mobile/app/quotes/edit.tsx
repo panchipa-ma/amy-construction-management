@@ -94,11 +94,7 @@ function QuoteEdit() {
   }));
 
   const submit = async () => {
-    if (!projectId) throw new Error("案件を選択してください");
-    if (!quoteNumber.trim()) throw new Error("見積No は必須です");
-    if (!issueDate) throw new Error("見積日は必須です");
     const apiItems = lineItemsToApi(items);
-    if (apiItems.length === 0) throw new Error("明細を1行以上入力してください");
     const data = {
       projectId,
       subject: subject || null,
@@ -130,7 +126,14 @@ function QuoteEdit() {
       title={isEdit ? "見積書を編集" : "新規見積書"}
       onSave={submit}
       saving={createMut.isPending || updateMut.isPending}
-      saveDisabled={!projectId || !quoteNumber.trim() || !issueDate}
+      validate={() => {
+        const missing: string[] = [];
+        if (!projectId) missing.push("案件");
+        if (!quoteNumber.trim()) missing.push("見積No");
+        if (!issueDate) missing.push("見積日");
+        if (lineItemsToApi(items).length === 0) missing.push("明細 (1行以上)");
+        return missing;
+      }}
       onDelete={onDelete}
       deleting={deleteMut.isPending}
     >

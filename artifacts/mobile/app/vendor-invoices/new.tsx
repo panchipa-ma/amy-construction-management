@@ -148,7 +148,16 @@ export default function VendorInvoiceNew() {
       title="新規 職人請求書"
       onSave={submit}
       saving={createMut.isPending}
-      saveDisabled={!projectId || !vendorName.trim() || !docNumber.trim() || !profileOk}
+      validate={() => {
+        const missing: string[] = [];
+        if (!projectId) missing.push("案件");
+        if (!vendorName.trim()) missing.push("発行者 (職人/業者)");
+        if (!docNumber.trim()) missing.push("請求書No");
+        if (!issueDate) missing.push("請求日");
+        if (!recipientName.trim()) missing.push("宛先 (御中)");
+        if (!profileOk) missing.push("プロフィール (発行元・振込先)");
+        return missing;
+      }}
     >
       {!profileOk ? (
         <FormSection>

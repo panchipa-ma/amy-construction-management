@@ -36,17 +36,19 @@ export default function ProfileScreen() {
       title="プロフィール編集"
       onSave={submit}
       saving={saving}
-      saveDisabled={
-        !p.companyName.trim() ||
-        !p.postalCode.trim() ||
-        !p.address.trim() ||
-        !p.email.trim() ||
-        !p.bankName.trim() ||
-        !p.branchName.trim() ||
-        !p.accountType.trim() ||
-        !p.accountNumber.trim() ||
-        !p.accountHolder.trim()
-      }
+      validate={() => {
+        const missing: string[] = [];
+        if (!p.companyName.trim()) missing.push("会社名 / 屋号");
+        if (!p.postalCode.trim()) missing.push("郵便番号");
+        if (!p.address.trim()) missing.push("住所");
+        if (!p.email.trim()) missing.push("E-Mail");
+        if (!p.bankName.trim()) missing.push("銀行名");
+        if (!p.branchName.trim()) missing.push("支店名");
+        if (!p.accountType.trim()) missing.push("口座種別");
+        if (!p.accountNumber.trim()) missing.push("口座番号");
+        if (!p.accountHolder.trim()) missing.push("口座名義 (カナ)");
+        return missing;
+      }}
     >
       <FormSection>
         <Body style={{ fontSize: 13 }}>

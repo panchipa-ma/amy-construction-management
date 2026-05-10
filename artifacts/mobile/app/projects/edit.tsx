@@ -157,8 +157,6 @@ function ProjectEdit() {
   );
 
   const submit = async () => {
-    if (!form.name.trim()) throw new Error("案件名は必須です");
-    if (!form.customerId) throw new Error("顧客を選択してください");
     const data = {
       name: form.name.trim(),
       code: form.code || null,
@@ -202,7 +200,13 @@ function ProjectEdit() {
       title={isEdit ? "案件を編集" : "新規案件"}
       onSave={submit}
       saving={createMut.isPending || updateMut.isPending}
-      saveDisabled={!form.name.trim() || !form.customerId}
+      validate={() => {
+        const missing: string[] = [];
+        if (!form.name.trim()) missing.push("案件名");
+        if (!form.status) missing.push("ステータス");
+        if (!form.customerId) missing.push("顧客");
+        return missing;
+      }}
       onDelete={onDelete}
       deleting={deleteMut.isPending}
     >

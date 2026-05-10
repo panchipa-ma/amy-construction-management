@@ -1,4 +1,7 @@
 import { Feather } from "@expo/vector-icons";
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
@@ -18,6 +21,29 @@ import {
 } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+
+function parseISODate(s: string): Date | null {
+  if (!s) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function fmtISO(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${da}`;
+}
+
+const JP_WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+
+function fmtJP(s: string): string {
+  const d = parseISODate(s);
+  if (!d) return "";
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 (${JP_WEEKDAYS[d.getDay()]})`;
+}
 
 export function Field({
   label,
@@ -156,21 +182,173 @@ export function NumberInput({
 export function DateInput({
   value,
   onChangeText,
-  placeholder = "YYYY-MM-DD",
+  placeholder = "日付を選択",
+  allowClear = true,
 }: {
   value: string;
   onChangeText: (v: string) => void;
   placeholder?: string;
+  allowClear?: boolean;
 }) {
+  const c = useColors();
+  const [iosOpen, setIosOpen] = useState(false);
+  const [iosDraft, setIosDraft] = useState<Date>(parseISODate(value) ?? new Date());
+
+  if (Platform.OS === "web") {
+    return React.createElement("input" as unknown as React.ComponentType<Record<string, unknown>>, {
+      type: "date",
+      value: value || "",
+      onChange: (e: { target: { value: string } }) => onChangeText(e.target.value),
+      style: {
+        borderWidth: 1,
+        borderColor: c.border,
+        borderRadius: 8,
+        padding: "10px 12px",
+        fontSize: 15,
+        color: c.foreground,
+        backgroundColor: c.card,
+        fontFamily: "inherit",
+      },
+    });
+  }
+
+  const openPicker = () => {
+    const initial = parseISODate(value) ?? new Date();
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: initial,
+        mode: "date",
+        onChange: (event, selected) => {
+          if (event.type === "set" && selected) onChangeText(fmtISO(selected));
+        },
+      });
+    } else {
+      setIosDraft(initial);
+      setIosOpen(true);
+    }
+  };
+
+  const display = value ? fmtJP(value) : "";
+
   return (
-    <Input
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder}
-      autoCapitalize="none"
-      autoCorrect={false}
-      keyboardType={Platform.OS === "ios" ? "numbers-and-punctuation" : "default"}
-    />
+    <>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Pressable
+          onPress={openPicker}
+          style={({ pressed }) => [
+            {
+              flex: 1,
+              borderWidth: 1,
+              borderColor: c.border,
+              borderRadius: 8,
+              paddingHorizontal: 12,
+              paddingVertical: Platform.OS === "ios" ? 12 : 10,
+              backgroundColor: c.card,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+            },
+            pressed && { opacity: 0.7 },
+          ]}
+        >
+          <Text
+            style={{
+              fontSize: 15,
+              color: display ? c.foreground : c.mutedForeground,
+              flex: 1,
+            }}
+            numberOfLines={1}
+          >
+            {display || placeholder}
+          </Text>
+          <Feather name="calendar" size={16} color={c.mutedForeground} />
+        </Pressable>
+        {allowClear && value ? (
+          <Pressable
+            onPress={() => onChangeText("")}
+            hitSlop={8}
+            style={({ pressed }) => [
+              {
+                paddingHorizontal: 8,
+                paddingVertical: 8,
+              },
+              pressed && { opacity: 0.6 },
+            ]}
+          >
+            <Feather name="x-circle" size={18} color={c.mutedForeground} />
+          </Pressable>
+        ) : null}
+      </View>
+      {Platform.OS === "ios" ? (
+        <Modal
+          transparent
+          animationType="fade"
+          visible={iosOpen}
+          onRequestClose={() => setIosOpen(false)}
+        >
+          <Pressable
+            onPress={() => setIosOpen(false)}
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.45)",
+              justifyContent: "flex-end",
+            }}
+          >
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: c.card,
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                paddingBottom: 24,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: c.border,
+                }}
+              >
+                <Pressable onPress={() => setIosOpen(false)}>
+                  <Text style={{ color: c.mutedForeground, fontSize: 15 }}>
+                    キャンセル
+                  </Text>
+                </Pressable>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: c.foreground }}>
+                  日付を選択
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    onChangeText(fmtISO(iosDraft));
+                    setIosOpen(false);
+                  }}
+                >
+                  <Text style={{ color: c.primary, fontSize: 15, fontWeight: "600" }}>
+                    完了
+                  </Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={iosDraft}
+                mode="date"
+                display="inline"
+                onChange={(_, selected) => {
+                  if (selected) setIosDraft(selected);
+                }}
+                locale="ja-JP"
+                themeVariant="light"
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
+      ) : null}
+    </>
   );
 }
 
@@ -330,6 +508,7 @@ export function FormScreen({
   saving,
   saveLabel = "保存",
   saveDisabled,
+  validate,
   onDelete,
   deleting,
   children,
@@ -339,6 +518,12 @@ export function FormScreen({
   saving?: boolean;
   saveLabel?: string;
   saveDisabled?: boolean;
+  /**
+   * Returns labels of missing required fields. If non-empty, an alert lists
+   * them and `onSave` is not called. Use this so users can tap 保存 and see
+   * which fields they still need to fill.
+   */
+  validate?: () => string[];
   onDelete?: () => Promise<void> | void;
   deleting?: boolean;
   children: React.ReactNode;
@@ -347,12 +532,23 @@ export function FormScreen({
   const router = useRouter();
 
   const handleSave = useCallback(async () => {
+    if (validate) {
+      const missing = validate();
+      if (missing.length > 0) {
+        Alert.alert(
+          "未入力の項目があります",
+          missing.map((f) => `・${f}`).join("\n"),
+          [{ text: "OK" }],
+        );
+        return;
+      }
+    }
     try {
       await onSave();
     } catch (err: unknown) {
       Alert.alert("保存に失敗しました", err instanceof Error ? err.message : String(err));
     }
-  }, [onSave]);
+  }, [onSave, validate]);
 
   const handleDelete = useCallback(() => {
     if (!onDelete) return;

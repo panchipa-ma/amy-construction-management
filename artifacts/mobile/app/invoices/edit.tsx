@@ -102,11 +102,7 @@ function InvoiceEdit() {
   }));
 
   const submit = async () => {
-    if (!projectId) throw new Error("案件を選択してください");
-    if (!invoiceNumber.trim()) throw new Error("請求書No は必須です");
-    if (!issueDate) throw new Error("発行日は必須です");
     const apiItems = lineItemsToApi(items);
-    if (apiItems.length === 0) throw new Error("明細を1行以上入力してください");
     const data = {
       projectId,
       invoiceNumber: invoiceNumber.trim(),
@@ -141,7 +137,14 @@ function InvoiceEdit() {
       title={isEdit ? "請求書を編集" : "新規請求書"}
       onSave={submit}
       saving={createMut.isPending || updateMut.isPending}
-      saveDisabled={!projectId || !invoiceNumber.trim() || !issueDate}
+      validate={() => {
+        const missing: string[] = [];
+        if (!projectId) missing.push("案件");
+        if (!invoiceNumber.trim()) missing.push("請求書No");
+        if (!issueDate) missing.push("発行日");
+        if (lineItemsToApi(items).length === 0) missing.push("明細 (1行以上)");
+        return missing;
+      }}
       onDelete={onDelete}
       deleting={deleteMut.isPending}
     >

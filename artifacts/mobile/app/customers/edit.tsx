@@ -86,9 +86,6 @@ function CustomerEdit() {
     setForm((s) => ({ ...s, [key]: v }));
 
   const submit = async () => {
-    if (!form.name.trim()) {
-      throw new Error("顧客名は必須です");
-    }
     const data = {
       name: form.name.trim(),
       contactName: form.contactName || null,
@@ -126,7 +123,11 @@ function CustomerEdit() {
       title={isEdit ? "顧客を編集" : "新規顧客"}
       onSave={submit}
       saving={createMut.isPending || updateMut.isPending}
-      saveDisabled={!form.name.trim()}
+      validate={() => {
+        const missing: string[] = [];
+        if (!form.name.trim()) missing.push("顧客名");
+        return missing;
+      }}
       onDelete={onDelete}
       deleting={deleteMut.isPending}
     >
