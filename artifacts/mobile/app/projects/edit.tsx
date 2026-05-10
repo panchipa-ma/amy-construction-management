@@ -201,23 +201,23 @@ function ProjectEdit() {
       onSave={submit}
       saving={createMut.isPending || updateMut.isPending}
       validate={() => {
-        const missing: string[] = [];
-        if (!form.name.trim()) missing.push("案件名");
-        if (!form.status) missing.push("ステータス");
-        if (!form.customerId) missing.push("顧客");
+        const missing: Array<{ name?: string; label: string }> = [];
+        if (!form.name.trim()) missing.push({ name: "name", label: "案件名" });
+        if (!form.status) missing.push({ name: "status", label: "ステータス" });
+        if (!form.customerId) missing.push({ name: "customerId", label: "顧客" });
         return missing;
       }}
       onDelete={onDelete}
       deleting={deleteMut.isPending}
     >
       <FormSection title="基本情報">
-        <Field label="案件名" required>
+        <Field label="案件名" name="name" required>
           <Input value={form.name} onChangeText={(v) => set("name", v)} />
         </Field>
         <Field label="案件番号">
           <Input value={form.code} onChangeText={(v) => set("code", v)} />
         </Field>
-        <Field label="ステータス" required>
+        <Field label="ステータス" name="status" required>
           <Select
             value={form.status}
             onValueChange={(v) => v && set("status", v as ProjectStatus)}
@@ -225,7 +225,7 @@ function ProjectEdit() {
             placeholder="ステータスを選択"
           />
         </Field>
-        <Field label="顧客" required>
+        <Field label="顧客" name="customerId" required>
           <Select
             value={form.customerId}
             onValueChange={(v) => v && onCustomerChange(v)}

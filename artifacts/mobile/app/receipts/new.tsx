@@ -157,11 +157,11 @@ export default function NewReceipt() {
       onSave={submit}
       saving={createMut.isPending}
       validate={() => {
-        const missing: string[] = [];
-        if (!fileUrl) missing.push("画像 (アップロード)");
-        if (!vendor.trim()) missing.push("店舗・取引先");
-        if (!amount || Number.isNaN(Number(amount))) missing.push("金額");
-        if (!receiptDate) missing.push("領収日");
+        const missing: Array<{ name?: string; label: string }> = [];
+        if (!fileUrl) missing.push({ label: "画像 (アップロード)" });
+        if (!vendor.trim()) missing.push({ name: "vendor", label: "店舗・取引先" });
+        if (!amount || Number.isNaN(Number(amount))) missing.push({ name: "amount", label: "金額" });
+        if (!receiptDate) missing.push({ name: "receiptDate", label: "領収日" });
         return missing;
       }}
     >
@@ -275,13 +275,13 @@ export default function NewReceipt() {
       </FormSection>
 
       <FormSection title="基本情報">
-        <Field label="店舗・取引先" required>
+        <Field label="店舗・取引先" name="vendor" required>
           <Input value={vendor} onChangeText={setVendor} placeholder="例: コーナン" />
         </Field>
-        <Field label="金額 (税込)" required>
+        <Field label="金額 (税込)" name="amount" required>
           <NumberInput value={amount} onChangeText={setAmount} placeholder="0" />
         </Field>
-        <Field label="領収日" required>
+        <Field label="領収日" name="receiptDate" required>
           <DateInput value={receiptDate} onChangeText={setReceiptDate} />
         </Field>
         <Field label="カテゴリ" required>

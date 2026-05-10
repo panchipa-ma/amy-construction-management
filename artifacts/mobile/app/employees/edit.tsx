@@ -84,19 +84,19 @@ function EmployeeEdit() {
       onSave={submit}
       saving={createMut.isPending || updateMut.isPending}
       validate={() => {
-        const missing: string[] = [];
-        if (!form.name.trim()) missing.push("名前");
-        if (!form.role.trim()) missing.push("役職");
+        const missing: Array<{ name?: string; label: string }> = [];
+        if (!form.name.trim()) missing.push({ name: "name", label: "名前" });
+        if (!form.role.trim()) missing.push({ name: "role", label: "役職" });
         return missing;
       }}
       onDelete={onDelete}
       deleting={deleteMut.isPending}
     >
       <FormSection>
-        <Field label="名前" required>
+        <Field label="名前" name="name" required>
           <Input value={form.name} onChangeText={(v) => set("name", v)} />
         </Field>
-        <Field label="役職" required hint="例: 営業 / 現場監督 / 事務（自由入力）">
+        <Field label="役職" name="role" required hint="例: 営業 / 現場監督 / 事務（自由入力）">
           <Input value={form.role} onChangeText={(v) => set("role", v)} />
         </Field>
         <Field label="電話番号">

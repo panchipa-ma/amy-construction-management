@@ -146,11 +146,11 @@ export default function VendorInvoiceUpload() {
       onSave={submit}
       saving={createMut.isPending}
       validate={() => {
-        const missing: string[] = [];
-        if (!fileUrl) missing.push("画像 / PDF (アップロード)");
-        if (!vendorName.trim()) missing.push("発行者 (職人/業者)");
-        if (!amount || Number.isNaN(Number(amount))) missing.push("金額");
-        if (!invoiceDate) missing.push("請求日");
+        const missing: Array<{ name?: string; label: string }> = [];
+        if (!fileUrl) missing.push({ label: "画像 / PDF (アップロード)" });
+        if (!vendorName.trim()) missing.push({ name: "vendorName", label: "発行者 (職人/業者)" });
+        if (!amount || Number.isNaN(Number(amount))) missing.push({ name: "amount", label: "金額" });
+        if (!invoiceDate) missing.push({ name: "invoiceDate", label: "請求日" });
         return missing;
       }}
     >
@@ -264,7 +264,7 @@ export default function VendorInvoiceUpload() {
       </FormSection>
 
       <FormSection title="基本情報">
-        <Field label="発行者 (職人/業者)" required>
+        <Field label="発行者 (職人/業者)" name="vendorName" required>
           <Input value={vendorName} onChangeText={setVendorName} />
         </Field>
         <Field label="職人マスタ" hint="マスタから選択 (任意)">
@@ -278,10 +278,10 @@ export default function VendorInvoiceUpload() {
             options={staffOptions}
           />
         </Field>
-        <Field label="金額 (税込)" required>
+        <Field label="金額 (税込)" name="amount" required>
           <NumberInput value={amount} onChangeText={setAmount} placeholder="0" />
         </Field>
-        <Field label="請求日" required>
+        <Field label="請求日" name="invoiceDate" required>
           <DateInput value={invoiceDate} onChangeText={setInvoiceDate} />
         </Field>
       </FormSection>

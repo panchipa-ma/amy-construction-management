@@ -37,16 +37,16 @@ export default function ProfileScreen() {
       onSave={submit}
       saving={saving}
       validate={() => {
-        const missing: string[] = [];
-        if (!p.companyName.trim()) missing.push("会社名 / 屋号");
-        if (!p.postalCode.trim()) missing.push("郵便番号");
-        if (!p.address.trim()) missing.push("住所");
-        if (!p.email.trim()) missing.push("E-Mail");
-        if (!p.bankName.trim()) missing.push("銀行名");
-        if (!p.branchName.trim()) missing.push("支店名");
-        if (!p.accountType.trim()) missing.push("口座種別");
-        if (!p.accountNumber.trim()) missing.push("口座番号");
-        if (!p.accountHolder.trim()) missing.push("口座名義 (カナ)");
+        const missing: Array<{ name?: string; label: string }> = [];
+        if (!p.companyName.trim()) missing.push({ name: "companyName", label: "会社名 / 屋号" });
+        if (!p.postalCode.trim()) missing.push({ name: "postalCode", label: "郵便番号" });
+        if (!p.address.trim()) missing.push({ name: "address", label: "住所" });
+        if (!p.email.trim()) missing.push({ name: "email", label: "E-Mail" });
+        if (!p.bankName.trim()) missing.push({ name: "bankName", label: "銀行名" });
+        if (!p.branchName.trim()) missing.push({ name: "branchName", label: "支店名" });
+        if (!p.accountType.trim()) missing.push({ name: "accountType", label: "口座種別" });
+        if (!p.accountNumber.trim()) missing.push({ name: "accountNumber", label: "口座番号" });
+        if (!p.accountHolder.trim()) missing.push({ name: "accountHolder", label: "口座名義 (カナ)" });
         return missing;
       }}
     >
@@ -60,13 +60,13 @@ export default function ProfileScreen() {
       </FormSection>
 
       <FormSection title="発行元情報">
-        <Field label="会社名 / 屋号" required>
+        <Field label="会社名 / 屋号" name="companyName" required>
           <Input value={p.companyName} onChangeText={(v) => set("companyName", v)} />
         </Field>
-        <Field label="郵便番号" required>
+        <Field label="郵便番号" name="postalCode" required>
           <Input value={p.postalCode} onChangeText={(v) => set("postalCode", v)} placeholder="570-0000" />
         </Field>
-        <Field label="住所" required>
+        <Field label="住所" name="address" required>
           <Input value={p.address} onChangeText={(v) => set("address", v)} />
         </Field>
         <Field label="TEL">
@@ -75,7 +75,7 @@ export default function ProfileScreen() {
         <Field label="FAX">
           <Input value={p.fax} onChangeText={(v) => set("fax", v)} keyboardType="phone-pad" />
         </Field>
-        <Field label="E-Mail" required>
+        <Field label="E-Mail" name="email" required>
           <Input
             value={p.email}
             onChangeText={(v) => set("email", v)}
@@ -89,16 +89,16 @@ export default function ProfileScreen() {
       </FormSection>
 
       <FormSection title="お振込先">
-        <Field label="銀行名" required>
+        <Field label="銀行名" name="bankName" required>
           <Input value={p.bankName} onChangeText={(v) => set("bankName", v)} />
         </Field>
-        <Field label="支店名" required>
+        <Field label="支店名" name="branchName" required>
           <Input value={p.branchName} onChangeText={(v) => set("branchName", v)} />
         </Field>
         <Field label="支店コード">
           <Input value={p.branchCode} onChangeText={(v) => set("branchCode", v)} />
         </Field>
-        <Field label="口座種別" required>
+        <Field label="口座種別" name="accountType" required>
           <Select
             value={p.accountType}
             onValueChange={(v) => set("accountType", v)}
@@ -108,10 +108,10 @@ export default function ProfileScreen() {
             ]}
           />
         </Field>
-        <Field label="口座番号" required>
+        <Field label="口座番号" name="accountNumber" required>
           <Input value={p.accountNumber} onChangeText={(v) => set("accountNumber", v)} />
         </Field>
-        <Field label="口座名義 (カナ)" required>
+        <Field label="口座名義 (カナ)" name="accountHolder" required>
           <Input value={p.accountHolder} onChangeText={(v) => set("accountHolder", v)} />
         </Field>
       </FormSection>

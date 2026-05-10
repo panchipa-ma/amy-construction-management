@@ -5,6 +5,7 @@ import {
   useCreateInvoice,
   useDeleteInvoice,
   useGetInvoice,
+  useListInvoices,
   useListProjects,
   useUpdateInvoice,
 } from "@workspace/api-client-react";
@@ -56,6 +57,9 @@ function InvoiceEdit() {
   const isEdit = !!id;
 
   const projectsQ = useListProjects();
+  const invListQ = useListInvoices(undefined, {
+    query: { enabled: !isEdit, queryKey: getListInvoicesQueryKey() },
+  });
   const invQ = useGetInvoice(id!, {
     query: { enabled: isEdit, queryKey: getGetInvoiceQueryKey(id ?? "") },
   });
@@ -68,6 +72,7 @@ function InvoiceEdit() {
   const [contactName, setContactName] = useState("");
   const [subject, setSubject] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [autoNumberSet, setAutoNumberSet] = useState(false);
   const [issueDate, setIssueDate] = useState(todayStr());
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
@@ -75,6 +80,20 @@ function InvoiceEdit() {
   const [sentToClient, setSentToClient] = useState(false);
   const [items, setItems] = useState<LineItemForm[]>([{ ...emptyLineItem }]);
   const [loaded, setLoaded] = useState(!isEdit);
+
+  // 新規作成時、既存の番号から次の番号を自動提案する (例: INV-20260510-003)
+  useEffect(() => {
+    if (isEdit || autoNumberSet || invoiceNumber || !invListQ.data) return;
+    const today = todayStr().replace(/-/g, "");
+    const prefix = `INV-${today}-`;
+    const used = invListQ.data
+      .map((i) => i.invoiceNumber)
+      .filter((n) => n.startsWith(prefix))
+      .map((n) => Number(n.slice(prefix.length)) || 0);
+    const next = (used.length ? Math.max(...used) : 0) + 1;
+    setInvoiceNumber(`${prefix}${String(next).padStart(3, "0")}`);
+    setAutoNumberSet(true);
+  }, [isEdit, autoNumberSet, invoiceNumber, invListQ.data]);
 
   useEffect(() => {
     if (isEdit && invQ.data && !loaded) {
@@ -138,18 +157,20 @@ function InvoiceEdit() {
       onSave={submit}
       saving={createMut.isPending || updateMut.isPending}
       validate={() => {
-        const missing: string[] = [];
-        if (!projectId) missing.push("案件");
-        if (!invoiceNumber.trim()) missing.push("請求書No");
-        if (!issueDate) missing.push("発行日");
-        if (lineItemsToApi(items).length === 0) missing.push("明細 (1行以上)");
+        const missing: Array<{ name?: string; label: string }> = [];
+        if (!projectId) missing.push({ name: "projectId", label: "案件" });
+        if (!invoiceNumber.trim())
+          missing.push({ name: "invoiceNumber", label: "請求書No" });
+        if (!issueDate) missing.push({ name: "issueDate", label: "発行日" });
+        if (lineItemsToApi(items).length === 0)
+          missing.push({ label: "明細 (1行以上)" });
         return missing;
       }}
       onDelete={onDelete}
       deleting={deleteMut.isPending}
     >
       <FormSection title="基本情報">
-        <Field label="案件" required>
+        <Field label="案件" name="projectId" required>
           <Select
             value={projectId}
             onValueChange={(v) => setProjectId(v)}
@@ -157,7 +178,7 @@ function InvoiceEdit() {
             placeholder="案件を選択"
           />
         </Field>
-        <Field label="請求書No" required>
+        <Field label="請求書No" name="invoiceNumber" required>
           <Input value={invoiceNumber} onChangeText={setInvoiceNumber} placeholder="INV-2025-0001" />
         </Field>
         <Field label="顧客名" hint="空欄の場合は案件の顧客を使用">
@@ -169,7 +190,7 @@ function InvoiceEdit() {
         <Field label="件名">
           <Input value={subject} onChangeText={setSubject} />
         </Field>
-        <Field label="発行日" required>
+        <Field label="発行日" name="issueDate" required>
           <DateInput value={issueDate} onChangeText={setIssueDate} />
         </Field>
         <Field label="お支払期限">

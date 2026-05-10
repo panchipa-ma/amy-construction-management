@@ -146,13 +146,13 @@ export default function VendorQuoteNew() {
       onSave={submit}
       saving={createMut.isPending}
       validate={() => {
-        const missing: string[] = [];
-        if (!projectId) missing.push("案件");
-        if (!vendorName.trim()) missing.push("発行者 (職人/業者)");
-        if (!docNumber.trim()) missing.push("見積No");
-        if (!issueDate) missing.push("見積日");
-        if (!recipientName.trim()) missing.push("宛先 (御中)");
-        if (!profileOk) missing.push("プロフィール (発行元情報)");
+        const missing: Array<{ name?: string; label: string }> = [];
+        if (!projectId) missing.push({ name: "projectId", label: "案件" });
+        if (!vendorName.trim()) missing.push({ name: "vendorName", label: "発行者 (職人/業者)" });
+        if (!docNumber.trim()) missing.push({ name: "docNumber", label: "見積No" });
+        if (!issueDate) missing.push({ name: "issueDate", label: "見積日" });
+        if (!recipientName.trim()) missing.push({ name: "recipientName", label: "宛先 (御中)" });
+        if (!profileOk) missing.push({ label: "プロフィール (発行元情報)" });
         return missing;
       }}
     >
@@ -168,7 +168,7 @@ export default function VendorQuoteNew() {
       ) : null}
 
       <FormSection title="基本情報">
-        <Field label="案件" required>
+        <Field label="案件" name="projectId" required>
           <Select
             value={projectId}
             onValueChange={(v) => setProjectId(v)}
@@ -179,13 +179,13 @@ export default function VendorQuoteNew() {
         <Field label="職人マスタ">
           <Select value={staffId} onValueChange={(v) => setStaffId(v)} options={staffOptions} />
         </Field>
-        <Field label="発行者 (職人/業者)" required>
+        <Field label="発行者 (職人/業者)" name="vendorName" required>
           <Input value={vendorName} onChangeText={setVendorName} />
         </Field>
-        <Field label="見積No" required>
+        <Field label="見積No" name="docNumber" required>
           <Input value={docNumber} onChangeText={setDocNumber} placeholder="VQ-2025-0001" />
         </Field>
-        <Field label="見積日" required>
+        <Field label="見積日" name="issueDate" required>
           <DateInput value={issueDate} onChangeText={setIssueDate} />
         </Field>
         <Field label="有効期限">
@@ -194,7 +194,7 @@ export default function VendorQuoteNew() {
       </FormSection>
 
       <FormSection title="宛先・担当">
-        <Field label="宛先 (御中)" required>
+        <Field label="宛先 (御中)" name="recipientName" required>
           <Input value={recipientName} onChangeText={setRecipientName} />
         </Field>
         <Field label="ご担当者">

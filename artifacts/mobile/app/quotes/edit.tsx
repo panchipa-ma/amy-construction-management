@@ -6,6 +6,7 @@ import {
   useDeleteQuote,
   useGetQuote,
   useListProjects,
+  useListQuotes,
   useUpdateQuote,
 } from "@workspace/api-client-react";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -54,6 +55,9 @@ function QuoteEdit() {
   const isEdit = !!id;
 
   const projectsQ = useListProjects();
+  const quotesQ = useListQuotes(undefined, {
+    query: { enabled: !isEdit, queryKey: getListQuotesQueryKey() },
+  });
   const quoteQ = useGetQuote(id!, {
     query: { enabled: isEdit, queryKey: getGetQuoteQueryKey(id ?? "") },
   });
@@ -65,11 +69,26 @@ function QuoteEdit() {
   const [subject, setSubject] = useState("");
   const [contactName, setContactName] = useState("");
   const [quoteNumber, setQuoteNumber] = useState("");
+  const [autoNumberSet, setAutoNumberSet] = useState(false);
   const [issueDate, setIssueDate] = useState(todayStr());
   const [validUntil, setValidUntil] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItemForm[]>([{ ...emptyLineItem }]);
   const [loaded, setLoaded] = useState(!isEdit);
+
+  // 新規作成時、既存の番号から次の番号を自動提案する (例: Q-20260510-003)
+  useEffect(() => {
+    if (isEdit || autoNumberSet || quoteNumber || !quotesQ.data) return;
+    const today = todayStr().replace(/-/g, "");
+    const prefix = `Q-${today}-`;
+    const used = quotesQ.data
+      .map((q) => q.quoteNumber)
+      .filter((n) => n.startsWith(prefix))
+      .map((n) => Number(n.slice(prefix.length)) || 0);
+    const next = (used.length ? Math.max(...used) : 0) + 1;
+    setQuoteNumber(`${prefix}${String(next).padStart(3, "0")}`);
+    setAutoNumberSet(true);
+  }, [isEdit, autoNumberSet, quoteNumber, quotesQ.data]);
 
   useEffect(() => {
     if (isEdit && quoteQ.data && !loaded) {
@@ -127,18 +146,20 @@ function QuoteEdit() {
       onSave={submit}
       saving={createMut.isPending || updateMut.isPending}
       validate={() => {
-        const missing: string[] = [];
-        if (!projectId) missing.push("案件");
-        if (!quoteNumber.trim()) missing.push("見積No");
-        if (!issueDate) missing.push("見積日");
-        if (lineItemsToApi(items).length === 0) missing.push("明細 (1行以上)");
+        const missing: Array<{ name?: string; label: string }> = [];
+        if (!projectId) missing.push({ name: "projectId", label: "案件" });
+        if (!quoteNumber.trim())
+          missing.push({ name: "quoteNumber", label: "見積No" });
+        if (!issueDate) missing.push({ name: "issueDate", label: "見積日" });
+        if (lineItemsToApi(items).length === 0)
+          missing.push({ label: "明細 (1行以上)" });
         return missing;
       }}
       onDelete={onDelete}
       deleting={deleteMut.isPending}
     >
       <FormSection title="基本情報">
-        <Field label="案件" required>
+        <Field label="案件" name="projectId" required>
           <Select
             value={projectId}
             onValueChange={(v) => setProjectId(v)}
@@ -152,10 +173,10 @@ function QuoteEdit() {
         <Field label="ご担当者名">
           <Input value={contactName} onChangeText={setContactName} />
         </Field>
-        <Field label="見積No" required>
+        <Field label="見積No" name="quoteNumber" required>
           <Input value={quoteNumber} onChangeText={setQuoteNumber} placeholder="Q-2025-0001" />
         </Field>
-        <Field label="見積日" required>
+        <Field label="見積日" name="issueDate" required>
           <DateInput value={issueDate} onChangeText={setIssueDate} />
         </Field>
         <Field label="有効期限">

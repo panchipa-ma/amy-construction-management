@@ -3,7 +3,7 @@ import DateTimePicker, {
   DateTimePickerAndroid,
 } from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useContext, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -21,6 +21,23 @@ import {
 } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+
+/**
+ * Set of field `name`s that failed validation. Set by FormScreen, read by
+ * Field to highlight its label.
+ */
+const FormErrorsContext = React.createContext<ReadonlySet<string>>(new Set());
+/** Provided by FormScreen so a Field can clear its own error by name. */
+const ClearFormErrorContext = React.createContext<(name: string) => void>(
+  () => {},
+);
+/** True when the surrounding Field is in error state. Inputs read for border. */
+const FieldErrorContext = React.createContext<boolean>(false);
+/**
+ * Bound to the surrounding Field's `name` (no-arg). Inputs call this on edit
+ * so the red highlight clears as soon as the user starts fixing the field.
+ */
+const ClearErrorContext = React.createContext<() => void>(() => {});
 
 function parseISODate(s: string): Date | null {
   if (!s) return null;
@@ -47,44 +64,82 @@ function fmtJP(s: string): string {
 
 export function Field({
   label,
+  name,
   required,
   error,
   hint,
   children,
 }: {
   label: string;
+  /** Used to map FormScreen validation errors → red highlight on this field. */
+  name?: string;
   required?: boolean;
+  /** Explicit error message (also forces red state). */
   error?: string;
   hint?: string;
   children: React.ReactNode;
 }) {
   const c = useColors();
+  const formErrors = useContext(FormErrorsContext);
+  const clearByName = useContext(ClearFormErrorContext);
+  const inErrorSet = !!name && formErrors.has(name);
+  const isError = !!error || inErrorSet;
+  const errorMsg = error || (inErrorSet ? "未入力です" : undefined);
+
+  const clearThis = useCallback(() => {
+    if (name) clearByName(name);
+  }, [clearByName, name]);
+
   return (
     <View style={{ marginBottom: 14 }}>
       <Text
         style={{
           fontSize: 13,
-          color: c.foreground,
+          color: isError ? c.destructive : c.foreground,
           marginBottom: 6,
-          fontWeight: "500",
+          fontWeight: isError ? "700" : "500",
         }}
       >
         {label}
         {required ? <Text style={{ color: c.destructive }}> *</Text> : null}
       </Text>
-      {children}
-      {hint ? (
+      <FieldErrorContext.Provider value={isError}>
+        <ClearErrorContext.Provider value={clearThis}>
+          {children}
+        </ClearErrorContext.Provider>
+      </FieldErrorContext.Provider>
+      {hint && !isError ? (
         <Text style={{ fontSize: 11, color: c.mutedForeground, marginTop: 4 }}>
           {hint}
         </Text>
       ) : null}
-      {error ? (
-        <Text style={{ fontSize: 12, color: c.destructive, marginTop: 4 }}>
-          {error}
-        </Text>
+      {isError && errorMsg ? (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+            marginTop: 6,
+          }}
+        >
+          <Feather name="alert-circle" size={13} color={c.destructive} />
+          <Text style={{ fontSize: 12, color: c.destructive, fontWeight: "600" }}>
+            {errorMsg}
+          </Text>
+        </View>
       ) : null}
     </View>
   );
+}
+
+/** Border color for inputs based on the surrounding FieldErrorContext. */
+function useInputBorder() {
+  const c = useColors();
+  const isError = useContext(FieldErrorContext);
+  return {
+    borderColor: isError ? c.destructive : c.border,
+    borderWidth: isError ? 2 : 1,
+  };
 }
 
 export function Input({
@@ -97,15 +152,19 @@ export function Input({
   onChangeText: (v: string) => void;
 } & Omit<TextInputProps, "value" | "onChangeText" | "style">) {
   const c = useColors();
+  const border = useInputBorder();
+  const clearError = useContext(ClearErrorContext);
   return (
     <TextInput
       value={value}
-      onChangeText={onChangeText}
+      onChangeText={(v) => {
+        if (clearError) clearError();
+        onChangeText(v);
+      }}
       placeholder={placeholder}
       placeholderTextColor={c.mutedForeground}
       style={{
-        borderWidth: 1,
-        borderColor: c.border,
+        ...border,
         borderRadius: 8,
         paddingHorizontal: 12,
         paddingVertical: Platform.OS === "ios" ? 12 : 10,
@@ -130,17 +189,21 @@ export function Textarea({
   rows?: number;
 }) {
   const c = useColors();
+  const border = useInputBorder();
+  const clearError = useContext(ClearErrorContext);
   return (
     <TextInput
       value={value}
-      onChangeText={onChangeText}
+      onChangeText={(v) => {
+        if (clearError) clearError();
+        onChangeText(v);
+      }}
       placeholder={placeholder}
       placeholderTextColor={c.mutedForeground}
       multiline
       textAlignVertical="top"
       style={{
-        borderWidth: 1,
-        borderColor: c.border,
+        ...border,
         borderRadius: 8,
         paddingHorizontal: 12,
         paddingVertical: 10,
@@ -191,6 +254,15 @@ export function DateInput({
   allowClear?: boolean;
 }) {
   const c = useColors();
+  const inputBorder = useInputBorder();
+  const clearError = useContext(ClearErrorContext);
+  const setValue = useCallback(
+    (v: string) => {
+      if (clearError) clearError();
+      onChangeText(v);
+    },
+    [clearError, onChangeText],
+  );
   const [iosOpen, setIosOpen] = useState(false);
   const [iosDraft, setIosDraft] = useState<Date>(parseISODate(value) ?? new Date());
 
@@ -198,10 +270,9 @@ export function DateInput({
     return React.createElement("input" as unknown as React.ComponentType<Record<string, unknown>>, {
       type: "date",
       value: value || "",
-      onChange: (e: { target: { value: string } }) => onChangeText(e.target.value),
+      onChange: (e: { target: { value: string } }) => setValue(e.target.value),
       style: {
-        borderWidth: 1,
-        borderColor: c.border,
+        ...inputBorder,
         borderRadius: 8,
         padding: "10px 12px",
         fontSize: 15,
@@ -219,7 +290,7 @@ export function DateInput({
         value: initial,
         mode: "date",
         onChange: (event, selected) => {
-          if (event.type === "set" && selected) onChangeText(fmtISO(selected));
+          if (event.type === "set" && selected) setValue(fmtISO(selected));
         },
       });
     } else {
@@ -238,8 +309,7 @@ export function DateInput({
           style={({ pressed }) => [
             {
               flex: 1,
-              borderWidth: 1,
-              borderColor: c.border,
+              ...inputBorder,
               borderRadius: 8,
               paddingHorizontal: 12,
               paddingVertical: Platform.OS === "ios" ? 12 : 10,
@@ -266,7 +336,7 @@ export function DateInput({
         </Pressable>
         {allowClear && value ? (
           <Pressable
-            onPress={() => onChangeText("")}
+            onPress={() => setValue("")}
             hitSlop={8}
             style={({ pressed }) => [
               {
@@ -325,7 +395,7 @@ export function DateInput({
                 </Text>
                 <Pressable
                   onPress={() => {
-                    onChangeText(fmtISO(iosDraft));
+                    setValue(fmtISO(iosDraft));
                     setIosOpen(false);
                   }}
                 >
@@ -389,16 +459,21 @@ export function Select<T extends string>({
   allowEmpty?: boolean;
 }) {
   const c = useColors();
+  const inputBorder = useInputBorder();
+  const clearError = useContext(ClearErrorContext);
   const [open, setOpen] = useState(false);
   const current = options.find((o) => o.value === value);
+  const setValue = (v: T | "") => {
+    if (clearError) clearError();
+    onValueChange(v);
+  };
   return (
     <>
       <Pressable
         onPress={() => setOpen(true)}
         style={({ pressed }) => [
           {
-            borderWidth: 1,
-            borderColor: c.border,
+            ...inputBorder,
             borderRadius: 8,
             paddingHorizontal: 12,
             paddingVertical: Platform.OS === "ios" ? 12 : 10,
@@ -454,7 +529,7 @@ export function Select<T extends string>({
               {allowEmpty ? (
                 <Pressable
                   onPress={() => {
-                    onValueChange("");
+                    setValue("");
                     setOpen(false);
                   }}
                   style={({ pressed }) => [
@@ -476,7 +551,7 @@ export function Select<T extends string>({
                 <Pressable
                   key={opt.value}
                   onPress={() => {
-                    onValueChange(opt.value);
+                    setValue(opt.value);
                     setOpen(false);
                   }}
                   style={({ pressed }) => [
@@ -519,29 +594,58 @@ export function FormScreen({
   saveLabel?: string;
   saveDisabled?: boolean;
   /**
-   * Returns labels of missing required fields. If non-empty, an alert lists
-   * them and `onSave` is not called. Use this so users can tap 保存 and see
-   * which fields they still need to fill.
+   * Returns missing required fields. If non-empty, an alert lists them, the
+   * matching `<Field name="…">` are highlighted red, and `onSave` is NOT
+   * called. Each entry can be a plain string (just the label, no field
+   * highlighting) or `{name, label}` (highlights the Field with that name).
    */
-  validate?: () => string[];
+  validate?: () => Array<string | { name?: string; label: string }>;
   onDelete?: () => Promise<void> | void;
   deleting?: boolean;
   children: React.ReactNode;
 }) {
   const c = useColors();
   const router = useRouter();
+  const scrollRef = useRef<ScrollView>(null);
+  const [errors, setErrors] = useState<ReadonlySet<string>>(new Set());
+
+  const clearError = useCallback((name: string) => {
+    setErrors((prev) => {
+      if (!prev.has(name)) return prev;
+      const next = new Set(prev);
+      next.delete(name);
+      return next;
+    });
+  }, []);
 
   const handleSave = useCallback(async () => {
     if (validate) {
       const missing = validate();
       if (missing.length > 0) {
+        const labels: string[] = [];
+        const names = new Set<string>();
+        for (const m of missing) {
+          if (typeof m === "string") {
+            labels.push(m);
+          } else {
+            labels.push(m.label);
+            if (m.name) names.add(m.name);
+          }
+        }
+        setErrors(names);
+        // Scroll back to top so the user sees the highlighted fields.
+        scrollRef.current?.scrollTo({ y: 0, animated: true });
         Alert.alert(
           "未入力の項目があります",
-          missing.map((f) => `・${f}`).join("\n"),
+          `下記を入力してください (赤くハイライトされています):\n\n${labels
+            .map((f) => `・${f}`)
+            .join("\n")}`,
           [{ text: "OK" }],
         );
         return;
       }
+      // Validation passed — clear any previous highlights.
+      setErrors(new Set());
     }
     try {
       await onSave();
@@ -633,10 +737,15 @@ export function FormScreen({
         </Pressable>
       </View>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
       >
-        {children}
+        <FormErrorsContext.Provider value={errors}>
+          <ClearFormErrorContext.Provider value={clearError}>
+            {children}
+          </ClearFormErrorContext.Provider>
+        </FormErrorsContext.Provider>
         {onDelete ? (
           <Pressable
             onPress={handleDelete}

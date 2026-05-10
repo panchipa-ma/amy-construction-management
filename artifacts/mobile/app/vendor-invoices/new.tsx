@@ -149,13 +149,13 @@ export default function VendorInvoiceNew() {
       onSave={submit}
       saving={createMut.isPending}
       validate={() => {
-        const missing: string[] = [];
-        if (!projectId) missing.push("案件");
-        if (!vendorName.trim()) missing.push("発行者 (職人/業者)");
-        if (!docNumber.trim()) missing.push("請求書No");
-        if (!issueDate) missing.push("請求日");
-        if (!recipientName.trim()) missing.push("宛先 (御中)");
-        if (!profileOk) missing.push("プロフィール (発行元・振込先)");
+        const missing: Array<{ name?: string; label: string }> = [];
+        if (!projectId) missing.push({ name: "projectId", label: "案件" });
+        if (!vendorName.trim()) missing.push({ name: "vendorName", label: "発行者 (職人/業者)" });
+        if (!docNumber.trim()) missing.push({ name: "docNumber", label: "請求書No" });
+        if (!issueDate) missing.push({ name: "issueDate", label: "請求日" });
+        if (!recipientName.trim()) missing.push({ name: "recipientName", label: "宛先 (御中)" });
+        if (!profileOk) missing.push({ label: "プロフィール (発行元・振込先)" });
         return missing;
       }}
     >
@@ -171,7 +171,7 @@ export default function VendorInvoiceNew() {
       ) : null}
 
       <FormSection title="基本情報">
-        <Field label="案件" required>
+        <Field label="案件" name="projectId" required>
           <Select
             value={projectId}
             onValueChange={(v) => setProjectId(v)}
@@ -186,13 +186,13 @@ export default function VendorInvoiceNew() {
             options={staffOptions}
           />
         </Field>
-        <Field label="発行者 (職人/業者)" required>
+        <Field label="発行者 (職人/業者)" name="vendorName" required>
           <Input value={vendorName} onChangeText={setVendorName} />
         </Field>
-        <Field label="請求書No" required>
+        <Field label="請求書No" name="docNumber" required>
           <Input value={docNumber} onChangeText={setDocNumber} placeholder="V-2025-0001" />
         </Field>
-        <Field label="請求日" required>
+        <Field label="請求日" name="issueDate" required>
           <DateInput value={issueDate} onChangeText={setIssueDate} />
         </Field>
         <Field label="お支払期限">
@@ -201,7 +201,7 @@ export default function VendorInvoiceNew() {
       </FormSection>
 
       <FormSection title="宛先・担当">
-        <Field label="宛先 (御中)" required>
+        <Field label="宛先 (御中)" name="recipientName" required>
           <Input value={recipientName} onChangeText={setRecipientName} />
         </Field>
         <Field label="ご担当者">

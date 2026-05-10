@@ -124,15 +124,15 @@ function CustomerEdit() {
       onSave={submit}
       saving={createMut.isPending || updateMut.isPending}
       validate={() => {
-        const missing: string[] = [];
-        if (!form.name.trim()) missing.push("顧客名");
+        const missing: Array<{ name?: string; label: string }> = [];
+        if (!form.name.trim()) missing.push({ name: "customerName", label: "顧客名" });
         return missing;
       }}
       onDelete={onDelete}
       deleting={deleteMut.isPending}
     >
       <FormSection title="基本情報">
-        <Field label="顧客名" required>
+        <Field label="顧客名" name="customerName" required>
           <Input value={form.name} onChangeText={(v) => set("name", v)} placeholder="株式会社○○" />
         </Field>
         <Field label="ご担当者名">
