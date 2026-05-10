@@ -7,7 +7,7 @@ import {
 } from "@workspace/api-client-react";
 import { useRouter } from "expo-router";
 import React from "react";
-import { RefreshControl, ScrollView, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 
 import {
   Badge,
@@ -57,6 +57,35 @@ function InternalDashboard() {
     >
       <H1>ダッシュボード</H1>
       <Muted>進行中案件と請求の概況</Muted>
+
+      <SectionTitle>クイック操作</SectionTitle>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+        <QuickAction
+          icon="plus-square"
+          label="案件登録"
+          onPress={() => router.push("/projects/edit")}
+        />
+        <QuickAction
+          icon="file-text"
+          label="見積書作成"
+          onPress={() => router.push("/quotes/edit")}
+        />
+        <QuickAction
+          icon="bar-chart-2"
+          label="工程表"
+          onPress={() => router.push("/gantt")}
+        />
+        <QuickAction
+          icon="clipboard"
+          label="出面表"
+          onPress={() => router.push("/staff-assignments")}
+        />
+        <QuickAction
+          icon="file"
+          label="領収書"
+          onPress={() => router.push("/receipts")}
+        />
+      </View>
 
       <View style={{ flexDirection: "row", gap: 12 }}>
         <KpiCard icon="briefcase" label="進行中案件" value={String(d.activeProjects)} />
@@ -132,6 +161,50 @@ function InternalDashboard() {
         最終更新: {fmtDate(new Date().toISOString())}
       </Muted>
     </ScrollView>
+  );
+}
+
+function QuickAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  const c = useColors();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        {
+          width: "31%",
+          minWidth: 100,
+          backgroundColor: c.card,
+          borderColor: c.border,
+          borderWidth: 1,
+          borderRadius: 10,
+          paddingVertical: 14,
+          paddingHorizontal: 8,
+          alignItems: "center",
+          gap: 6,
+        },
+        pressed && { opacity: 0.7 },
+      ]}
+    >
+      <Feather name={icon} size={22} color={c.primary} />
+      <Body
+        style={{
+          fontSize: 12,
+          fontWeight: "600",
+          color: c.foreground,
+          textAlign: "center",
+        }}
+      >
+        {label}
+      </Body>
+    </Pressable>
   );
 }
 
