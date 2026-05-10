@@ -1,4 +1,4 @@
-import { useListInvoices } from "@workspace/api-client-react";
+import { useListVendorInvoices } from "@workspace/api-client-react";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, View } from "react-native";
@@ -16,18 +16,17 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { fmtDate, yen } from "@/lib/format";
 
-const FILTERS: { label: string; value: "all" | "unpaid" | "paid" }[] = [
-  { label: "未入金", value: "unpaid" },
-  { label: "入金済", value: "paid" },
-  { label: "全て", value: "all" },
+const FILTERS = [
+  { label: "未払", value: "unpaid" as const },
+  { label: "支払済", value: "paid" as const },
+  { label: "全て", value: "all" as const },
 ];
 
-export default function InvoicesTab() {
+export default function VendorInvoicesScreen() {
   const c = useColors();
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | "unpaid" | "paid">("unpaid");
-
-  const q = useListInvoices();
+  const q = useListVendorInvoices();
 
   if (q.isLoading) return <Loader />;
   if (q.isError) return <ErrorState onRetry={() => q.refetch()} />;
@@ -37,8 +36,8 @@ export default function InvoicesTab() {
     filter === "all"
       ? all
       : filter === "paid"
-        ? all.filter((i) => i.paid)
-        : all.filter((i) => !i.paid);
+        ? all.filter((v) => v.paid)
+        : all.filter((v) => !v.paid);
 
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
@@ -86,39 +85,37 @@ export default function InvoicesTab() {
         refreshControl={
           <RefreshControl refreshing={q.isFetching} onRefresh={() => q.refetch()} />
         }
-        ListEmptyComponent={<EmptyState icon="dollar-sign" title="請求書がありません" />}
+        ListEmptyComponent={<EmptyState icon="file-text" title="職人請求書がありません" />}
         renderItem={({ item }) => (
-          <Card onPress={() => router.push(`/invoices/${item.id}`)}>
+          <Card>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
               <View style={{ flex: 1, paddingRight: 12 }}>
-                <Body style={{ fontWeight: "600" }}>
-                  {item.subject || item.projectName || "—"}
-                </Body>
-                <Muted style={{ marginTop: 2 }}>
-                  {item.invoiceNumber} · {fmtDate(item.issueDate)}
-                </Muted>
-                {item.customerName ? (
-                  <Muted style={{ marginTop: 2 }}>{item.customerName}</Muted>
+                <Body style={{ fontWeight: "600" }}>{item.vendorName}</Body>
+                {item.projectName ? (
+                  <Muted style={{ marginTop: 2 }}>{item.projectName}</Muted>
                 ) : null}
-                <View style={{ marginTop: 6, flexDirection: "row", gap: 6 }}>
-                  <Badge tone={item.paid ? "success" : "warning"}>
-                    {item.paid ? "入金済" : "未入金"}
+                <Muted style={{ marginTop: 2 }}>
+                  {item.unitNumber ? `${item.unitNumber}号室 · ` : ""}
+                  {fmtDate(item.invoiceDate)}
+                </Muted>
+                <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>
+                  <Badge tone={item.status === "matched" ? "success" : "warning"}>
+                    {item.status === "matched" ? "案件紐付済" : "未紐付"}
                   </Badge>
-                  {item.sentToClient ? <Badge tone="accent">送付済</Badge> : null}
+                  <Badge tone={item.paid ? "success" : "default"}>
+                    {item.paid ? "振込済" : "未振込"}
+                  </Badge>
                 </View>
               </View>
               <View style={{ alignItems: "flex-end" }}>
-                <Body style={{ fontWeight: "700" }}>{yen(item.total)}</Body>
+                <Body style={{ fontWeight: "700" }}>{yen(item.amount)}</Body>
                 <Muted>税込</Muted>
-                {item.dueDate ? (
-                  <Muted style={{ marginTop: 2 }}>期限: {fmtDate(item.dueDate)}</Muted>
-                ) : null}
               </View>
             </View>
           </Card>
         )}
       />
-      <Fab onPress={() => router.push("/invoices/edit")} label="新規請求書" />
+      <Fab onPress={() => router.push("/vendor-invoices/new")} label="請求書を作成" />
     </View>
   );
 }

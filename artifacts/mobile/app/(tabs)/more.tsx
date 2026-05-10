@@ -33,6 +33,12 @@ export default function MoreTab() {
     { label: "職人", icon: "tool", href: "/staff" },
     { label: "社員", icon: "user", href: "/employees" },
     { label: "月次歩合", icon: "trending-up", href: "/commissions" },
+    { label: "ユーザー管理", icon: "shield", href: "/users" },
+  ];
+
+  const vendorItems: MenuItem[] = [
+    { label: "職人請求書", icon: "file-text", href: "/vendor-invoices" },
+    { label: "職人見積書", icon: "file", href: "/vendor-quotes" },
   ];
 
   const commonItems: MenuItem[] = [
@@ -81,6 +87,15 @@ export default function MoreTab() {
           ))}
         </>
       ) : null}
+
+      <SectionTitle>職人ドキュメント</SectionTitle>
+      {vendorItems.map((it) => (
+        <MenuRow
+          key={it.label}
+          item={it}
+          onPressItem={() => it.href && router.push(it.href as never)}
+        />
+      ))}
 
       <SectionTitle>アカウント</SectionTitle>
       {commonItems.map((it) => (

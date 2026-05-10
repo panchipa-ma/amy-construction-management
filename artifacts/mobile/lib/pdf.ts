@@ -1,0 +1,210 @@
+import { requestUploadUrl } from "@workspace/api-client-react";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Print from "expo-print";
+
+import type { UserProfile } from "./profile";
+
+export type VendorDocItem = { description: string; quantity: number; unitPrice: number };
+
+export type VendorDocInput = {
+  kind: "invoice" | "quote";
+  docNumber: string;
+  issueDate: string;
+  validUntilOrDue?: string | null;
+  recipientName: string;
+  recipientContactName: string;
+  authorName: string;
+  subject: string;
+  items: VendorDocItem[];
+  notes: string;
+  profile: UserProfile;
+};
+
+const fmtCurrency = (n: number) =>
+  `¥${Math.round(n).toLocaleString("ja-JP")}`;
+
+const fmtDate = (s: string) => {
+  if (!s) return "";
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s;
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+};
+
+function buildHtml(input: VendorDocInput): string {
+  const subtotal = input.items.reduce(
+    (s, it) => s + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0),
+    0,
+  );
+  const tax = Math.round(subtotal * 0.1);
+  const total = subtotal + tax;
+  const title = input.kind === "invoice" ? "請　求　書" : "御　見　積　書";
+  const numberLabel = input.kind === "invoice" ? "請求No." : "見積No.";
+  const dateLabel = input.kind === "invoice" ? "請求日" : "見積日";
+  const validLabel = input.kind === "invoice" ? "お支払期限" : "有効期限";
+  const p = input.profile;
+
+  const itemRows = input.items
+    .map((it) => {
+      const amount = (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0);
+      return `
+        <tr>
+          <td style="padding:6px 8px;border:1px solid #cbd5e1;">${escapeHtml(it.description)}</td>
+          <td style="padding:6px 8px;border:1px solid #cbd5e1;text-align:right;font-variant-numeric:tabular-nums;">${
+            Number(it.quantity) || 0
+          }</td>
+          <td style="padding:6px 8px;border:1px solid #cbd5e1;text-align:right;font-variant-numeric:tabular-nums;">${fmtCurrency(
+            Number(it.unitPrice) || 0,
+          )}</td>
+          <td style="padding:6px 8px;border:1px solid #cbd5e1;text-align:right;font-variant-numeric:tabular-nums;">${fmtCurrency(
+            amount,
+          )}</td>
+        </tr>`;
+    })
+    .join("");
+
+  // Pad to at least 10 rows for layout
+  const padCount = Math.max(0, 10 - input.items.length);
+  const padRows = Array.from({ length: padCount })
+    .map(
+      () =>
+        `<tr><td style="padding:6px 8px;border:1px solid #cbd5e1;">&nbsp;</td><td style="border:1px solid #cbd5e1;"></td><td style="border:1px solid #cbd5e1;"></td><td style="border:1px solid #cbd5e1;"></td></tr>`,
+    )
+    .join("");
+
+  return `<!doctype html>
+<html><head><meta charset="utf-8" />
+<style>
+  @page { size: A4; margin: 12mm; }
+  body { font-family: -apple-system, "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif; color: #0f172a; font-size: 12px; }
+  h1 { text-align:center; letter-spacing:0.5em; font-size:22px; margin: 0 0 18px; }
+  table { border-collapse: collapse; width: 100%; }
+</style>
+</head>
+<body>
+<h1>${title}</h1>
+<table style="width:100%;margin-bottom:14px;">
+  <tr>
+    <td style="vertical-align:top;width:60%;">
+      <div style="font-size:16px;font-weight:700;border-bottom:1px solid #0f172a;display:inline-block;padding-bottom:2px;min-width:200px;">
+        ${escapeHtml(input.recipientName || "—")} <span style="font-size:14px;font-weight:500;">御中</span>
+      </div>
+      <div style="margin-top:10px;">ご担当：${
+        input.recipientContactName ? escapeHtml(input.recipientContactName) + " 様" : ""
+      }</div>
+      <div style="margin-top:8px;">件名：<b>${escapeHtml(input.subject)}</b></div>
+      <div style="margin-top:10px;">下記の通り、${
+        input.kind === "invoice" ? "ご請求" : "御見積"
+      }申し上げます。</div>
+    </td>
+    <td style="vertical-align:top;text-align:right;">
+      <div>${numberLabel} ${escapeHtml(input.docNumber)}</div>
+      <div>${dateLabel} ${fmtDate(input.issueDate)}</div>
+      <div style="margin-top:10px;border-top:1px solid #e2e8f0;padding-top:8px;text-align:left;">
+        <div style="font-weight:700;">${escapeHtml(p.companyName || "—")}</div>
+        ${p.postalCode ? `<div>〒${escapeHtml(p.postalCode)}</div>` : ""}
+        ${p.address ? `<div>${escapeHtml(p.address)}</div>` : ""}
+        ${
+          p.registrationNumber
+            ? `<div>登録番号：T${escapeHtml(p.registrationNumber.replace(/^T/i, ""))}</div>`
+            : ""
+        }
+        ${p.tel ? `<div>TEL：${escapeHtml(p.tel)}</div>` : ""}
+        ${p.fax ? `<div>FAX：${escapeHtml(p.fax)}</div>` : ""}
+        ${p.email ? `<div>E-Mail：${escapeHtml(p.email)}</div>` : ""}
+        ${input.authorName ? `<div style="margin-top:4px;">担当：${escapeHtml(input.authorName)}</div>` : ""}
+      </div>
+    </td>
+  </tr>
+</table>
+<div style="border-top:2px solid #0f172a;border-bottom:2px solid #0f172a;padding:8px 4px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">
+  <div><b style="font-size:14px;">合計金額</b> <b style="font-size:20px;font-variant-numeric:tabular-nums;">${fmtCurrency(
+    total,
+  )}</b> <span style="font-size:11px;">（税込）</span></div>
+  ${
+    input.validUntilOrDue
+      ? `<div>${validLabel}：<b>${fmtDate(input.validUntilOrDue)}</b></div>`
+      : ""
+  }
+</div>
+<table>
+  <thead>
+    <tr style="background:#f1f5f9;">
+      <th style="padding:6px 8px;border:1px solid #cbd5e1;text-align:left;">工事項目 / 摘要</th>
+      <th style="padding:6px 8px;border:1px solid #cbd5e1;width:60px;">数量</th>
+      <th style="padding:6px 8px;border:1px solid #cbd5e1;width:90px;">単価</th>
+      <th style="padding:6px 8px;border:1px solid #cbd5e1;width:100px;">金額</th>
+    </tr>
+  </thead>
+  <tbody>${itemRows}${padRows}</tbody>
+</table>
+<table style="margin-top:14px;width:auto;margin-left:auto;">
+  <tr><td style="padding:4px 12px;text-align:right;">小計</td><td style="padding:4px 12px;text-align:right;font-variant-numeric:tabular-nums;">${fmtCurrency(
+    subtotal,
+  )}</td></tr>
+  <tr><td style="padding:4px 12px;text-align:right;">消費税 (10%)</td><td style="padding:4px 12px;text-align:right;font-variant-numeric:tabular-nums;">${fmtCurrency(
+    tax,
+  )}</td></tr>
+  <tr><td style="padding:6px 12px;text-align:right;font-weight:700;border-top:1px solid #0f172a;">合計</td><td style="padding:6px 12px;text-align:right;font-weight:700;border-top:1px solid #0f172a;font-variant-numeric:tabular-nums;">${fmtCurrency(
+    total,
+  )}</td></tr>
+</table>
+${
+  input.kind === "invoice"
+    ? `<div style="margin-top:18px;border:1px solid #cbd5e1;padding:10px;">
+  <div style="font-weight:700;margin-bottom:4px;">お振込先</div>
+  <div>${escapeHtml(p.bankName)} ${escapeHtml(p.branchName)} ${
+    p.branchCode ? `(${escapeHtml(p.branchCode)})` : ""
+  }</div>
+  <div>${escapeHtml(p.accountType)} ${escapeHtml(p.accountNumber)}</div>
+  <div>${escapeHtml(p.accountHolder)}</div>
+</div>`
+    : ""
+}
+${
+  input.notes
+    ? `<div style="margin-top:14px;"><b>備考</b><div style="white-space:pre-wrap;">${escapeHtml(
+        input.notes,
+      )}</div></div>`
+    : ""
+}
+</body></html>`;
+}
+
+function escapeHtml(s: string): string {
+  return (s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Generate a PDF on device, upload via /api/storage signed URL, return objectPath. */
+export async function generateAndUploadVendorDoc(
+  input: VendorDocInput,
+  fileNameBase: string,
+): Promise<{ fileUrl: string; fileName: string }> {
+  const html = buildHtml(input);
+  const { uri } = await Print.printToFileAsync({ html, base64: false });
+  const info = await FileSystem.getInfoAsync(uri);
+  const size = (info as { size?: number }).size ?? 0;
+  const fileName = `${fileNameBase}.pdf`;
+
+  const reqRes = await requestUploadUrl({
+    name: fileName,
+    size: size > 0 ? size : 1,
+    contentType: "application/pdf",
+  });
+
+  const fileBlob = await fetch(uri).then((r) => r.blob());
+  const putRes = await fetch(reqRes.uploadURL, {
+    method: "PUT",
+    headers: { "Content-Type": "application/pdf" },
+    body: fileBlob,
+  });
+  if (!putRes.ok) throw new Error(`PDFアップロード失敗 (HTTP ${putRes.status})`);
+
+  return {
+    fileUrl: `/api/storage${reqRes.objectPath}`,
+    fileName,
+  };
+}

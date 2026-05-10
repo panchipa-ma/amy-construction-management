@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, View } from "react-native";
 
+import { Fab } from "@/components/form";
 import {
   Badge,
   Body,
@@ -82,7 +83,7 @@ export default function ProjectsTab() {
       <FlatList
         data={data}
         keyExtractor={(p) => p.id}
-        contentContainerStyle={{ padding: 12, gap: 10, paddingBottom: 40 }}
+        contentContainerStyle={{ padding: 12, gap: 10, paddingBottom: 96 }}
         refreshControl={
           <RefreshControl refreshing={q.isFetching} onRefresh={() => q.refetch()} />
         }
@@ -123,6 +124,7 @@ export default function ProjectsTab() {
           );
         }}
       />
+      <Fab onPress={() => router.push("/projects/edit")} label="新規案件" />
     </View>
   );
 }

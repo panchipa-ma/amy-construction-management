@@ -44,13 +44,30 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="pending" options={{ headerShown: false }} />
       <Stack.Screen name="projects/[id]" options={{ title: "案件" }} />
+      <Stack.Screen name="projects/edit" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="quotes/[id]" options={{ title: "見積書" }} />
+      <Stack.Screen name="quotes/edit" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="invoices/[id]" options={{ title: "請求書" }} />
+      <Stack.Screen name="invoices/edit" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="customers" options={{ title: "顧客" }} />
+      <Stack.Screen name="customers/edit" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="staff" options={{ title: "職人" }} />
+      <Stack.Screen name="staff/edit" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="employees" options={{ title: "社員" }} />
+      <Stack.Screen name="employees/edit" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="commissions" options={{ title: "月次歩合" }} />
-      <Stack.Screen name="profile" options={{ title: "プロフィール" }} />
+      <Stack.Screen name="users" options={{ title: "ユーザー" }} />
+      <Stack.Screen name="vendor-invoices" options={{ title: "職人請求書" }} />
+      <Stack.Screen
+        name="vendor-invoices/new"
+        options={{ headerShown: false, presentation: "modal" }}
+      />
+      <Stack.Screen name="vendor-quotes" options={{ title: "職人見積書" }} />
+      <Stack.Screen
+        name="vendor-quotes/new"
+        options={{ headerShown: false, presentation: "modal" }}
+      />
+      <Stack.Screen name="profile" options={{ headerShown: false, presentation: "modal" }} />
     </Stack>
   );
 }
