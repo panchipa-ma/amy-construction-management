@@ -3,8 +3,8 @@ import {
   type ProjectStatus,
   useListProjects,
 } from "@workspace/api-client-react";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, View } from "react-native";
 
 import { Fab } from "@/components/form";
@@ -31,10 +31,32 @@ const FILTERS: { label: string; value: ProjectStatus | "all" }[] = [
 export default function ProjectsTab() {
   const c = useColors();
   const router = useRouter();
-  const [filter, setFilter] = useState<ProjectStatus | "all">("in_progress");
+  const params = useLocalSearchParams<{ status?: string }>();
+  const initial: ProjectStatus | "all" =
+    params.status === "completed"
+      ? "completed"
+      : params.status === "in_progress" ||
+          params.status === "contracted" ||
+          params.status === "estimating"
+        ? (params.status as ProjectStatus)
+        : "in_progress";
+  const [filter, setFilter] = useState<ProjectStatus | "all">(initial);
+  // URL param に応じて filter を同期。param なし → 既定 (進行中) に戻す。
+  useEffect(() => {
+    if (
+      params.status === "completed" ||
+      params.status === "in_progress" ||
+      params.status === "contracted" ||
+      params.status === "estimating"
+    ) {
+      setFilter(params.status as ProjectStatus);
+    } else if (params.status === undefined) {
+      setFilter("in_progress");
+    }
+  }, [params.status]);
 
-  const params = filter === "all" ? undefined : { status: filter };
-  const q = useListProjects(params);
+  const queryParams = filter === "all" ? undefined : { status: filter };
+  const q = useListProjects(queryParams);
 
   if (q.isLoading) return <Loader />;
   if (q.isError) return <ErrorState onRetry={() => q.refetch()} />;

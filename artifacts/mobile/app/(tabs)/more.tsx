@@ -9,13 +9,34 @@ import { Body, Card, Loader, Muted, SectionTitle } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { isInternal } from "@/lib/role";
 
-type MenuItem = {
+type NavEntry = {
   label: string;
   icon: keyof typeof Feather.glyphMap;
-  href?: string;
-  onPress?: () => void;
-  destructive?: boolean;
+  href: string;
+  internalOnly?: boolean;
 };
+
+// 配列順は WEB のサイドバー (artifacts/amy/src/components/app-shell.tsx) と完全一致。
+const NAV: NavEntry[] = [
+  { label: "ダッシュボード", icon: "home", href: "/(tabs)" },
+  { label: "案件", icon: "briefcase", href: "/(tabs)/projects" },
+  { label: "竣工", icon: "check-circle", href: "/(tabs)/projects?status=completed" },
+  { label: "施工台帳", icon: "book-open", href: "/ledger" },
+  { label: "工程表", icon: "bar-chart-2", href: "/gantt" },
+  { label: "見積", icon: "file-text", href: "/(tabs)/quotes" },
+  { label: "請求", icon: "dollar-sign", href: "/(tabs)/invoices" },
+  { label: "入金済", icon: "check-circle", href: "/(tabs)/invoices?paid=true" },
+  { label: "職人見積書", icon: "edit-3", href: "/vendor-quotes" },
+  { label: "職人請求書", icon: "upload", href: "/vendor-invoices" },
+  { label: "職人振込済", icon: "check-circle", href: "/vendor-invoices?paid=true" },
+  { label: "領収書", icon: "file", href: "/receipts" },
+  { label: "職人 出面表", icon: "clipboard", href: "/staff-assignments" },
+  { label: "顧客", icon: "users", href: "/customers" },
+  { label: "職人", icon: "tool", href: "/staff" },
+  { label: "社員", icon: "user", href: "/employees", internalOnly: true },
+  { label: "月次歩合", icon: "trending-up", href: "/commissions", internalOnly: true },
+  { label: "ユーザー管理", icon: "shield", href: "/users", internalOnly: true },
+];
 
 export default function MoreTab() {
   const c = useColors();
@@ -27,23 +48,7 @@ export default function MoreTab() {
   if (meQ.isLoading) return <Loader />;
 
   const internal = isInternal(meQ.data ?? null);
-
-  const internalItems: MenuItem[] = [
-    { label: "顧客", icon: "users", href: "/customers" },
-    { label: "職人", icon: "tool", href: "/staff" },
-    { label: "社員", icon: "user", href: "/employees" },
-    { label: "月次歩合", icon: "trending-up", href: "/commissions" },
-    { label: "ユーザー管理", icon: "shield", href: "/users" },
-  ];
-
-  const vendorItems: MenuItem[] = [
-    { label: "職人請求書", icon: "file-text", href: "/vendor-invoices" },
-    { label: "職人見積書", icon: "file", href: "/vendor-quotes" },
-  ];
-
-  const commonItems: MenuItem[] = [
-    { label: "プロフィール", icon: "user", href: "/profile" },
-  ];
+  const visible = NAV.filter((n) => !n.internalOnly || internal);
 
   const onSignOut = () => {
     Alert.alert("ログアウト", "ログアウトしますか?", [
@@ -62,7 +67,7 @@ export default function MoreTab() {
   return (
     <ScrollView
       style={{ backgroundColor: c.background }}
-      contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 40 }}
+      contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 40 }}
     >
       <Card>
         <Muted>サインイン中</Muted>
@@ -70,60 +75,57 @@ export default function MoreTab() {
           {user?.fullName || user?.primaryEmailAddress?.emailAddress || "ユーザー"}
         </Body>
         {user?.primaryEmailAddress?.emailAddress ? (
-          <Muted style={{ marginTop: 2 }}>
-            {user.primaryEmailAddress.emailAddress}
-          </Muted>
+          <Muted style={{ marginTop: 2 }}>{user.primaryEmailAddress.emailAddress}</Muted>
         ) : null}
         <Muted style={{ marginTop: 6 }}>
-          権限: {internal ? "社内" : "社外 (職人)"}
+          権限: {internal ? "社内（全機能）" : "社外"}
         </Muted>
       </Card>
 
-      {internal ? (
-        <>
-          <SectionTitle>マスタ・集計</SectionTitle>
-          {internalItems.map((it) => (
-            <MenuRow key={it.label} item={it} onPressItem={() => it.href && router.push(it.href as never)} />
-          ))}
-        </>
-      ) : null}
-
-      <SectionTitle>職人ドキュメント</SectionTitle>
-      {vendorItems.map((it) => (
-        <MenuRow
-          key={it.label}
+      <View style={{ marginTop: 8 }}>
+        <SectionTitle>メニュー</SectionTitle>
+      </View>
+      {visible.map((it) => (
+        <NavRow
+          key={it.href}
           item={it}
-          onPressItem={() => it.href && router.push(it.href as never)}
+          onPress={() => router.push(it.href as never)}
         />
       ))}
 
-      <SectionTitle>アカウント</SectionTitle>
-      {commonItems.map((it) => (
-        <MenuRow key={it.label} item={it} onPressItem={() => it.href && router.push(it.href as never)} />
-      ))}
-      <MenuRow
-        item={{ label: "ログアウト", icon: "log-out", destructive: true }}
-        onPressItem={onSignOut}
+      <View style={{ marginTop: 16 }}>
+        <SectionTitle>アカウント</SectionTitle>
+      </View>
+      <NavRow
+        item={{ label: "プロフィール", icon: "user", href: "/profile" }}
+        onPress={() => router.push("/profile")}
+      />
+      <NavRow
+        item={{ label: "サインアウト", icon: "log-out", href: "" }}
+        onPress={onSignOut}
+        destructive
       />
 
-      <Muted style={{ textAlign: "center", marginTop: 16 }}>
-        AMY 施工管理 · モバイル版 (閲覧)
+      <Muted style={{ textAlign: "center", marginTop: 20 }}>
+        AMY 施工管理 · モバイル
       </Muted>
     </ScrollView>
   );
 }
 
-function MenuRow({
+function NavRow({
   item,
-  onPressItem,
+  onPress,
+  destructive,
 }: {
-  item: MenuItem;
-  onPressItem: () => void;
+  item: NavEntry;
+  onPress: () => void;
+  destructive?: boolean;
 }) {
   const c = useColors();
   return (
     <Pressable
-      onPress={onPressItem}
+      onPress={onPress}
       style={({ pressed }) => [
         {
           backgroundColor: c.card,
@@ -131,7 +133,7 @@ function MenuRow({
           borderWidth: 1,
           borderRadius: 10,
           paddingHorizontal: 14,
-          paddingVertical: 14,
+          paddingVertical: 13,
           flexDirection: "row",
           alignItems: "center",
           gap: 12,
@@ -141,13 +143,19 @@ function MenuRow({
     >
       <Feather
         name={item.icon}
-        size={20}
-        color={item.destructive ? c.destructive : c.primary}
+        size={18}
+        color={destructive ? c.destructive : c.primary}
       />
-      <Body style={{ flex: 1, color: item.destructive ? c.destructive : c.foreground, fontWeight: "500" }}>
+      <Body
+        style={{
+          flex: 1,
+          color: destructive ? c.destructive : c.foreground,
+          fontWeight: "500",
+        }}
+      >
         {item.label}
       </Body>
-      {!item.destructive ? (
+      {!destructive ? (
         <Feather name="chevron-right" size={18} color={c.mutedForeground} />
       ) : null}
     </Pressable>

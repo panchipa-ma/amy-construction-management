@@ -1,6 +1,6 @@
 import { useListInvoices } from "@workspace/api-client-react";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, View } from "react-native";
 
 import { Fab } from "@/components/form";
@@ -25,7 +25,14 @@ const FILTERS: { label: string; value: "all" | "unpaid" | "paid" }[] = [
 export default function InvoicesTab() {
   const c = useColors();
   const router = useRouter();
-  const [filter, setFilter] = useState<"all" | "unpaid" | "paid">("unpaid");
+  const params = useLocalSearchParams<{ paid?: string }>();
+  const [filter, setFilter] = useState<"all" | "unpaid" | "paid">(
+    params.paid === "true" ? "paid" : "unpaid",
+  );
+  useEffect(() => {
+    if (params.paid === "true") setFilter("paid");
+    else if (params.paid === undefined) setFilter("unpaid");
+  }, [params.paid]);
 
   const q = useListInvoices();
 

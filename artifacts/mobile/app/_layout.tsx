@@ -68,6 +68,10 @@ function RootLayoutNav() {
         options={{ headerShown: false, presentation: "modal" }}
       />
       <Stack.Screen name="profile" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="ledger" options={{ title: "施工台帳" }} />
+      <Stack.Screen name="gantt" options={{ title: "工程表" }} />
+      <Stack.Screen name="receipts" options={{ title: "領収書" }} />
+      <Stack.Screen name="staff-assignments" options={{ title: "職人 出面表" }} />
     </Stack>
   );
 }
