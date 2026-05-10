@@ -1,8 +1,9 @@
 import { Feather } from "@expo/vector-icons";
+import { useAuth } from "@clerk/expo";
 import { useListProjects } from "@workspace/api-client-react";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
+import { Alert, FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
 
 import {
   Badge,
@@ -15,14 +16,29 @@ import {
 } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { PROJECT_STATUS_LABEL, yen } from "@/lib/format";
+import { printApiDoc } from "@/lib/print-doc";
 
 // 施工台帳: 案件ごとの 契約金額 / 実績原価 / 粗利 を一覧表示。
 // 案件タップで詳細 (台帳セクション) に遷移。
 export default function LedgerScreen() {
   const c = useColors();
   const router = useRouter();
+  const { getToken } = useAuth();
   const [search, setSearch] = useState("");
   const q = useListProjects();
+
+  const printLedger = async (projectId: string, projectName: string) => {
+    try {
+      const safe = (projectName || "project").replace(/[\\/:*?"<>|]/g, "_");
+      await printApiDoc({
+        path: `/api/print/ledger/${projectId}`,
+        fileName: `施工台帳_${safe}.pdf`,
+        getToken,
+      });
+    } catch (err) {
+      Alert.alert("PDFの作成に失敗しました", String((err as Error).message ?? err));
+    }
+  };
 
   const data = useMemo(() => {
     const all = q.data ?? [];
@@ -153,6 +169,29 @@ export default function LedgerScreen() {
                       </Body>
                     </View>
                   </View>
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      printLedger(item.id, item.name);
+                    }}
+                    style={{
+                      marginTop: 10,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      paddingVertical: 8,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      backgroundColor: c.muted,
+                    }}
+                  >
+                    <Feather name="printer" size={14} color={c.foreground} />
+                    <Body style={{ fontSize: 13, fontWeight: "600" }}>
+                      PDF出力
+                    </Body>
+                  </Pressable>
                 </Card>
               )}
             </Pressable>

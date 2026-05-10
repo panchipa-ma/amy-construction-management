@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { useAuth } from "@clerk/expo";
 import {
   getListAllProjectPhasesQueryKey,
   getListProjectPhasesQueryKey,
@@ -28,6 +29,7 @@ import { StatusPicker } from "@/components/status-picker";
 import { Body, Card, EmptyState, ErrorState, Loader, Muted } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { PHASE_STATUS_LABEL } from "@/lib/format";
+import { printApiDoc } from "@/lib/print-doc";
 
 const DAY_PX = 22;
 const ROW_H = 50;
@@ -78,6 +80,8 @@ function ProjectGanttCard({
   onAddPhase,
   onEditPhase,
   onChangeStatus,
+  onPrintPdf,
+  hasPhases,
 }: {
   projectId: string;
   projectName: string;
@@ -89,6 +93,8 @@ function ProjectGanttCard({
   onAddPhase: (projectId: string) => void;
   onEditPhase: (phase: Phase) => void;
   onChangeStatus: (phase: Phase) => void;
+  onPrintPdf: (projectId: string, projectName: string) => void;
+  hasPhases: boolean;
 }) {
   const c = useColors();
   const [open, setOpen] = useState(defaultOpen);
@@ -153,6 +159,32 @@ function ProjectGanttCard({
             color={c.mutedForeground}
           />
         </Pressable>
+        {hasPhases ? (
+          <Pressable
+            onPress={() => onPrintPdf(projectId, projectName)}
+            hitSlop={8}
+            style={({ pressed }) => [
+              {
+                marginRight: 8,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 6,
+                borderWidth: 1,
+                borderColor: c.border,
+                backgroundColor: c.card,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+              },
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Feather name="download" size={12} color={c.foreground} />
+            <Body style={{ color: c.foreground, fontSize: 11, fontWeight: "700" }}>
+              PDF
+            </Body>
+          </Pressable>
+        ) : null}
         <Pressable
           onPress={() => onAddPhase(projectId)}
           hitSlop={8}
@@ -505,11 +537,25 @@ function GanttScreen() {
   const c = useColors();
   const router = useRouter();
   const qc = useQueryClient();
+  const { getToken } = useAuth();
   const updatePhase = useUpdateProjectPhase();
   const [search, setSearch] = useState("");
   const [phaseModal, setPhaseModal] = useState<
     { projectId?: string; editing: ProjectPhase | null; picker?: boolean } | null
   >(null);
+
+  const printGantt = async (projectId: string, projectName: string) => {
+    try {
+      const safe = (projectName || "project").replace(/[\\/:*?"<>|]/g, "_");
+      await printApiDoc({
+        path: `/api/print/gantt/${projectId}`,
+        fileName: `工程表_${safe}.pdf`,
+        getToken,
+      });
+    } catch (err) {
+      Alert.alert("PDFの作成に失敗しました", String((err as Error).message ?? err));
+    }
+  };
 
   const projectsQ = useListProjects();
   const phasesQ = useListAllProjectPhases();
@@ -653,6 +699,8 @@ function GanttScreen() {
             }
             onAddPhase={(pid) => setPhaseModal({ projectId: pid, editing: null })}
             onChangeStatus={setStatusTarget}
+            hasPhases={item.phases.length > 0}
+            onPrintPdf={(pid, pname) => printGantt(pid, pname)}
             onEditPhase={(p) =>
               setPhaseModal({
                 projectId: p.projectId,

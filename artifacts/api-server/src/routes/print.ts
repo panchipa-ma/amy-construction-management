@@ -1,20 +1,29 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
+import { asc } from "drizzle-orm";
 import {
+  costEntriesTable,
   customersTable,
   db,
+  employeesTable,
   invoicesTable,
+  projectPhasesTable,
   projectsTable,
   quotesTable,
 } from "@workspace/db";
 import type { LineItemJson } from "@workspace/db";
 import {
+  COMPANY_INFO,
+  renderGanttHtml,
   renderInvoiceHtml,
+  renderLedgerHtml,
   renderQuoteHtml,
+  type GanttForPrint,
   type InvoiceForPrint,
+  type LedgerForPrint,
   type QuoteForPrint,
 } from "@workspace/print-html";
-import { computeTotals, isoDate } from "../lib/serializers";
+import { computeTotals, isoDate, n } from "../lib/serializers";
 
 const router: IRouter = Router();
 
@@ -110,6 +119,127 @@ router.get("/print/quote/:id", async (req, res): Promise<void> => {
     .set("Content-Type", "text/html; charset=utf-8")
     .set("Cache-Control", "no-store")
     .send(withAutoPrint(renderQuoteHtml(data), req.query.autoprint));
+});
+
+router.get("/print/ledger/:projectId", async (req, res): Promise<void> => {
+  const projectId = String(req.params.projectId);
+  const [project] = await db
+    .select()
+    .from(projectsTable)
+    .where(eq(projectsTable.id, projectId));
+  if (!project) {
+    res.status(404).send("Not found");
+    return;
+  }
+  const [customer] = project.customerId
+    ? await db
+        .select({ name: customersTable.name })
+        .from(customersTable)
+        .where(eq(customersTable.id, project.customerId))
+    : [];
+  const entries = await db
+    .select()
+    .from(costEntriesTable)
+    .where(eq(costEntriesTable.projectId, projectId))
+    .orderBy(asc(costEntriesTable.entryDate), asc(costEntriesTable.createdAt));
+  const actualCost = entries.reduce((s, e) => s + n(e.actualAmount), 0);
+  const plannedCost = entries.reduce((s, e) => s + n(e.plannedAmount), 0);
+  const data: LedgerForPrint = {
+    project: {
+      code: project.code ?? null,
+      name: project.name,
+      customerName: customer?.name ?? null,
+      unitNumber: project.unitNumber ?? null,
+      startDate: isoDate(project.startDate),
+      endDate: isoDate(project.endDate),
+      salesRep: project.salesRep ?? null,
+      siteSupervisor: project.siteSupervisor ?? null,
+      salesCommissionRate:
+        project.salesCommissionRate != null ? n(project.salesCommissionRate) : null,
+      standardProfitRate:
+        project.standardProfitRate != null ? n(project.standardProfitRate) : null,
+      supervisorCommissionRate:
+        project.supervisorCommissionRate != null
+          ? n(project.supervisorCommissionRate)
+          : null,
+    },
+    contractAmount: n(project.contractAmount),
+    plannedCost,
+    actualCost,
+    entries: entries.map((e) => ({
+      category: e.category,
+      description: e.description,
+      vendor: e.vendor ?? null,
+      plannedAmount: n(e.plannedAmount),
+      actualAmount: n(e.actualAmount),
+      entryDate: isoDate(e.entryDate)!,
+    })),
+  };
+  res
+    .status(200)
+    .set("Content-Type", "text/html; charset=utf-8")
+    .set("Cache-Control", "no-store")
+    .send(withAutoPrint(renderLedgerHtml(data), req.query.autoprint));
+});
+
+router.get("/print/gantt/:projectId", async (req, res): Promise<void> => {
+  const projectId = String(req.params.projectId);
+  const [project] = await db
+    .select()
+    .from(projectsTable)
+    .where(eq(projectsTable.id, projectId));
+  if (!project) {
+    res.status(404).send("Not found");
+    return;
+  }
+  const [customer] = project.customerId
+    ? await db
+        .select({ name: customersTable.name })
+        .from(customersTable)
+        .where(eq(customersTable.id, project.customerId))
+    : [];
+  // 監督電話番号: project.siteSupervisor の名前で employees を検索 → phone を引く。
+  // 未登録なら COMPANY_INFO.tel にフォールバック (PrintGanttSheet と同じロジック)。
+  let supervisorPhone: string | null = null;
+  if (project.siteSupervisor) {
+    const [emp] = await db
+      .select({ phone: employeesTable.phone })
+      .from(employeesTable)
+      .where(eq(employeesTable.name, project.siteSupervisor));
+    supervisorPhone = emp?.phone ?? null;
+  }
+  if (!supervisorPhone) supervisorPhone = COMPANY_INFO.tel;
+  const phases = await db
+    .select()
+    .from(projectPhasesTable)
+    .where(eq(projectPhasesTable.projectId, projectId))
+    .orderBy(
+      asc(projectPhasesTable.sortOrder),
+      asc(projectPhasesTable.startDate),
+    );
+  const data: GanttForPrint = {
+    project: {
+      name: project.name,
+      customerName: customer?.name ?? null,
+      unitNumber: project.unitNumber ?? null,
+      startDate: isoDate(project.startDate),
+      endDate: isoDate(project.endDate),
+      siteSupervisor: project.siteSupervisor ?? null,
+      supervisorPhone,
+      companyName: COMPANY_INFO.name,
+    },
+    phases: phases.map((p) => ({
+      id: p.id,
+      name: p.name,
+      startDate: isoDate(p.startDate)!,
+      endDate: isoDate(p.endDate)!,
+    })),
+  };
+  res
+    .status(200)
+    .set("Content-Type", "text/html; charset=utf-8")
+    .set("Cache-Control", "no-store")
+    .send(withAutoPrint(renderGanttHtml(data), req.query.autoprint));
 });
 
 /**

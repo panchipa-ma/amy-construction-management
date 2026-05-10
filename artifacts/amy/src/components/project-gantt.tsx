@@ -7,7 +7,6 @@ import {
   useDeleteProjectPhase,
   useListStaff,
   useGetProject,
-  useListEmployees,
   getListProjectPhasesQueryKey,
   getGetProjectQueryKey,
   type ProjectPhase,
@@ -41,11 +40,6 @@ import { Plus, Pencil, Trash2, FileDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage } from "@/lib/api-error";
 import { formatDate, todayLocalISO } from "@/lib/format";
-import {
-  PrintGanttSheet,
-  getMonthsForPhases,
-} from "@/components/print-gantt-sheet";
-import { COMPANY_INFO } from "@/lib/company-info";
 
 const STATUS_LABEL: Record<string, string> = {
   planned: "予定",
@@ -149,22 +143,10 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
   const overrideRef = useRef<Record<string, { s: string; e: string }>>({});
   const committingRef = useRef<Set<string>>(new Set());
   const timelineRef = useRef<HTMLDivElement | null>(null);
-  const sheetRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
-  const [pdfMonths, setPdfMonths] = useState<
-    { year: number; month: number }[]
-  >([]);
-  const [pdfBusy, setPdfBusy] = useState(false);
   const projectQ = useGetProject(projectId, {
     query: { queryKey: getGetProjectQueryKey(projectId) },
   });
   const project = projectQ.data;
-  const employeesQ = useListEmployees();
-  const supervisorPhone = (() => {
-    const supName = project?.siteSupervisor?.trim();
-    if (!supName) return COMPANY_INFO.tel;
-    const emp = employeesQ.data?.find((e) => e.name.trim() === supName);
-    return emp?.phone?.trim() || COMPANY_INFO.tel;
-  })();
   useEffect(() => {
     dragRef.current = drag;
   }, [drag]);
@@ -367,72 +349,14 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
     }
   };
 
-  const handleExportPdf = async () => {
+  const handleExportPdf = () => {
     if (phases.length === 0) {
       toast({ title: "工程が登録されていません", variant: "destructive" });
       return;
     }
-    const months = getMonthsForPhases(phases).slice(0, 24);
-    if (months.length === 0) {
-      toast({ title: "工程の期間を取得できませんでした", variant: "destructive" });
-      return;
-    }
-    setPdfBusy(true);
-    setPdfMonths(months);
-    // sheets が DOM に挿入されてレイアウト確定するのを待つ
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
-    await new Promise<void>((r) => setTimeout(r, 80));
-    try {
-      const [{ default: jsPDF }, html2canvas] = await Promise.all([
-        import("jspdf"),
-        import("html2canvas-pro").then((m) => m.default),
-      ]);
-      const pdf = new jsPDF({
-        orientation: "landscape",
-        unit: "mm",
-        format: "a4",
-      });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 6;
-      const drawW = pageW - margin * 2;
-      const drawH = pageH - margin * 2;
-      let firstPage = true;
-      for (const { year, month } of months) {
-        const key = `${year}-${month}`;
-        const el = sheetRefs.current.get(key);
-        if (!el) continue;
-        const canvas = await html2canvas(el, {
-          scale: 2,
-          backgroundColor: "#ffffff",
-          windowWidth: el.scrollWidth,
-        });
-        // ページ内に縦横ともフィットさせる (アスペクト比維持)
-        const ratio = Math.min(drawW / canvas.width, drawH / canvas.height);
-        const w = canvas.width * ratio;
-        const h = canvas.height * ratio;
-        const x = margin + (drawW - w) / 2;
-        const y = margin;
-        if (!firstPage) pdf.addPage();
-        firstPage = false;
-        pdf.addImage(canvas.toDataURL("image/png"), "PNG", x, y, w, h);
-      }
-      const safeName = (project?.name || "project").replace(
-        /[\\/:*?"<>|]/g,
-        "_",
-      );
-      pdf.save(`工程表_${safeName}_${todayLocalISO()}.pdf`);
-    } catch (err) {
-      toast({
-        title: "PDFの作成に失敗しました",
-        description: apiErrorMessage(err),
-        variant: "destructive",
-      });
-    } finally {
-      setPdfMonths([]);
-      sheetRefs.current.clear();
-      setPdfBusy(false);
-    }
+    // 共有テンプレート (`@workspace/print-html` renderGanttHtml) を `?autoprint=1`
+    // で開いて印刷ダイアログを起動。Web/モバイル完全同一の出力を保証する。
+    window.open(`/api/print/gantt/${projectId}?autoprint=1`, "_blank");
   };
 
   const handleDelete = async (id: string) => {
@@ -476,12 +400,12 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
           <Button
             variant="outline"
             onClick={handleExportPdf}
-            disabled={pdfBusy || phases.length === 0}
+            disabled={phases.length === 0}
             className="gap-2"
             data-testid="button-export-gantt-pdf"
           >
             <FileDown className="w-4 h-4" />
-            {pdfBusy ? "作成中..." : "PDF出力"}
+            PDF出力
           </Button>
           <Button onClick={openNew} className="gap-2">
             <Plus className="w-4 h-4" />
@@ -808,47 +732,6 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
         </DialogContent>
       </Dialog>
     </Card>
-    {pdfMonths.length > 0 && (
-      <div
-        style={{
-          position: "fixed",
-          left: -100000,
-          top: 0,
-          zIndex: -1,
-          pointerEvents: "none",
-        }}
-        aria-hidden
-      >
-        {pdfMonths.map(({ year, month }) => {
-          const key = `${year}-${month}`;
-          return (
-            <div
-              key={key}
-              ref={(el) => {
-                if (el) sheetRefs.current.set(key, el);
-                else sheetRefs.current.delete(key);
-              }}
-            >
-              <PrintGanttSheet
-                project={{
-                  name: project?.name ?? "",
-                  customerName: project?.customerName ?? null,
-                  unitNumber: project?.unitNumber ?? null,
-                  startDate: project?.startDate ?? null,
-                  endDate: project?.endDate ?? null,
-                  siteSupervisor: project?.siteSupervisor ?? null,
-                  supervisorPhone,
-                  companyName: COMPANY_INFO.name,
-                }}
-                phases={phases}
-                year={year}
-                month={month}
-              />
-            </div>
-          );
-        })}
-      </div>
-    )}
     </>
   );
 }

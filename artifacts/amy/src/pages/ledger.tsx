@@ -52,7 +52,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { apiErrorMessage } from "@/lib/api-error";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Printer } from "lucide-react";
 
 export default function LedgerPage() {
   const queryClient = useQueryClient();
@@ -101,12 +101,27 @@ export default function LedgerPage() {
           </p>
         </div>
         {selectedProject && (
-          <Button asChild variant="outline" className="gap-2">
-            <Link href={`/projects/${selectedProject.id}`}>
-              <ExternalLink className="w-4 h-4" />
-              案件詳細を開く
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() =>
+                window.open(
+                  `/api/print/ledger/${selectedProject.id}?autoprint=1`,
+                  "_blank",
+                )
+              }
+            >
+              <Printer className="w-4 h-4" />
+              PDF出力
+            </Button>
+            <Button asChild variant="outline" className="gap-2">
+              <Link href={`/projects/${selectedProject.id}`}>
+                <ExternalLink className="w-4 h-4" />
+                案件詳細を開く
+              </Link>
+            </Button>
+          </div>
         )}
       </div>
 
