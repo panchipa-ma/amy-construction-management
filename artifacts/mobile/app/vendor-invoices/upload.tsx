@@ -27,7 +27,11 @@ import {
 } from "@/components/form";
 import { Body, Muted } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
-import { pickImage, pickUploadAndOcr, uploadAsset } from "@/lib/upload";
+import {
+  pickFromLibraryOrFile,
+  pickUploadAndOcr,
+  uploadAsset,
+} from "@/lib/upload";
 
 function todayStr() {
   const d = new Date();
@@ -67,10 +71,10 @@ export default function VendorInvoiceUpload() {
     ...(staffQ.data ?? []).map((s) => ({ value: s.id, label: s.name })),
   ];
 
-  const handlePickUpload = async () => {
+  const runPickUpload = async (source: "camera" | "library-or-file") => {
     try {
       setBusy("uploading");
-      const r = await pickUploadAndOcr("vendor_invoice");
+      const r = await pickUploadAndOcr("vendor_invoice", source);
       if (!r) {
         setBusy("idle");
         return;
@@ -101,7 +105,7 @@ export default function VendorInvoiceUpload() {
 
   const handleReplace = async () => {
     try {
-      const asset = await pickImage();
+      const asset = await pickFromLibraryOrFile();
       if (!asset) return;
       setBusy("uploading");
       const upload = await uploadAsset(asset);
@@ -190,43 +194,73 @@ export default function VendorInvoiceUpload() {
               <Body>差し替え</Body>
             </Pressable>
           </View>
-        ) : (
-          <Pressable
-            onPress={handlePickUpload}
-            disabled={busy !== "idle"}
-            style={({ pressed }) => [
-              {
-                paddingVertical: 24,
-                borderRadius: 10,
-                borderWidth: 2,
-                borderColor: c.primary,
-                borderStyle: "dashed",
-                alignItems: "center",
-                gap: 8,
-                opacity: busy !== "idle" ? 0.6 : 1,
-              },
-              pressed && { opacity: 0.7 },
-            ]}
+        ) : busy !== "idle" ? (
+          <View
+            style={{
+              paddingVertical: 24,
+              borderRadius: 10,
+              borderWidth: 2,
+              borderColor: c.primary,
+              borderStyle: "dashed",
+              alignItems: "center",
+              gap: 8,
+            }}
           >
-            {busy !== "idle" ? (
-              <>
-                <ActivityIndicator color={c.primary} />
-                <Body style={{ color: c.primary, fontWeight: "600" }}>
-                  アップロード中…
-                </Body>
-              </>
-            ) : (
-              <>
-                <Feather name="camera" size={28} color={c.primary} />
+            <ActivityIndicator color={c.primary} />
+            <Body style={{ color: c.primary, fontWeight: "600" }}>
+              アップロード中…
+            </Body>
+          </View>
+        ) : (
+          <View style={{ gap: 10 }}>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Pressable
+                onPress={() => runPickUpload("camera")}
+                style={({ pressed }) => [
+                  {
+                    flex: 1,
+                    paddingVertical: 22,
+                    borderRadius: 10,
+                    borderWidth: 2,
+                    borderColor: c.primary,
+                    borderStyle: "dashed",
+                    alignItems: "center",
+                    gap: 6,
+                  },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Feather name="camera" size={26} color={c.primary} />
                 <Body style={{ color: c.primary, fontWeight: "700" }}>
-                  請求書を撮影 / 選択
+                  カメラで撮影
                 </Body>
-                <Muted style={{ fontSize: 12 }}>
-                  自動で 業者名・金額・日付・号室 を読み取ります
-                </Muted>
-              </>
-            )}
-          </Pressable>
+              </Pressable>
+              <Pressable
+                onPress={() => runPickUpload("library-or-file")}
+                style={({ pressed }) => [
+                  {
+                    flex: 1,
+                    paddingVertical: 22,
+                    borderRadius: 10,
+                    borderWidth: 2,
+                    borderColor: c.primary,
+                    borderStyle: "dashed",
+                    alignItems: "center",
+                    gap: 6,
+                  },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Feather name="upload" size={26} color={c.primary} />
+                <Body style={{ color: c.primary, fontWeight: "700" }}>
+                  アップロード
+                </Body>
+              </Pressable>
+            </View>
+            <Muted style={{ fontSize: 12, textAlign: "center" }}>
+              自動で 業者名・金額・日付・号室 を読み取ります
+            </Muted>
+          </View>
         )}
       </FormSection>
 

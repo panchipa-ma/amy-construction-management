@@ -3,6 +3,7 @@ import {
   requestUploadUrl,
   type ExtractOcrResponse,
 } from "@workspace/api-client-react";
+import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import { Alert, Platform } from "react-native";
@@ -16,51 +17,100 @@ export type UploadResult = {
   height?: number;
 };
 
-/**
- * Show an action sheet asking camera vs library, returns picked asset URI.
- * Returns null if user cancels.
- */
-export async function pickImage(): Promise<ImagePicker.ImagePickerAsset | null> {
+export type PickedAsset = {
+  uri: string;
+  fileName?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
+  width?: number;
+  height?: number;
+};
+
+/** カメラ直接起動 */
+export async function pickFromCamera(): Promise<PickedAsset | null> {
+  const perm = await ImagePicker.requestCameraPermissionsAsync();
+  if (!perm.granted) {
+    Alert.alert("カメラ権限が必要です", "設定からカメラを許可してください");
+    return null;
+  }
+  const r = await ImagePicker.launchCameraAsync({
+    mediaTypes: ["images"],
+    quality: 0.8,
+    base64: false,
+  });
+  if (r.canceled || !r.assets?.[0]) return null;
+  return r.assets[0];
+}
+
+/** 写真ライブラリから選択 */
+export async function pickFromLibrary(): Promise<PickedAsset | null> {
+  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) {
+    Alert.alert("写真権限が必要です", "設定から写真へのアクセスを許可してください");
+    return null;
+  }
+  const r = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    quality: 0.8,
+    base64: false,
+  });
+  if (r.canceled || !r.assets?.[0]) return null;
+  return r.assets[0];
+}
+
+/** ファイル (画像 or PDF) を選択 */
+export async function pickFromFile(): Promise<PickedAsset | null> {
+  const r = await DocumentPicker.getDocumentAsync({
+    type: ["image/*", "application/pdf"],
+    copyToCacheDirectory: true,
+    multiple: false,
+  });
+  if (r.canceled || !r.assets?.[0]) return null;
+  const a = r.assets[0];
+  return {
+    uri: a.uri,
+    fileName: a.name,
+    fileSize: a.size ?? null,
+    mimeType: a.mimeType ?? null,
+  };
+}
+
+/** 写真ライブラリ or ファイル選択 (アクションシート) */
+export async function pickFromLibraryOrFile(): Promise<PickedAsset | null> {
+  return new Promise((resolve) => {
+    Alert.alert(
+      "アップロード元を選択",
+      undefined,
+      [
+        {
+          text: "写真ライブラリ",
+          onPress: async () => resolve(await pickFromLibrary()),
+        },
+        {
+          text: "ファイルから選択",
+          onPress: async () => resolve(await pickFromFile()),
+        },
+        { text: "キャンセル", style: "cancel", onPress: () => resolve(null) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(null) },
+    );
+  });
+}
+
+/** @deprecated 後方互換: カメラ/ライブラリ選択シート */
+export async function pickImage(): Promise<PickedAsset | null> {
   return new Promise((resolve) => {
     Alert.alert(
       "画像を選択",
-      "撮影するか写真ライブラリから選んでください",
+      "撮影方法を選んでください",
       [
         {
           text: "カメラで撮影",
-          onPress: async () => {
-            const perm = await ImagePicker.requestCameraPermissionsAsync();
-            if (!perm.granted) {
-              Alert.alert("カメラ権限が必要です", "設定からカメラを許可してください");
-              resolve(null);
-              return;
-            }
-            const r = await ImagePicker.launchCameraAsync({
-              mediaTypes: ["images"],
-              quality: 0.8,
-              base64: false,
-            });
-            if (r.canceled || !r.assets?.[0]) resolve(null);
-            else resolve(r.assets[0]);
-          },
+          onPress: async () => resolve(await pickFromCamera()),
         },
         {
-          text: "写真ライブラリ",
-          onPress: async () => {
-            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!perm.granted) {
-              Alert.alert("写真権限が必要です", "設定から写真へのアクセスを許可してください");
-              resolve(null);
-              return;
-            }
-            const r = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ["images"],
-              quality: 0.8,
-              base64: false,
-            });
-            if (r.canceled || !r.assets?.[0]) resolve(null);
-            else resolve(r.assets[0]);
-          },
+          text: "写真ライブラリ / ファイル",
+          onPress: async () => resolve(await pickFromLibraryOrFile()),
         },
         { text: "キャンセル", style: "cancel", onPress: () => resolve(null) },
       ],
@@ -178,8 +228,10 @@ export async function tryOcr(
 /** High-level helper: pick → upload → OCR. Returns null if user cancels. */
 export async function pickUploadAndOcr(
   kind: "receipt" | "vendor_invoice",
+  source: "camera" | "library-or-file" = "library-or-file",
 ): Promise<{ upload: UploadResult; ocr: ExtractOcrResponse | null } | null> {
-  const asset = await pickImage();
+  const asset =
+    source === "camera" ? await pickFromCamera() : await pickFromLibraryOrFile();
   if (!asset) return null;
   const upload = await uploadAsset(asset);
   const ocr = await tryOcr(upload.objectPath, upload.contentType, kind);
