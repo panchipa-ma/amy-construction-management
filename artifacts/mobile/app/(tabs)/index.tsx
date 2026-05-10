@@ -16,7 +16,6 @@ import {
   EmptyState,
   ErrorState,
   H1,
-  H2,
   Loader,
   Muted,
   Row,
@@ -130,37 +129,32 @@ function InternalDashboard() {
         />
       </Card>
 
-      <Card onPress={() => router.push("/(tabs)/projects")}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <View>
-            <H2>案件一覧</H2>
-            <Muted>すべての案件を表示</Muted>
-          </View>
-          <Feather name="chevron-right" size={20} color={c.mutedForeground} />
-        </View>
-      </Card>
-
-      <Card onPress={() => router.push("/commissions")}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <View>
-            <H2>月次歩合</H2>
-            <Muted>営業 / 現場監督 / マネジメント</Muted>
-          </View>
-          <Feather name="chevron-right" size={20} color={c.mutedForeground} />
-        </View>
-      </Card>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+        <ShortcutCard
+          icon="check-circle"
+          title="竣工"
+          subtitle="竣工した案件"
+          onPress={() => router.push("/(tabs)/projects?status=completed")}
+        />
+        <ShortcutCard
+          icon="dollar-sign"
+          title="請求"
+          subtitle="請求書一覧"
+          onPress={() => router.push("/(tabs)/invoices")}
+        />
+        <ShortcutCard
+          icon="file-text"
+          title="職人請求書"
+          subtitle="職人からの請求"
+          onPress={() => router.push("/vendor-invoices")}
+        />
+        <ShortcutCard
+          icon="book-open"
+          title="施工台帳"
+          subtitle="予算 vs 実績 / 粗利"
+          onPress={() => router.push("/ledger")}
+        />
+      </View>
 
       <Muted style={{ marginTop: 8, textAlign: "center" }}>
         最終更新: {fmtDate(new Date().toISOString())}
@@ -209,6 +203,45 @@ function QuickAction({
       >
         {label}
       </Body>
+    </Pressable>
+  );
+}
+
+function ShortcutCard({
+  icon,
+  title,
+  subtitle,
+  onPress,
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+}) {
+  const c = useColors();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        {
+          width: "48%",
+          flexGrow: 1,
+          backgroundColor: c.card,
+          borderColor: c.border,
+          borderWidth: 1,
+          borderRadius: 10,
+          padding: 14,
+          gap: 6,
+        },
+        pressed && { opacity: 0.7 },
+      ]}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <Feather name={icon} size={20} color={c.primary} />
+        <Feather name="chevron-right" size={18} color={c.mutedForeground} />
+      </View>
+      <Body style={{ fontWeight: "700", color: c.foreground }}>{title}</Body>
+      <Muted style={{ fontSize: 12 }}>{subtitle}</Muted>
     </Pressable>
   );
 }
