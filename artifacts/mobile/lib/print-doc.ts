@@ -103,37 +103,123 @@ async function generateAndSharePdfWeb(
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-/** html2pdf.js で HTML 文字列 → PDF Blob に変換する。 */
+/**
+ * HTML 文字列 → PDF Blob (web 専用)。
+ *
+ * サーバーが返す印刷 HTML は完全な `<!DOCTYPE html>` 文書 (head の style を
+ * 含む) なので、iframe srcdoc で正しい document コンテキストでレンダリング
+ * してから html2canvas-pro でキャプチャ → jsPDF で A4 PDF を組み立てる。
+ * 単純に div.innerHTML に流し込むと head の style が無効化されて真っ白に
+ * なる。
+ */
 async function renderHtmlToPdfBlob(html: string): Promise<Blob> {
-  // html2pdf.js は web 専用 (window/document に依存)。dynamic import で
-  // native bundle に入らないようにする。
-  const mod = await import("html2pdf.js");
-  const html2pdf = (mod as { default?: unknown }).default ?? mod;
+  const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+    import("html2canvas-pro"),
+    import("jspdf"),
+  ]);
 
-  // off-screen container に HTML を流し込み
-  const container = document.createElement("div");
-  container.style.position = "fixed";
-  container.style.left = "-100000px";
-  container.style.top = "0";
-  container.style.width = "210mm"; // A4 幅
-  container.innerHTML = html;
-  document.body.appendChild(container);
+  // 画面外の iframe で HTML を完全な文書としてレンダリング
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.left = "-100000px";
+  iframe.style.top = "0";
+  iframe.style.width = "794px"; // A4 幅 (96dpi 換算で 210mm ≒ 794px)
+  iframe.style.height = "1123px"; // A4 高さ ≒ 1123px (足りなければ拡張)
+  iframe.style.border = "0";
+  iframe.setAttribute("aria-hidden", "true");
+  document.body.appendChild(iframe);
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const blob: Blob = await (html2pdf as any)()
-      .from(container)
-      .set({
-        margin: [10, 10, 10, 10],
-        filename: "document.pdf",
-        image: { type: "jpeg", quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      })
-      .outputPdf("blob");
-    return blob;
+    // srcdoc で HTML 全体を流し込み、load 完了を待つ
+    await new Promise<void>((resolve, reject) => {
+      const onLoad = () => resolve();
+      const onError = () => reject(new Error("PDF レンダリングに失敗しました"));
+      iframe.addEventListener("load", onLoad, { once: true });
+      iframe.addEventListener("error", onError, { once: true });
+      iframe.srcdoc = html;
+      // セーフティタイムアウト (load イベントが取れない環境用)
+      setTimeout(resolve, 3000);
+    });
+
+    const doc = iframe.contentDocument;
+    const win = iframe.contentWindow;
+    if (!doc || !win) throw new Error("iframe document が取得できません");
+
+    // フォント / 画像のロード完了を待機
+    try {
+      await doc.fonts?.ready;
+    } catch {
+      /* ignore */
+    }
+    await new Promise((r) => setTimeout(r, 200));
+
+    const target = doc.body;
+    // 内容に合わせて iframe 高さを拡張 (複数ページ対応)
+    const fullHeight = Math.max(
+      target.scrollHeight,
+      doc.documentElement.scrollHeight,
+      1123,
+    );
+    iframe.style.height = `${fullHeight}px`;
+    await new Promise((r) => setTimeout(r, 100));
+
+    const canvas = await html2canvas(target, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      windowWidth: 794,
+      windowHeight: fullHeight,
+    });
+
+    // jsPDF に貼り付け、複数ページに分割
+    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+    const pageWidthMm = 210;
+    const pageHeightMm = 297;
+    const imgWidthMm = pageWidthMm;
+    const imgHeightMm = (canvas.height * imgWidthMm) / canvas.width;
+
+    if (imgHeightMm <= pageHeightMm) {
+      // 1 ページに収まる
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      pdf.addImage(imgData, "JPEG", 0, 0, imgWidthMm, imgHeightMm);
+    } else {
+      // 複数ページに分割: A4 高さに相当する canvas 高さ単位で切り出し
+      const pxPerMm = canvas.width / pageWidthMm;
+      const pageCanvasHeight = Math.floor(pageHeightMm * pxPerMm);
+      let yOffset = 0;
+      let pageNum = 0;
+      while (yOffset < canvas.height) {
+        const sliceHeight = Math.min(pageCanvasHeight, canvas.height - yOffset);
+        const slice = document.createElement("canvas");
+        slice.width = canvas.width;
+        slice.height = sliceHeight;
+        const ctx = slice.getContext("2d");
+        if (!ctx) throw new Error("canvas context が取得できません");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, slice.width, slice.height);
+        ctx.drawImage(
+          canvas,
+          0,
+          yOffset,
+          canvas.width,
+          sliceHeight,
+          0,
+          0,
+          canvas.width,
+          sliceHeight,
+        );
+        const sliceData = slice.toDataURL("image/jpeg", 0.95);
+        const sliceHeightMm = (sliceHeight * pageWidthMm) / canvas.width;
+        if (pageNum > 0) pdf.addPage();
+        pdf.addImage(sliceData, "JPEG", 0, 0, imgWidthMm, sliceHeightMm);
+        yOffset += sliceHeight;
+        pageNum += 1;
+      }
+    }
+
+    return pdf.output("blob");
   } finally {
-    container.remove();
+    iframe.remove();
   }
 }
 
