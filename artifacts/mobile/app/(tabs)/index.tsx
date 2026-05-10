@@ -61,18 +61,33 @@ function InternalDashboard() {
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
         <QuickAction
           icon="briefcase"
-          label="案件一覧作成"
+          label="案件一覧"
           onPress={() => router.push("/(tabs)/projects")}
         />
         <QuickAction
+          icon="bar-chart-2"
+          label="工程表作成"
+          onPress={() => router.push("/gantt")}
+        />
+        <QuickAction
+          icon="clipboard"
+          label="出面表"
+          onPress={() => router.push("/staff-assignments")}
+        />
+        <QuickAction
           icon="file-text"
-          label="見積書一覧作成"
+          label="見積書一覧"
           onPress={() => router.push("/(tabs)/quotes")}
         />
         <QuickAction
-          icon="bar-chart-2"
-          label="工程表作成一覧"
-          onPress={() => router.push("/gantt")}
+          icon="check-circle"
+          label="今月竣工一覧"
+          onPress={() => router.push("/(tabs)/projects?status=completed")}
+        />
+        <QuickAction
+          icon="dollar-sign"
+          label="請求書一覧"
+          onPress={() => router.push("/(tabs)/invoices")}
         />
         <QuickAction
           icon="edit-3"
@@ -85,9 +100,9 @@ function InternalDashboard() {
           onPress={() => router.push("/vendor-invoices")}
         />
         <QuickAction
-          icon="clipboard"
-          label="出面表"
-          onPress={() => router.push("/staff-assignments")}
+          icon="book-open"
+          label="施工台帳"
+          onPress={() => router.push("/ledger")}
         />
       </View>
 
@@ -128,33 +143,6 @@ function InternalDashboard() {
           }
         />
       </Card>
-
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-        <ShortcutCard
-          icon="check-circle"
-          title="竣工"
-          subtitle="竣工した案件"
-          onPress={() => router.push("/(tabs)/projects?status=completed")}
-        />
-        <ShortcutCard
-          icon="dollar-sign"
-          title="請求"
-          subtitle="請求書一覧"
-          onPress={() => router.push("/(tabs)/invoices")}
-        />
-        <ShortcutCard
-          icon="file-text"
-          title="職人請求書"
-          subtitle="職人からの請求"
-          onPress={() => router.push("/vendor-invoices")}
-        />
-        <ShortcutCard
-          icon="book-open"
-          title="施工台帳"
-          subtitle="予算 vs 実績 / 粗利"
-          onPress={() => router.push("/ledger")}
-        />
-      </View>
 
       <Muted style={{ marginTop: 8, textAlign: "center" }}>
         最終更新: {fmtDate(new Date().toISOString())}
@@ -203,45 +191,6 @@ function QuickAction({
       >
         {label}
       </Body>
-    </Pressable>
-  );
-}
-
-function ShortcutCard({
-  icon,
-  title,
-  subtitle,
-  onPress,
-}: {
-  icon: keyof typeof Feather.glyphMap;
-  title: string;
-  subtitle: string;
-  onPress: () => void;
-}) {
-  const c = useColors();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        {
-          width: "48%",
-          flexGrow: 1,
-          backgroundColor: c.card,
-          borderColor: c.border,
-          borderWidth: 1,
-          borderRadius: 10,
-          padding: 14,
-          gap: 6,
-        },
-        pressed && { opacity: 0.7 },
-      ]}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <Feather name={icon} size={20} color={c.primary} />
-        <Feather name="chevron-right" size={18} color={c.mutedForeground} />
-      </View>
-      <Body style={{ fontWeight: "700", color: c.foreground }}>{title}</Body>
-      <Muted style={{ fontSize: 12 }}>{subtitle}</Muted>
     </Pressable>
   );
 }
