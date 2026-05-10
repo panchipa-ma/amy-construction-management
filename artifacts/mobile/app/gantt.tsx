@@ -1,13 +1,21 @@
 import { Feather } from "@expo/vector-icons";
 import {
+  getListAllProjectPhasesQueryKey,
+  getListProjectPhasesQueryKey,
+  getListStaffAssignmentsQueryKey,
   type ProjectPhase,
   useListAllProjectPhases,
   useListProjects,
+  useUpdateProjectPhase,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
+  ActionSheetIOS,
+  Alert,
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -70,6 +78,7 @@ function ProjectGanttCard({
   onOpenProject,
   onAddPhase,
   onEditPhase,
+  onChangeStatus,
 }: {
   projectId: string;
   projectName: string;
@@ -80,6 +89,7 @@ function ProjectGanttCard({
   onOpenProject: () => void;
   onAddPhase: (projectId: string) => void;
   onEditPhase: (phase: Phase) => void;
+  onChangeStatus: (phase: Phase) => void;
 }) {
   const c = useColors();
   const [open, setOpen] = useState(defaultOpen);
@@ -210,31 +220,60 @@ function ProjectGanttCard({
               const days =
                 diffDays(dateOnly(p.startDate), dateOnly(p.endDate)) + 1;
               return (
-                <Pressable
+                <View
                   key={p.id}
-                  onPress={() => onEditPhase(p)}
-                  style={({ pressed }) => [
-                    {
-                      height: ROW_H,
-                      borderBottomWidth: 1,
-                      borderBottomColor: c.border,
-                      paddingHorizontal: 8,
-                      justifyContent: "center",
-                    },
-                    pressed && { backgroundColor: c.muted },
-                  ]}
+                  style={{
+                    height: ROW_H,
+                    borderBottomWidth: 1,
+                    borderBottomColor: c.border,
+                    paddingHorizontal: 8,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
                 >
-                  <Body
-                    numberOfLines={1}
-                    style={{ fontSize: 12, fontWeight: "600" }}
+                  <Pressable
+                    onPress={() => onEditPhase(p)}
+                    style={({ pressed }) => [
+                      { flex: 1, justifyContent: "center" },
+                      pressed && { opacity: 0.6 },
+                    ]}
                   >
-                    {p.name ?? p.phaseName}
-                  </Body>
-                  <Muted style={{ fontSize: 10 }} numberOfLines={1}>
-                    {p.staffName ? `${p.staffName} · ` : ""}
-                    {days}日
-                  </Muted>
-                </Pressable>
+                    <Body
+                      numberOfLines={1}
+                      style={{ fontSize: 12, fontWeight: "600" }}
+                    >
+                      {p.name ?? p.phaseName}
+                    </Body>
+                    <Muted style={{ fontSize: 10 }} numberOfLines={1}>
+                      {p.staffName ? `${p.staffName} · ` : ""}
+                      {days}日
+                    </Muted>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => onChangeStatus(p)}
+                    hitSlop={6}
+                    style={({ pressed }) => [
+                      {
+                        paddingHorizontal: 6,
+                        paddingVertical: 3,
+                        borderRadius: 4,
+                        backgroundColor: statusColor(p.status, c),
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 2,
+                      },
+                      pressed && { opacity: 0.7 },
+                    ]}
+                  >
+                    <Body
+                      style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}
+                    >
+                      {PHASE_STATUS_LABEL[p.status]}
+                    </Body>
+                    <Feather name="chevron-down" size={9} color="#fff" />
+                  </Pressable>
+                </View>
               );
             })}
           </View>
@@ -367,24 +406,29 @@ function ProjectGanttCard({
                       />
                     ) : null}
                     {/* the bar */}
-                    <View
-                      style={{
-                        position: "absolute",
-                        left,
-                        top: ROW_H / 2 - 11,
-                        width,
-                        height: 22,
-                        borderRadius: 4,
-                        backgroundColor: barColor,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        paddingHorizontal: 6,
-                        shadowColor: "#000",
-                        shadowOpacity: 0.1,
-                        shadowRadius: 2,
-                        shadowOffset: { width: 0, height: 1 },
-                        elevation: 1,
-                      }}
+                    <Pressable
+                      onPress={() => onEditPhase(p)}
+                      onLongPress={() => onChangeStatus(p)}
+                      style={({ pressed }) => [
+                        {
+                          position: "absolute",
+                          left,
+                          top: ROW_H / 2 - 11,
+                          width,
+                          height: 22,
+                          borderRadius: 4,
+                          backgroundColor: barColor,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          paddingHorizontal: 6,
+                          shadowColor: "#000",
+                          shadowOpacity: 0.1,
+                          shadowRadius: 2,
+                          shadowOffset: { width: 0, height: 1 },
+                          elevation: 1,
+                        },
+                        pressed && { opacity: 0.75 },
+                      ]}
                     >
                       {width > 36 ? (
                         <Body
@@ -398,7 +442,7 @@ function ProjectGanttCard({
                           {p.name ?? p.phaseName}
                         </Body>
                       ) : null}
-                    </View>
+                    </Pressable>
                   </View>
                 );
               })}
@@ -461,6 +505,8 @@ export default function GanttScreenGuarded() {
 function GanttScreen() {
   const c = useColors();
   const router = useRouter();
+  const qc = useQueryClient();
+  const updatePhase = useUpdateProjectPhase();
   const [search, setSearch] = useState("");
   const [phaseModal, setPhaseModal] = useState<
     { projectId?: string; editing: ProjectPhase | null; picker?: boolean } | null
@@ -472,16 +518,6 @@ function GanttScreen() {
   const data = useMemo(() => {
     const projects = projectsQ.data ?? [];
     const phases = phasesQ.data ?? [];
-    const visible = projects.filter(
-      (p) => p.status === "in_progress" || p.status === "contracted",
-    );
-    const s = search.trim().toLowerCase();
-    const list = visible.filter(
-      (p) =>
-        !s ||
-        p.name.toLowerCase().includes(s) ||
-        (p.customerName ?? "").toLowerCase().includes(s),
-    );
     const byProject = new Map<string, Phase[]>();
     for (const ph of phases) {
       const arr = byProject.get(ph.projectId) ?? [];
@@ -499,6 +535,21 @@ function GanttScreen() {
       });
       byProject.set(ph.projectId, arr);
     }
+    // Show: active projects (契約済/施工中) OR any project that has a phase.
+    // Excludes 竣工/アーカイブ unless they have phases.
+    const visible = projects.filter(
+      (p) =>
+        p.status === "in_progress" ||
+        p.status === "contracted" ||
+        byProject.has(p.id),
+    );
+    const s = search.trim().toLowerCase();
+    const list = visible.filter(
+      (p) =>
+        !s ||
+        p.name.toLowerCase().includes(s) ||
+        (p.customerName ?? "").toLowerCase().includes(s),
+    );
     return list.map((p) => ({
       project: p,
       phases: (byProject.get(p.id) ?? []).sort((a, b) =>
@@ -506,6 +557,49 @@ function GanttScreen() {
       ),
     }));
   }, [projectsQ.data, phasesQ.data, search]);
+
+  const handleChangeStatus = (p: Phase) => {
+    const options: { label: string; value: Phase["status"] }[] = [
+      { label: PHASE_STATUS_LABEL.planned, value: "planned" },
+      { label: PHASE_STATUS_LABEL.in_progress, value: "in_progress" },
+      { label: PHASE_STATUS_LABEL.done, value: "done" },
+    ];
+    const apply = async (value: Phase["status"]) => {
+      if (value === p.status) return;
+      try {
+        await updatePhase.mutateAsync({ id: p.id, data: { status: value } });
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: getListAllProjectPhasesQueryKey() }),
+          qc.invalidateQueries({
+            queryKey: getListProjectPhasesQueryKey(p.projectId),
+          }),
+          qc.invalidateQueries({ queryKey: getListStaffAssignmentsQueryKey() }),
+        ]);
+      } catch (e) {
+        Alert.alert("更新失敗", e instanceof Error ? e.message : String(e));
+      }
+    };
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: "ステータスを変更",
+          options: [...options.map((o) => o.label), "キャンセル"],
+          cancelButtonIndex: options.length,
+        },
+        (idx) => {
+          if (idx >= 0 && idx < options.length) apply(options[idx].value);
+        },
+      );
+    } else {
+      Alert.alert("ステータスを変更", undefined, [
+        ...options.map((o) => ({
+          text: o.label,
+          onPress: () => apply(o.value),
+        })),
+        { text: "キャンセル", style: "cancel" as const },
+      ]);
+    }
+  };
 
   if (projectsQ.isLoading || phasesQ.isLoading) return <Loader />;
   if (projectsQ.isError || phasesQ.isError)
@@ -576,6 +670,7 @@ function GanttScreen() {
               router.push(`/projects/${item.project.id}` as never)
             }
             onAddPhase={(pid) => setPhaseModal({ projectId: pid, editing: null })}
+            onChangeStatus={handleChangeStatus}
             onEditPhase={(p) =>
               setPhaseModal({
                 projectId: p.projectId,
