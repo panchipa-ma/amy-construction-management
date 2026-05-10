@@ -16,13 +16,9 @@ export default function TabsLayout() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const c = useColors();
 
-  // Keep an always-current ref to getToken so the token getter never goes stale.
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
 
-  // Register the token getter synchronously on the first render (before any
-  // generated API hook below fires its first request). Using useState's
-  // lazy initializer guarantees this runs exactly once, before useGetMe.
   useState(() => {
     setAuthTokenGetter(() => getTokenRef.current());
     return null;
@@ -75,32 +71,32 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="projects"
+        name="gantt"
         options={{
-          title: "案件",
-          href: internal ? "/(tabs)/projects" : null,
+          title: "工程表",
+          href: internal ? "/gantt" : null,
           tabBarIcon: ({ color, size }) => (
-            <Feather name="briefcase" size={size} color={color} />
+            <Feather name="bar-chart-2" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="quotes"
+        name="staff-assignments"
         options={{
-          title: "見積",
-          href: internal ? "/(tabs)/quotes" : null,
+          title: "出面表",
+          href: internal ? "/staff-assignments" : null,
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="clipboard" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="receipts"
+        options={{
+          title: "領収書",
+          href: internal ? "/receipts" : null,
           tabBarIcon: ({ color, size }) => (
             <Feather name="file" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="invoices"
-        options={{
-          title: "請求",
-          href: internal ? "/(tabs)/invoices" : null,
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="dollar-sign" size={size} color={color} />
           ),
         }}
       />
@@ -123,6 +119,10 @@ export default function TabsLayout() {
           ),
         }}
       />
+      {/* Hidden routes registered so links continue to work */}
+      <Tabs.Screen name="projects" options={{ href: null, title: "案件" }} />
+      <Tabs.Screen name="quotes" options={{ href: null, title: "見積" }} />
+      <Tabs.Screen name="invoices" options={{ href: null, title: "請求" }} />
     </Tabs>
   );
 }

@@ -5,6 +5,7 @@ import {
   getListProjectsQueryKey,
   type Project,
   type ProjectStatus,
+  useDeleteProject,
   useListProjects,
   useUpdateProject,
 } from "@workspace/api-client-react";
@@ -20,6 +21,7 @@ import {
 } from "react-native";
 
 import { Fab } from "@/components/form";
+import { SelectionBar } from "@/components/selection-bar";
 import { StatusPicker } from "@/components/status-picker";
 import {
   Badge,
@@ -31,6 +33,8 @@ import {
   Muted,
 } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { useSelection } from "@/hooks/useSelection";
+import { runBulkDelete } from "@/lib/bulk-delete";
 import { PROJECT_STATUS_LABEL, fmtDate, yen } from "@/lib/format";
 
 const FILTERS: { label: string; value: ProjectStatus | "all" }[] = [
@@ -72,12 +76,28 @@ export default function ProjectsTab() {
   const q = useListProjects(queryParams);
   const qc = useQueryClient();
   const updateMut = useUpdateProject();
+  const deleteMut = useDeleteProject();
   const [statusTarget, setStatusTarget] = useState<Project | null>(null);
+  const data = q.data ?? [];
+  const sel = useSelection(data);
+  const [busy, setBusy] = useState(false);
 
   if (q.isLoading) return <Loader />;
   if (q.isError) return <ErrorState onRetry={() => q.refetch()} />;
 
-  const data = q.data ?? [];
+  const onBulkDelete = async () => {
+    setBusy(true);
+    try {
+      await runBulkDelete(
+        sel.selectedItems,
+        (id) => deleteMut.mutateAsync({ id }),
+        () => qc.invalidateQueries({ queryKey: getListProjectsQueryKey() }),
+      );
+      sel.clear();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const STATUS_OPTIONS: { label: string; value: ProjectStatus }[] = [
     { label: PROJECT_STATUS_LABEL.estimating, value: "estimating" },
@@ -110,6 +130,16 @@ export default function ProjectsTab() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
+      {sel.selectionMode ? (
+        <SelectionBar
+          count={sel.count}
+          total={data.length}
+          onCancel={sel.clear}
+          onSelectAll={sel.selectAll}
+          onDelete={onBulkDelete}
+          busy={busy}
+        />
+      ) : null}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -160,7 +190,16 @@ export default function ProjectsTab() {
         renderItem={({ item }) => {
           const profit = item.contractAmount - item.actualCost;
           return (
-            <Card onPress={() => router.push(`/projects/${item.id}`)}>
+            <Card
+              selectable={sel.selectionMode}
+              selected={sel.isSelected(item.id)}
+              onLongPress={() => sel.toggle(item.id)}
+              onPress={() =>
+                sel.selectionMode
+                  ? sel.toggle(item.id)
+                  : router.push(`/projects/${item.id}`)
+              }
+            >
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <View style={{ flex: 1, paddingRight: 12 }}>
                   <Body style={{ fontWeight: "600" }} >{item.name}</Body>
@@ -213,7 +252,9 @@ export default function ProjectsTab() {
           );
         }}
       />
-      <Fab onPress={() => router.push("/projects/edit")} label="新規案件" />
+      {!sel.selectionMode ? (
+        <Fab onPress={() => router.push("/projects/edit")} label="新規案件" />
+      ) : null}
       <StatusPicker<ProjectStatus>
         open={!!statusTarget}
         title="ステータスを変更"

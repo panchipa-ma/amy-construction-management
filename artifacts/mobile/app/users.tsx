@@ -7,10 +7,11 @@ import {
   useListUsers,
   useUpdateUser,
 } from "@workspace/api-client-react";
-import React from "react";
-import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
+import React, { useState } from "react";
+import { Alert, FlatList, RefreshControl, View } from "react-native";
 
 import { InternalOnly } from "@/components/InternalOnly";
+import { SelectionBar } from "@/components/selection-bar";
 import { isInternal } from "@/lib/role";
 import {
   Badge,
@@ -22,6 +23,8 @@ import {
   Muted,
 } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { useSelection } from "@/hooks/useSelection";
+import { runBulkDelete } from "@/lib/bulk-delete";
 import { fmtDateTime } from "@/lib/format";
 
 export default function UsersGuarded() {
@@ -39,12 +42,28 @@ function UsersList() {
   const usersQ = useListUsers();
   const updateMut = useUpdateUser();
   const deleteMut = useDeleteUser();
+  const meId = meQ.data?.id;
+  const items = (usersQ.data ?? []).filter((u) => u.id !== meId);
+  const sel = useSelection(items);
+  const [busy, setBusy] = useState(false);
 
   if (usersQ.isLoading) return <Loader />;
   if (usersQ.isError) return <ErrorState onRetry={() => usersQ.refetch()} />;
   if (!isInternal(meQ.data ?? null)) return null;
 
-  const meId = meQ.data?.id;
+  const onDelete = async () => {
+    setBusy(true);
+    try {
+      await runBulkDelete(
+        sel.selectedItems,
+        (id) => deleteMut.mutateAsync({ id }),
+        () => qc.invalidateQueries({ queryKey: getListUsersQueryKey() }),
+      );
+      sel.clear();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onAction = (u: AppUser) => {
     const isSelf = u.id === meId;
@@ -91,66 +110,71 @@ function UsersList() {
               },
             ]
           : []),
-        ...(!isSelf
-          ? [
-              {
-                text: "削除",
-                style: "destructive" as const,
-                onPress: () => {
-                  Alert.alert("ユーザー削除", "本当に削除しますか?", [
-                    { text: "キャンセル", style: "cancel" },
-                    {
-                      text: "削除する",
-                      style: "destructive",
-                      onPress: async () => {
-                        await deleteMut.mutateAsync({ id: u.id });
-                        await qc.invalidateQueries({ queryKey: getListUsersQueryKey() });
-                      },
-                    },
-                  ]);
-                },
-              },
-            ]
-          : []),
       ],
     );
   };
 
+  const allRows: AppUser[] = usersQ.data ?? [];
+
   return (
-    <FlatList
-      style={{ backgroundColor: c.background }}
-      data={usersQ.data ?? []}
-      keyExtractor={(u) => u.id}
-      contentContainerStyle={{ padding: 12, gap: 10, paddingBottom: 40 }}
-      refreshControl={
-        <RefreshControl refreshing={usersQ.isFetching} onRefresh={() => usersQ.refetch()} />
-      }
-      ListEmptyComponent={<EmptyState icon="users" title="ユーザーがいません" />}
-      renderItem={({ item: u }) => (
-        <Pressable onPress={() => onAction(u)}>
-          <Card>
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <View style={{ flex: 1, paddingRight: 8 }}>
-                <Body style={{ fontWeight: "600" }}>{u.email ?? u.clerkUserId}</Body>
-                {u.approvedAt ? (
-                  <Muted style={{ fontSize: 11, marginTop: 2 }}>
-                    承認: {fmtDateTime(u.approvedAt)}
-                  </Muted>
-                ) : null}
+    <View style={{ flex: 1, backgroundColor: c.background }}>
+      {sel.selectionMode ? (
+        <SelectionBar
+          count={sel.count}
+          total={items.length}
+          onCancel={sel.clear}
+          onSelectAll={sel.selectAll}
+          onDelete={onDelete}
+          busy={busy}
+        />
+      ) : null}
+      <FlatList
+        style={{ backgroundColor: c.background }}
+        data={allRows}
+        keyExtractor={(u) => u.id}
+        contentContainerStyle={{ padding: 12, gap: 10, paddingBottom: 40 }}
+        refreshControl={
+          <RefreshControl refreshing={usersQ.isFetching} onRefresh={() => usersQ.refetch()} />
+        }
+        ListEmptyComponent={<EmptyState icon="users" title="ユーザーがいません" />}
+        renderItem={({ item: u }) => {
+          const isSelf = u.id === meId;
+          return (
+            <Card
+              selectable={sel.selectionMode && !isSelf}
+              selected={sel.isSelected(u.id)}
+              onLongPress={isSelf ? undefined : () => sel.toggle(u.id)}
+              onPress={() => {
+                if (sel.selectionMode) {
+                  if (!isSelf) sel.toggle(u.id);
+                } else {
+                  onAction(u);
+                }
+              }}
+            >
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Body style={{ fontWeight: "600" }}>{u.email ?? u.clerkUserId}</Body>
+                  {u.approvedAt ? (
+                    <Muted style={{ fontSize: 11, marginTop: 2 }}>
+                      承認: {fmtDateTime(u.approvedAt)}
+                    </Muted>
+                  ) : null}
+                </View>
+                <View style={{ alignItems: "flex-end", gap: 4 }}>
+                  <Badge tone={u.role === "internal" ? "accent" : "default"}>
+                    {u.role === "internal" ? "社内" : "社外"}
+                  </Badge>
+                  <Badge tone={u.status === "approved" ? "success" : "warning"}>
+                    {u.status === "approved" ? "承認済" : "承認待ち"}
+                  </Badge>
+                  {isSelf ? <Muted style={{ fontSize: 10 }}>あなた</Muted> : null}
+                </View>
               </View>
-              <View style={{ alignItems: "flex-end", gap: 4 }}>
-                <Badge tone={u.role === "internal" ? "accent" : "default"}>
-                  {u.role === "internal" ? "社内" : "社外"}
-                </Badge>
-                <Badge tone={u.status === "approved" ? "success" : "warning"}>
-                  {u.status === "approved" ? "承認済" : "承認待ち"}
-                </Badge>
-                {u.id === meId ? <Muted style={{ fontSize: 10 }}>あなた</Muted> : null}
-              </View>
-            </View>
-          </Card>
-        </Pressable>
-      )}
-    />
+            </Card>
+          );
+        }}
+      />
+    </View>
   );
 }

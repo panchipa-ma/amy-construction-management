@@ -16,34 +16,66 @@ export function Card({
   children,
   style,
   onPress,
+  onLongPress,
+  selected,
+  selectable,
 }: {
   children: React.ReactNode;
   style?: ViewStyle | ViewStyle[];
   onPress?: () => void;
+  onLongPress?: () => void;
+  selected?: boolean;
+  selectable?: boolean;
 }) {
   const c = useColors();
   const base: ViewStyle = {
-    backgroundColor: c.card,
-    borderColor: c.border,
-    borderWidth: 1,
+    backgroundColor: selected ? "#dbeafe" : c.card,
+    borderColor: selected ? c.primary : c.border,
+    borderWidth: selected ? 2 : 1,
     borderRadius: 10,
     padding: 14,
   };
-  if (onPress) {
+  const inner = selectable ? (
+    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+      <View
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 11,
+          borderWidth: 2,
+          borderColor: selected ? c.primary : c.border,
+          backgroundColor: selected ? c.primary : "transparent",
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: 2,
+        }}
+      >
+        {selected ? (
+          <Feather name="check" size={14} color={c.primaryForeground} />
+        ) : null}
+      </View>
+      <View style={{ flex: 1 }}>{children}</View>
+    </View>
+  ) : (
+    children
+  );
+  if (onPress || onLongPress) {
     return (
       <Pressable
         onPress={onPress}
+        onLongPress={onLongPress}
+        delayLongPress={350}
         style={({ pressed }) => [
           base,
           style as ViewStyle,
           pressed && { opacity: 0.7 },
         ]}
       >
-        {children}
+        {inner}
       </Pressable>
     );
   }
-  return <View style={[base, style as ViewStyle]}>{children}</View>;
+  return <View style={[base, style as ViewStyle]}>{inner}</View>;
 }
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {

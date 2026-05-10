@@ -1,12 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  getListVendorQuotesQueryKey,
-  useDeleteVendorQuote,
-  useListVendorQuotes,
+  getListReceiptsQueryKey,
+  useDeleteReceipt,
+  useListReceipts,
 } from "@workspace/api-client-react";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { FlatList, RefreshControl, View } from "react-native";
+import { FlatList, Linking, RefreshControl, View } from "react-native";
 
 import { Fab } from "@/components/form";
 import { SelectionBar } from "@/components/selection-bar";
@@ -24,16 +24,23 @@ import { useSelection } from "@/hooks/useSelection";
 import { runBulkDelete } from "@/lib/bulk-delete";
 import { fmtDate, yen } from "@/lib/format";
 
-export default function VendorQuotesScreen() {
+const CATEGORY_LABEL: Record<string, string> = {
+  labor: "労務",
+  subcontract: "外注",
+  material: "材料",
+  rental: "レンタル",
+  expense: "経費",
+  other: "その他",
+};
+
+export default function ReceiptsScreen() {
   const c = useColors();
   const router = useRouter();
   const qc = useQueryClient();
-  const q = useListVendorQuotes(undefined, {
-    query: { enabled: true, queryKey: getListVendorQuotesQueryKey() },
-  });
+  const q = useListReceipts();
   const items = q.data ?? [];
   const sel = useSelection(items);
-  const deleteMut = useDeleteVendorQuote();
+  const deleteMut = useDeleteReceipt();
   const [busy, setBusy] = useState(false);
 
   if (q.isLoading) return <Loader />;
@@ -45,7 +52,7 @@ export default function VendorQuotesScreen() {
       await runBulkDelete(
         sel.selectedItems,
         (id) => deleteMut.mutateAsync({ id }),
-        () => qc.invalidateQueries({ queryKey: getListVendorQuotesQueryKey() }),
+        () => qc.invalidateQueries({ queryKey: getListReceiptsQueryKey() }),
       );
       sel.clear();
     } finally {
@@ -66,31 +73,45 @@ export default function VendorQuotesScreen() {
         />
       ) : null}
       <FlatList
+        style={{ backgroundColor: c.background }}
         data={items}
-        keyExtractor={(x) => x.id}
+        keyExtractor={(r) => r.id}
         contentContainerStyle={{ padding: 12, gap: 10, paddingBottom: 96 }}
         refreshControl={
           <RefreshControl refreshing={q.isFetching} onRefresh={() => q.refetch()} />
         }
-        ListEmptyComponent={<EmptyState icon="file" title="職人見積書がありません" />}
+        ListEmptyComponent={
+          <EmptyState
+            icon="camera"
+            title="領収書がありません"
+            subtitle="右下の「+」から撮影またはアルバムから追加できます"
+          />
+        }
         renderItem={({ item }) => (
           <Card
             selectable={sel.selectionMode}
             selected={sel.isSelected(item.id)}
             onLongPress={() => sel.toggle(item.id)}
-            onPress={() => sel.selectionMode && sel.toggle(item.id)}
+            onPress={() => {
+              if (sel.selectionMode) {
+                sel.toggle(item.id);
+              } else if (item.fileUrl) {
+                Linking.openURL(item.fileUrl);
+              }
+            }}
           >
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
               <View style={{ flex: 1, paddingRight: 12 }}>
-                <Body style={{ fontWeight: "600" }}>{item.vendorName}</Body>
+                <Body style={{ fontWeight: "600" }}>{item.vendor}</Body>
                 {item.projectName ? (
                   <Muted style={{ marginTop: 2 }}>{item.projectName}</Muted>
                 ) : null}
                 <Muted style={{ marginTop: 2 }}>
-                  {item.unitNumber ? `${item.unitNumber}号室 · ` : ""}
-                  {fmtDate(item.quoteDate)}
+                  {item.unitNumber ? `${item.unitNumber} · ` : ""}
+                  {fmtDate(item.receiptDate)}
                 </Muted>
                 <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>
+                  <Badge>{CATEGORY_LABEL[item.category] ?? item.category}</Badge>
                   <Badge tone={item.status === "matched" ? "success" : "warning"}>
                     {item.status === "matched" ? "案件紐付済" : "未紐付"}
                   </Badge>
@@ -98,14 +119,14 @@ export default function VendorQuotesScreen() {
               </View>
               <View style={{ alignItems: "flex-end" }}>
                 <Body style={{ fontWeight: "700" }}>{yen(item.amount)}</Body>
-                <Muted>税込</Muted>
+                <Muted style={{ marginTop: 4 }}>{item.fileName}</Muted>
               </View>
             </View>
           </Card>
         )}
       />
       {!sel.selectionMode ? (
-        <Fab onPress={() => router.push("/vendor-quotes/new")} label="見積書を作成" />
+        <Fab onPress={() => router.push("/receipts/new")} label="撮影" />
       ) : null}
     </View>
   );
