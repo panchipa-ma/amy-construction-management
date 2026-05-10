@@ -21,6 +21,15 @@ export async function printApiDoc(opts: {
   fileName: string; // "請求書-INV001.pdf"
   getToken: () => Promise<string | null>;
 }): Promise<void> {
+  // Web (Safari/Chrome on iPad など) では expo-print も Alert のマルチボタンも
+  // 信頼できないので、HTML を新しいタブで開いてブラウザネイティブの
+  // 印刷 / PDF保存 を使ってもらう。
+  if (Platform.OS === "web") {
+    const html = await fetchPrintHtml(opts.path, opts.getToken);
+    openHtmlInNewTabAndPrint(html, opts.fileName);
+    return;
+  }
+
   const action = await pickPrintAction();
   if (!action) return; // user cancelled
 
@@ -52,6 +61,63 @@ export async function printApiDoc(opts: {
   } else {
     throw new Error("この端末では共有機能が利用できません");
   }
+}
+
+/**
+ * Web 専用: HTML を Blob URL に変換 → 新しいタブで開く。
+ * ロード後に自動で window.print() を呼ぶので、ユーザーは即「PDF として保存」
+ * または「プリント」を選べる。Safari の popup blocker 回避のため
+ * `window.open` は同期的にユーザー操作の延長で呼ぶ必要があるが、ここでは
+ * fetch 後なのでブロックされる場合がある — その時は Blob URL を別タブで
+ * 開くフォールバックとして a タグの click() を使う。
+ */
+function openHtmlInNewTabAndPrint(html: string, fileName: string): void {
+  // Title を fileName にしておくとブラウザの "PDFとして保存" の
+  // デフォルトファイル名になる。
+  const titledHtml = html.replace(
+    /<head>/i,
+    `<head><title>${escapeHtml(fileName.replace(/\.pdf$/i, ""))}</title>`,
+  );
+  const blob = new Blob([titledHtml], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  const win = typeof window !== "undefined" ? window.open(url, "_blank") : null;
+  if (win) {
+    // ロード完了後に印刷ダイアログを自動表示
+    const trigger = () => {
+      try {
+        win.focus();
+        win.print();
+      } catch {
+        /* ignore */
+      }
+    };
+    win.addEventListener?.("load", trigger);
+    // Safari など load イベントが取れない場合の fallback
+    setTimeout(() => {
+      if (!win.closed) trigger();
+    }, 1500);
+  } else {
+    // popup blocked → ダウンロードリンクとして開く
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  // Blob URL は数分後に解放
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 async function fetchPrintHtml(
