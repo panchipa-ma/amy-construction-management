@@ -11,10 +11,8 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  ActionSheetIOS,
   Alert,
   FlatList,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -22,6 +20,7 @@ import {
 } from "react-native";
 
 import { Fab } from "@/components/form";
+import { StatusPicker } from "@/components/status-picker";
 import {
   Badge,
   Body,
@@ -73,59 +72,39 @@ export default function ProjectsTab() {
   const q = useListProjects(queryParams);
   const qc = useQueryClient();
   const updateMut = useUpdateProject();
+  const [statusTarget, setStatusTarget] = useState<Project | null>(null);
 
   if (q.isLoading) return <Loader />;
   if (q.isError) return <ErrorState onRetry={() => q.refetch()} />;
 
   const data = q.data ?? [];
 
-  const handleChangeStatus = (project: Project) => {
-    const options: { label: string; value: ProjectStatus }[] = [
-      { label: PROJECT_STATUS_LABEL.estimating, value: "estimating" },
-      { label: PROJECT_STATUS_LABEL.contracted, value: "contracted" },
-      { label: PROJECT_STATUS_LABEL.in_progress, value: "in_progress" },
-      { label: PROJECT_STATUS_LABEL.completed, value: "completed" },
-      { label: PROJECT_STATUS_LABEL.archived, value: "archived" },
-    ];
-    const apply = async (value: ProjectStatus) => {
-      if (value === project.status) return;
-      try {
-        await updateMut.mutateAsync({
-          id: project.id,
-          data: { status: value },
-        });
-        await Promise.all([
-          qc.invalidateQueries({ queryKey: getListProjectsQueryKey() }),
-          qc.invalidateQueries({
-            queryKey: getListProjectsQueryKey(queryParams),
-          }),
-          qc.invalidateQueries({
-            queryKey: getGetProjectQueryKey(project.id),
-          }),
-        ]);
-      } catch (e) {
-        Alert.alert("更新失敗", e instanceof Error ? e.message : String(e));
-      }
-    };
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title: "ステータスを変更",
-          options: [...options.map((o) => o.label), "キャンセル"],
-          cancelButtonIndex: options.length,
-        },
-        (idx) => {
-          if (idx >= 0 && idx < options.length) apply(options[idx].value);
-        },
-      );
-    } else {
-      Alert.alert("ステータスを変更", undefined, [
-        ...options.map((o) => ({
-          text: o.label,
-          onPress: () => apply(o.value),
-        })),
-        { text: "キャンセル", style: "cancel" as const },
+  const STATUS_OPTIONS: { label: string; value: ProjectStatus }[] = [
+    { label: PROJECT_STATUS_LABEL.estimating, value: "estimating" },
+    { label: PROJECT_STATUS_LABEL.contracted, value: "contracted" },
+    { label: PROJECT_STATUS_LABEL.in_progress, value: "in_progress" },
+    { label: PROJECT_STATUS_LABEL.completed, value: "completed" },
+    { label: PROJECT_STATUS_LABEL.archived, value: "archived" },
+  ];
+
+  const applyStatus = async (project: Project, value: ProjectStatus) => {
+    if (value === project.status) return;
+    try {
+      await updateMut.mutateAsync({
+        id: project.id,
+        data: { status: value },
+      });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: getListProjectsQueryKey() }),
+        qc.invalidateQueries({
+          queryKey: getListProjectsQueryKey(queryParams),
+        }),
+        qc.invalidateQueries({
+          queryKey: getGetProjectQueryKey(project.id),
+        }),
       ]);
+    } catch (e) {
+      Alert.alert("更新失敗", e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -196,7 +175,7 @@ export default function ProjectsTab() {
                     <Pressable
                       onPress={(e) => {
                         e.stopPropagation?.();
-                        handleChangeStatus(item);
+                        setStatusTarget(item);
                       }}
                       hitSlop={6}
                       style={({ pressed }) => [
@@ -213,7 +192,12 @@ export default function ProjectsTab() {
                         color={c.mutedForeground}
                       />
                     </Pressable>
-                    {item.salesRep ? <Badge>{item.salesRep}</Badge> : null}
+                    {item.salesRep ? (
+                      <Badge>営業: {item.salesRep}</Badge>
+                    ) : null}
+                    {item.siteSupervisor ? (
+                      <Badge>監督: {item.siteSupervisor}</Badge>
+                    ) : null}
                   </View>
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
@@ -230,6 +214,16 @@ export default function ProjectsTab() {
         }}
       />
       <Fab onPress={() => router.push("/projects/edit")} label="新規案件" />
+      <StatusPicker<ProjectStatus>
+        open={!!statusTarget}
+        title="ステータスを変更"
+        options={STATUS_OPTIONS}
+        current={statusTarget?.status}
+        onClose={() => setStatusTarget(null)}
+        onSelect={(value) => {
+          if (statusTarget) applyStatus(statusTarget, value);
+        }}
+      />
     </View>
   );
 }

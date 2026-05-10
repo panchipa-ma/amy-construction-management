@@ -12,10 +12,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
-  ActionSheetIOS,
   Alert,
   FlatList,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -26,6 +24,7 @@ import {
 import { Fab } from "@/components/form";
 import { InternalOnly } from "@/components/InternalOnly";
 import { PhaseSheet } from "@/components/project-modals";
+import { StatusPicker } from "@/components/status-picker";
 import { Body, Card, EmptyState, ErrorState, Loader, Muted } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { PHASE_STATUS_LABEL } from "@/lib/format";
@@ -558,46 +557,29 @@ function GanttScreen() {
     }));
   }, [projectsQ.data, phasesQ.data, search]);
 
-  const handleChangeStatus = (p: Phase) => {
-    const options: { label: string; value: Phase["status"] }[] = [
-      { label: PHASE_STATUS_LABEL.planned, value: "planned" },
-      { label: PHASE_STATUS_LABEL.in_progress, value: "in_progress" },
-      { label: PHASE_STATUS_LABEL.done, value: "done" },
-    ];
-    const apply = async (value: Phase["status"]) => {
-      if (value === p.status) return;
-      try {
-        await updatePhase.mutateAsync({ id: p.id, data: { status: value } });
-        await Promise.all([
-          qc.invalidateQueries({ queryKey: getListAllProjectPhasesQueryKey() }),
-          qc.invalidateQueries({
-            queryKey: getListProjectPhasesQueryKey(p.projectId),
-          }),
-          qc.invalidateQueries({ queryKey: getListStaffAssignmentsQueryKey() }),
-        ]);
-      } catch (e) {
-        Alert.alert("更新失敗", e instanceof Error ? e.message : String(e));
-      }
-    };
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title: "ステータスを変更",
-          options: [...options.map((o) => o.label), "キャンセル"],
-          cancelButtonIndex: options.length,
-        },
-        (idx) => {
-          if (idx >= 0 && idx < options.length) apply(options[idx].value);
-        },
-      );
-    } else {
-      Alert.alert("ステータスを変更", undefined, [
-        ...options.map((o) => ({
-          text: o.label,
-          onPress: () => apply(o.value),
-        })),
-        { text: "キャンセル", style: "cancel" as const },
+  const [statusTarget, setStatusTarget] = useState<Phase | null>(null);
+  const phaseStatusOptions = [
+    { label: PHASE_STATUS_LABEL.planned, value: "planned" as const, color: "#94a3b8" },
+    { label: PHASE_STATUS_LABEL.in_progress, value: "in_progress" as const, color: c.primary },
+    { label: PHASE_STATUS_LABEL.done, value: "done" as const, color: c.success },
+  ];
+
+  const applyPhaseStatus = async (
+    p: Phase,
+    value: Phase["status"],
+  ) => {
+    if (value === p.status) return;
+    try {
+      await updatePhase.mutateAsync({ id: p.id, data: { status: value } });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: getListAllProjectPhasesQueryKey() }),
+        qc.invalidateQueries({
+          queryKey: getListProjectPhasesQueryKey(p.projectId),
+        }),
+        qc.invalidateQueries({ queryKey: getListStaffAssignmentsQueryKey() }),
       ]);
+    } catch (e) {
+      Alert.alert("更新失敗", e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -670,7 +652,7 @@ function GanttScreen() {
               router.push(`/projects/${item.project.id}` as never)
             }
             onAddPhase={(pid) => setPhaseModal({ projectId: pid, editing: null })}
-            onChangeStatus={handleChangeStatus}
+            onChangeStatus={setStatusTarget}
             onEditPhase={(p) =>
               setPhaseModal({
                 projectId: p.projectId,
@@ -705,6 +687,16 @@ function GanttScreen() {
           showProjectPicker={phaseModal.picker}
         />
       ) : null}
+      <StatusPicker<Phase["status"]>
+        open={!!statusTarget}
+        title="ステータスを変更"
+        options={phaseStatusOptions}
+        current={statusTarget?.status}
+        onClose={() => setStatusTarget(null)}
+        onSelect={(value) => {
+          if (statusTarget) applyPhaseStatus(statusTarget, value);
+        }}
+      />
     </View>
   );
 }

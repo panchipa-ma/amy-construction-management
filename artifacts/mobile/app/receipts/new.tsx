@@ -165,7 +165,7 @@ export default function NewReceipt() {
         return missing;
       }}
     >
-      <FormSection title="画像 (写真をアップロードすると自動で読み取ります)">
+      <FormSection title="領収書 (ファイルを選択すると自動で読み取ります)">
         {previewUri ? (
           <View style={{ gap: 8 }}>
             <Image
