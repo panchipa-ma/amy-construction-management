@@ -1,5 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import {
+  type CostEntry,
+  type ProgressLog,
+  type ProjectPhase,
   useGetProject,
   useGetProjectLedger,
   useListProgressLogs,
@@ -54,6 +57,9 @@ function ProjectDetail() {
   const [costOpen, setCostOpen] = useState(false);
   const [phaseOpen, setPhaseOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
+  const [editingCost, setEditingCost] = useState<CostEntry | null>(null);
+  const [editingPhase, setEditingPhase] = useState<ProjectPhase | null>(null);
+  const [editingLog, setEditingLog] = useState<ProgressLog | null>(null);
 
   if (projQ.isLoading) return <Loader />;
   if (projQ.isError) return <ErrorState onRetry={() => projQ.refetch()} />;
@@ -167,9 +173,20 @@ function ProjectDetail() {
               .slice()
               .sort((a, b) => a.startDate.localeCompare(b.startDate))
               .map((ph) => (
-                <View
+                <Pressable
                   key={ph.id}
-                  style={{ paddingVertical: 8, borderBottomColor: c.border, borderBottomWidth: 1 }}
+                  onPress={() => {
+                    setEditingPhase(ph);
+                    setPhaseOpen(true);
+                  }}
+                  style={({ pressed }) => [
+                    {
+                      paddingVertical: 8,
+                      borderBottomColor: c.border,
+                      borderBottomWidth: 1,
+                    },
+                    pressed && { backgroundColor: c.muted },
+                  ]}
                 >
                   <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                     <Body style={{ fontWeight: "600", flex: 1 }}>{ph.name}</Body>
@@ -189,7 +206,7 @@ function ProjectDetail() {
                     {fmtDate(ph.startDate)} 〜 {fmtDate(ph.endDate)}
                   </Muted>
                   {ph.staffName ? <Muted>担当: {ph.staffName}</Muted> : null}
-                </View>
+                </Pressable>
               ))
           )}
         </Card>
@@ -200,9 +217,20 @@ function ProjectDetail() {
             <EmptyState icon="dollar-sign" title="原価明細がありません" />
           ) : (
             ledger.entries.map((e) => (
-              <View
+              <Pressable
                 key={e.id}
-                style={{ paddingVertical: 8, borderBottomColor: c.border, borderBottomWidth: 1 }}
+                onPress={() => {
+                  setEditingCost(e as CostEntry);
+                  setCostOpen(true);
+                }}
+                style={({ pressed }) => [
+                  {
+                    paddingVertical: 8,
+                    borderBottomColor: c.border,
+                    borderBottomWidth: 1,
+                  },
+                  pressed && { backgroundColor: c.muted },
+                ]}
               >
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                   <Body style={{ fontWeight: "500", flex: 1, paddingRight: 8 }}>
@@ -224,7 +252,7 @@ function ProjectDetail() {
                   {e.vendor ? <Muted style={{ fontSize: 11 }}>{e.vendor}</Muted> : null}
                   <Muted style={{ fontSize: 11 }}>· {fmtDate(e.entryDate)}</Muted>
                 </View>
-              </View>
+              </Pressable>
             ))
           )}
         </Card>
@@ -237,9 +265,20 @@ function ProjectDetail() {
             <EmptyState icon="message-square" title="進捗ログがありません" />
           ) : (
             (logsQ.data ?? []).map((l) => (
-              <View
+              <Pressable
                 key={l.id}
-                style={{ paddingVertical: 8, borderBottomColor: c.border, borderBottomWidth: 1 }}
+                onPress={() => {
+                  setEditingLog(l);
+                  setLogOpen(true);
+                }}
+                style={({ pressed }) => [
+                  {
+                    paddingVertical: 8,
+                    borderBottomColor: c.border,
+                    borderBottomWidth: 1,
+                  },
+                  pressed && { backgroundColor: c.muted },
+                ]}
               >
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                   <Body style={{ fontWeight: "600", flex: 1 }}>{l.title}</Body>
@@ -248,15 +287,39 @@ function ProjectDetail() {
                 {l.description ? (
                   <Muted style={{ marginTop: 4 }}>{l.description}</Muted>
                 ) : null}
-              </View>
+              </Pressable>
             ))
           )}
         </Card>
       </ScrollView>
 
-      <CostEntrySheet open={costOpen} onClose={() => setCostOpen(false)} projectId={p.id} />
-      <PhaseSheet open={phaseOpen} onClose={() => setPhaseOpen(false)} projectId={p.id} />
-      <ProgressLogSheet open={logOpen} onClose={() => setLogOpen(false)} projectId={p.id} />
+      <CostEntrySheet
+        open={costOpen}
+        onClose={() => {
+          setCostOpen(false);
+          setEditingCost(null);
+        }}
+        projectId={p.id}
+        editing={editingCost}
+      />
+      <PhaseSheet
+        open={phaseOpen}
+        onClose={() => {
+          setPhaseOpen(false);
+          setEditingPhase(null);
+        }}
+        projectId={p.id}
+        editing={editingPhase}
+      />
+      <ProgressLogSheet
+        open={logOpen}
+        onClose={() => {
+          setLogOpen(false);
+          setEditingLog(null);
+        }}
+        projectId={p.id}
+        editing={editingLog}
+      />
     </>
   );
 }

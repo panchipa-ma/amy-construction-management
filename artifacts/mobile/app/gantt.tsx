@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import {
+  type ProjectPhase,
   useListAllProjectPhases,
   useListProjects,
 } from "@workspace/api-client-react";
@@ -14,6 +15,8 @@ import {
   View,
 } from "react-native";
 
+import { InternalOnly } from "@/components/InternalOnly";
+import { PhaseSheet } from "@/components/project-modals";
 import { Body, Card, EmptyState, ErrorState, Loader, Muted } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { PHASE_STATUS_LABEL } from "@/lib/format";
@@ -46,6 +49,7 @@ type Phase = {
   startDate: string;
   endDate: string;
   status: "planned" | "in_progress" | "done";
+  staffId?: string | null;
   staffName?: string | null;
 };
 
@@ -56,19 +60,25 @@ function statusColor(status: string, c: ReturnType<typeof useColors>): string {
 }
 
 function ProjectGanttCard({
+  projectId,
   projectName,
   customerName,
   unitNumber,
   phases,
   defaultOpen,
   onOpenProject,
+  onAddPhase,
+  onEditPhase,
 }: {
+  projectId: string;
   projectName: string;
   customerName?: string | null;
   unitNumber?: string | null;
   phases: Phase[];
   defaultOpen: boolean;
   onOpenProject: () => void;
+  onAddPhase: (projectId: string) => void;
+  onEditPhase: (phase: Phase) => void;
 }) {
   const c = useColors();
   const [open, setOpen] = useState(defaultOpen);
@@ -111,27 +121,53 @@ function ProjectGanttCard({
 
   return (
     <Card style={{ padding: 0, overflow: "hidden" }}>
-      <Pressable
-        onPress={() => setOpen((v) => !v)}
-        style={({ pressed }) => [
-          { padding: 14, flexDirection: "row", alignItems: "center" },
-          pressed && { opacity: 0.7 },
-        ]}
-      >
-        <View style={{ flex: 1, paddingRight: 8 }}>
-          <Body style={{ fontWeight: "700" }}>{projectName}</Body>
-          <Muted style={{ marginTop: 2 }}>
-            {customerName ?? ""}
-            {unitNumber ? ` · ${unitNumber}` : ""}
-          </Muted>
-          <Muted style={{ marginTop: 2 }}>工程 {phases.length} 件</Muted>
-        </View>
-        <Feather
-          name={open ? "chevron-up" : "chevron-down"}
-          size={20}
-          color={c.mutedForeground}
-        />
-      </Pressable>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <Pressable
+          onPress={() => setOpen((v) => !v)}
+          style={({ pressed }) => [
+            { flex: 1, padding: 14, flexDirection: "row", alignItems: "center" },
+            pressed && { opacity: 0.7 },
+          ]}
+        >
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Body style={{ fontWeight: "700" }}>{projectName}</Body>
+            <Muted style={{ marginTop: 2 }}>
+              {customerName ?? ""}
+              {unitNumber ? ` · ${unitNumber}` : ""}
+            </Muted>
+            <Muted style={{ marginTop: 2 }}>工程 {phases.length} 件</Muted>
+          </View>
+          <Feather
+            name={open ? "chevron-up" : "chevron-down"}
+            size={20}
+            color={c.mutedForeground}
+          />
+        </Pressable>
+        <Pressable
+          onPress={() => onAddPhase(projectId)}
+          hitSlop={8}
+          style={({ pressed }) => [
+            {
+              marginRight: 12,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 6,
+              backgroundColor: c.primary,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+            },
+            pressed && { opacity: 0.7 },
+          ]}
+        >
+          <Feather name="plus" size={12} color={c.primaryForeground} />
+          <Body
+            style={{ color: c.primaryForeground, fontSize: 11, fontWeight: "700" }}
+          >
+            工程
+          </Body>
+        </Pressable>
+      </View>
 
       {open && phases.length === 0 ? (
         <View style={{ padding: 14, paddingTop: 0 }}>
@@ -173,15 +209,19 @@ function ProjectGanttCard({
               const days =
                 diffDays(dateOnly(p.startDate), dateOnly(p.endDate)) + 1;
               return (
-                <View
+                <Pressable
                   key={p.id}
-                  style={{
-                    height: ROW_H,
-                    borderBottomWidth: 1,
-                    borderBottomColor: c.border,
-                    paddingHorizontal: 8,
-                    justifyContent: "center",
-                  }}
+                  onPress={() => onEditPhase(p)}
+                  style={({ pressed }) => [
+                    {
+                      height: ROW_H,
+                      borderBottomWidth: 1,
+                      borderBottomColor: c.border,
+                      paddingHorizontal: 8,
+                      justifyContent: "center",
+                    },
+                    pressed && { backgroundColor: c.muted },
+                  ]}
                 >
                   <Body
                     numberOfLines={1}
@@ -193,7 +233,7 @@ function ProjectGanttCard({
                     {p.staffName ? `${p.staffName} · ` : ""}
                     {days}日
                   </Muted>
-                </View>
+                </Pressable>
               );
             })}
           </View>
@@ -409,10 +449,21 @@ function ProjectGanttCard({
   );
 }
 
-export default function GanttScreen() {
+export default function GanttScreenGuarded() {
+  return (
+    <InternalOnly>
+      <GanttScreen />
+    </InternalOnly>
+  );
+}
+
+function GanttScreen() {
   const c = useColors();
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [phaseModal, setPhaseModal] = useState<
+    { projectId: string; editing: ProjectPhase | null } | null
+  >(null);
 
   const projectsQ = useListProjects();
   const phasesQ = useListAllProjectPhases();
@@ -442,6 +493,7 @@ export default function GanttScreen() {
         startDate: ph.startDate,
         endDate: ph.endDate,
         status: ph.status,
+        staffId: ph.staffId,
         staffName: ph.staffName,
       });
       byProject.set(ph.projectId, arr);
@@ -513,6 +565,7 @@ export default function GanttScreen() {
         }
         renderItem={({ item, index }) => (
           <ProjectGanttCard
+            projectId={item.project.id}
             projectName={item.project.name}
             customerName={item.project.customerName}
             unitNumber={item.project.unitNumber}
@@ -521,9 +574,36 @@ export default function GanttScreen() {
             onOpenProject={() =>
               router.push(`/projects/${item.project.id}` as never)
             }
+            onAddPhase={(pid) => setPhaseModal({ projectId: pid, editing: null })}
+            onEditPhase={(p) =>
+              setPhaseModal({
+                projectId: p.projectId,
+                editing: {
+                  id: p.id,
+                  projectId: p.projectId,
+                  name: (p.name ?? p.phaseName) as string,
+                  startDate: p.startDate,
+                  endDate: p.endDate,
+                  status: p.status,
+                  staffId: p.staffId ?? null,
+                  staffName: p.staffName ?? null,
+                  sortOrder: 0,
+                  notes: null,
+                  createdAt: "",
+                } as ProjectPhase,
+              })
+            }
           />
         )}
       />
+      {phaseModal ? (
+        <PhaseSheet
+          open
+          onClose={() => setPhaseModal(null)}
+          projectId={phaseModal.projectId}
+          editing={phaseModal.editing}
+        />
+      ) : null}
     </View>
   );
 }

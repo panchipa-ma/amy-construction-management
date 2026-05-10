@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import {
+  type ScheduleEntry,
   useListAllProjectPhases,
   useListScheduleEntries,
   useListStaffAssignments,
@@ -14,6 +15,9 @@ import {
   View,
 } from "react-native";
 
+import { Fab } from "@/components/form";
+import { InternalOnly } from "@/components/InternalOnly";
+import { ScheduleEntrySheet } from "@/components/project-modals";
 import {
   Badge,
   Body,
@@ -49,7 +53,15 @@ function toKey(s: string | Date): string {
 
 const JP_DOW = ["日", "月", "火", "水", "木", "金", "土"];
 
-export default function StaffAssignmentsScreen() {
+export default function StaffAssignmentsScreenGuarded() {
+  return (
+    <InternalOnly>
+      <StaffAssignmentsScreen />
+    </InternalOnly>
+  );
+}
+
+function StaffAssignmentsScreen() {
   const c = useColors();
   const [tab, setTab] = useState<"matrix" | "list">("matrix");
 
@@ -113,6 +125,11 @@ function MatrixView() {
   const router = useRouter();
   const [anchor, setAnchor] = useState<string>(todayLocalISO());
   const [days, setDays] = useState<number>(14);
+  const [scheduleModal, setScheduleModal] = useState<{
+    editing: ScheduleEntry | null;
+    defaultStaffId?: string;
+    defaultDate?: string;
+  } | null>(null);
 
   const from = anchor;
   const to = addDaysISO(anchor, days - 1);
@@ -158,6 +175,7 @@ function MatrixView() {
     id: string;
     projectId: string;
     projectName: string;
+    entry?: ScheduleEntry;
   };
 
   const grid = useMemo(() => {
@@ -171,6 +189,7 @@ function MatrixView() {
         id: e.id,
         projectId: e.projectId,
         projectName: e.projectName,
+        entry: e,
       });
     }
     for (const [staffId, spans] of staffPhaseSpans) {
@@ -264,6 +283,7 @@ function MatrixView() {
   const matrixWidth = STAFF_W + dateList.length * CELL_W;
 
   return (
+    <View style={{ flex: 1, backgroundColor: c.background }}>
     <ScrollView
       style={{ flex: 1 }}
       contentContainerStyle={{ paddingBottom: 40 }}
@@ -598,6 +618,18 @@ function MatrixView() {
                               gap: 2,
                             }}
                           >
+                            {cells.length === 0 ? (
+                              <Pressable
+                                onPress={() =>
+                                  setScheduleModal({
+                                    editing: null,
+                                    defaultStaffId: s.staffId,
+                                    defaultDate: d,
+                                  })
+                                }
+                                style={{ flex: 1 }}
+                              />
+                            ) : null}
                             {cells.map((cell) => {
                               const col =
                                 projectColor.get(cell.projectId) ??
@@ -605,10 +637,21 @@ function MatrixView() {
                               return (
                                 <Pressable
                                   key={cell.id}
-                                  onPress={() =>
-                                    router.push(
-                                      `/projects/${cell.projectId}` as never,
-                                    )
+                                  onPress={() => {
+                                    if (cell.entry) {
+                                      setScheduleModal({ editing: cell.entry });
+                                    } else {
+                                      router.push(
+                                        `/projects/${cell.projectId}` as never,
+                                      );
+                                    }
+                                  }}
+                                  onLongPress={() =>
+                                    setScheduleModal({
+                                      editing: null,
+                                      defaultStaffId: s.staffId,
+                                      defaultDate: d,
+                                    })
                                   }
                                   style={({ pressed }) => [
                                     {
@@ -646,7 +689,21 @@ function MatrixView() {
           </View>
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+      <Fab
+        onPress={() => setScheduleModal({ editing: null })}
+        label="出面を追加"
+      />
+      {scheduleModal ? (
+        <ScheduleEntrySheet
+          open
+          onClose={() => setScheduleModal(null)}
+          editing={scheduleModal.editing}
+          defaultStaffId={scheduleModal.defaultStaffId}
+          defaultDate={scheduleModal.defaultDate}
+        />
+      ) : null}
+    </View>
   );
 }
 
