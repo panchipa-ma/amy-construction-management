@@ -1,6 +1,5 @@
 import { Feather } from "@expo/vector-icons";
 import {
-  type ScheduleEntry,
   useListAllProjectPhases,
   useListScheduleEntries,
   useListStaffAssignments,
@@ -15,9 +14,7 @@ import {
   View,
 } from "react-native";
 
-import { Fab } from "@/components/form";
 import { InternalOnly } from "@/components/InternalOnly";
-import { ScheduleEntrySheet } from "@/components/project-modals";
 import {
   Badge,
   Body,
@@ -125,12 +122,6 @@ function MatrixView() {
   const router = useRouter();
   const [anchor, setAnchor] = useState<string>(todayLocalISO());
   const [days, setDays] = useState<number>(14);
-  const [scheduleModal, setScheduleModal] = useState<{
-    editing: ScheduleEntry | null;
-    defaultStaffId?: string;
-    defaultDate?: string;
-  } | null>(null);
-
   const from = anchor;
   const to = addDaysISO(anchor, days - 1);
 
@@ -175,7 +166,6 @@ function MatrixView() {
     id: string;
     projectId: string;
     projectName: string;
-    entry?: ScheduleEntry;
   };
 
   const grid = useMemo(() => {
@@ -189,7 +179,6 @@ function MatrixView() {
         id: e.id,
         projectId: e.projectId,
         projectName: e.projectName,
-        entry: e,
       });
     }
     for (const [staffId, spans] of staffPhaseSpans) {
@@ -618,18 +607,6 @@ function MatrixView() {
                               gap: 2,
                             }}
                           >
-                            {cells.length === 0 ? (
-                              <Pressable
-                                onPress={() =>
-                                  setScheduleModal({
-                                    editing: null,
-                                    defaultStaffId: s.staffId,
-                                    defaultDate: d,
-                                  })
-                                }
-                                style={{ flex: 1 }}
-                              />
-                            ) : null}
                             {cells.map((cell) => {
                               const col =
                                 projectColor.get(cell.projectId) ??
@@ -637,21 +614,10 @@ function MatrixView() {
                               return (
                                 <Pressable
                                   key={cell.id}
-                                  onPress={() => {
-                                    if (cell.entry) {
-                                      setScheduleModal({ editing: cell.entry });
-                                    } else {
-                                      router.push(
-                                        `/projects/${cell.projectId}` as never,
-                                      );
-                                    }
-                                  }}
-                                  onLongPress={() =>
-                                    setScheduleModal({
-                                      editing: null,
-                                      defaultStaffId: s.staffId,
-                                      defaultDate: d,
-                                    })
+                                  onPress={() =>
+                                    router.push(
+                                      `/projects/${cell.projectId}` as never,
+                                    )
                                   }
                                   style={({ pressed }) => [
                                     {
@@ -690,19 +656,6 @@ function MatrixView() {
         </View>
       )}
       </ScrollView>
-      <Fab
-        onPress={() => setScheduleModal({ editing: null })}
-        label="出面を追加"
-      />
-      {scheduleModal ? (
-        <ScheduleEntrySheet
-          open
-          onClose={() => setScheduleModal(null)}
-          editing={scheduleModal.editing}
-          defaultStaffId={scheduleModal.defaultStaffId}
-          defaultDate={scheduleModal.defaultDate}
-        />
-      ) : null}
     </View>
   );
 }
