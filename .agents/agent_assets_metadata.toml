@@ -1,0 +1,13 @@
+uploads = []
+
+[[generated]]
+id = "pL2Kt__3rtMCebersbl8i"
+uri = "file://artifacts/mobile/assets/images/icon.png"
+type = "image"
+title = "amy app icon"
+
+[[outputs]]
+id = "2K5oTxz8rmWPHxVMddfY1"
+uri = "file://artifacts/mobile/assets/images/icon.png"
+type = "image"
+title = "AMY モバイル アプリアイコン"
