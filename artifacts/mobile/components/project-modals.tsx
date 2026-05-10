@@ -10,6 +10,7 @@ import {
   getGetProjectLedgerQueryKey,
   getGetProjectQueryKey,
   getListAllProjectPhasesQueryKey,
+  getListProjectsQueryKey,
   getListProgressLogsQueryKey,
   getListProjectPhasesQueryKey,
   getListScheduleEntriesQueryKey,
@@ -304,17 +305,25 @@ export function PhaseSheet({
   onClose,
   projectId,
   editing,
+  showProjectPicker,
 }: {
   open: boolean;
   onClose: () => void;
-  projectId: string;
+  projectId?: string;
   editing?: ProjectPhase | null;
+  showProjectPicker?: boolean;
 }) {
   const qc = useQueryClient();
   const createMut = useCreateProjectPhase();
   const updateMut = useUpdateProjectPhase();
   const deleteMut = useDeleteProjectPhase();
   const staffQ = useListStaff();
+  const projectsQ = useListProjects(undefined, {
+    query: {
+      enabled: !!showProjectPicker,
+      queryKey: getListProjectsQueryKey(),
+    },
+  });
 
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState(todayStr());
@@ -322,10 +331,18 @@ export function PhaseSheet({
   const [status, setStatus] = useState<CreateProjectPhaseBodyStatus>("planned");
   const [staffId, setStaffId] = useState("");
   const [notes, setNotes] = useState("");
+  const [pickedProjectId, setPickedProjectId] = useState("");
 
   const staffOptions: SelectOption[] = [
     { value: "", label: "未割当" },
     ...(staffQ.data ?? []).map((s) => ({ value: s.id, label: s.name })),
+  ];
+  const projectOptions: SelectOption[] = [
+    { value: "", label: "案件を選択…" },
+    ...((projectsQ.data ?? []).map((p) => ({
+      value: p.id,
+      label: p.customerName ? `${p.name} (${p.customerName})` : p.name,
+    }))),
   ];
 
   useEffect(() => {
@@ -337,6 +354,7 @@ export function PhaseSheet({
       setStatus(editing.status as CreateProjectPhaseBodyStatus);
       setStaffId(editing.staffId ?? "");
       setNotes(editing.notes ?? "");
+      setPickedProjectId(editing.projectId);
     } else {
       setName("");
       setStartDate(todayStr());
@@ -344,18 +362,29 @@ export function PhaseSheet({
       setStatus("planned");
       setStaffId("");
       setNotes("");
+      setPickedProjectId(projectId ?? "");
     }
-  }, [open, editing]);
+  }, [open, editing, projectId]);
+
+  const effectiveProjectId = projectId ?? pickedProjectId;
 
   const invalidate = () =>
     Promise.all([
-      qc.invalidateQueries({ queryKey: getListProjectPhasesQueryKey(projectId) }),
+      effectiveProjectId
+        ? qc.invalidateQueries({
+            queryKey: getListProjectPhasesQueryKey(effectiveProjectId),
+          })
+        : Promise.resolve(),
       qc.invalidateQueries({ queryKey: getListAllProjectPhasesQueryKey() }),
       qc.invalidateQueries({ queryKey: getListStaffAssignmentsQueryKey() }),
     ]);
 
   const submit = async () => {
     if (!name.trim()) return;
+    if (!effectiveProjectId) {
+      Alert.alert("案件未選択", "案件を選択してください");
+      return;
+    }
     const body = {
       name: name.trim(),
       startDate,
@@ -368,7 +397,7 @@ export function PhaseSheet({
       if (editing) {
         await updateMut.mutateAsync({ id: editing.id, data: body });
       } else {
-        await createMut.mutateAsync({ projectId, data: body });
+        await createMut.mutateAsync({ projectId: effectiveProjectId, data: body });
       }
       await invalidate();
       onClose();
@@ -401,6 +430,15 @@ export function PhaseSheet({
       deleteConfirmTitle="工程を削除"
     >
       <FormSection>
+        {showProjectPicker && !editing ? (
+          <Field label="案件" required>
+            <Select
+              value={pickedProjectId}
+              onValueChange={(v) => setPickedProjectId(v ?? "")}
+              options={projectOptions}
+            />
+          </Field>
+        ) : null}
         <Field label="工程名" required>
           <Input value={name} onChangeText={setName} placeholder="例: 解体" />
         </Field>

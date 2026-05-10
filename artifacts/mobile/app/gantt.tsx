@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 
+import { Fab } from "@/components/form";
 import { InternalOnly } from "@/components/InternalOnly";
 import { PhaseSheet } from "@/components/project-modals";
 import { Body, Card, EmptyState, ErrorState, Loader, Muted } from "@/components/ui";
@@ -462,7 +463,7 @@ function GanttScreen() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [phaseModal, setPhaseModal] = useState<
-    { projectId: string; editing: ProjectPhase | null } | null
+    { projectId?: string; editing: ProjectPhase | null; picker?: boolean } | null
   >(null);
 
   const projectsQ = useListProjects();
@@ -596,12 +597,17 @@ function GanttScreen() {
           />
         )}
       />
+      <Fab
+        onPress={() => setPhaseModal({ editing: null, picker: true })}
+        label="工程を追加"
+      />
       {phaseModal ? (
         <PhaseSheet
           open
           onClose={() => setPhaseModal(null)}
           projectId={phaseModal.projectId}
           editing={phaseModal.editing}
+          showProjectPicker={phaseModal.picker}
         />
       ) : null}
     </View>
