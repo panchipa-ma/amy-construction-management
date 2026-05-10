@@ -165,7 +165,7 @@ function InvoiceDetail() {
         >
           <Feather name="printer" size={14} color={c.primaryForeground} />
           <Body style={{ fontWeight: "600", color: c.primaryForeground }}>
-            {printing ? "作成中…" : "PDF / 印刷"}
+            {printing ? "作成中…" : "PDF・印刷"}
           </Body>
         </Pressable>
       </View>

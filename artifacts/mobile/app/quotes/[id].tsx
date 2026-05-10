@@ -133,7 +133,7 @@ function QuoteDetail() {
           />
           <ActionBtn
             icon="printer"
-            label={printing ? "作成中" : "PDF"}
+            label={printing ? "作成中" : "PDF・印刷"}
             tone="primary"
             onPress={async () => {
               try {

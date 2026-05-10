@@ -166,22 +166,26 @@ function ProjectGanttCard({
             style={({ pressed }) => [
               {
                 marginRight: 8,
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-                borderRadius: 6,
-                borderWidth: 1,
-                borderColor: c.border,
-                backgroundColor: c.card,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 8,
+                backgroundColor: c.primary,
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 4,
+                gap: 6,
               },
               pressed && { opacity: 0.7 },
             ]}
           >
-            <Feather name="download" size={12} color={c.foreground} />
-            <Body style={{ color: c.foreground, fontSize: 11, fontWeight: "700" }}>
-              PDF
+            <Feather name="printer" size={13} color={c.primaryForeground} />
+            <Body
+              style={{
+                color: c.primaryForeground,
+                fontSize: 12,
+                fontWeight: "700",
+              }}
+            >
+              PDF・印刷
             </Body>
           </Pressable>
         ) : null}

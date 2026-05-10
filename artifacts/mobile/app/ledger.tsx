@@ -174,22 +174,33 @@ export default function LedgerScreen() {
                       e.stopPropagation();
                       printLedger(item.id, item.name);
                     }}
-                    style={{
-                      marginTop: 10,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                      paddingVertical: 8,
-                      borderRadius: 8,
-                      borderWidth: 1,
-                      borderColor: c.border,
-                      backgroundColor: c.muted,
-                    }}
+                    style={({ pressed }) => [
+                      {
+                        marginTop: 10,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        paddingVertical: 10,
+                        borderRadius: 8,
+                        backgroundColor: c.primary,
+                      },
+                      pressed && { opacity: 0.7 },
+                    ]}
                   >
-                    <Feather name="printer" size={14} color={c.foreground} />
-                    <Body style={{ fontSize: 13, fontWeight: "600" }}>
-                      PDF出力
+                    <Feather
+                      name="printer"
+                      size={14}
+                      color={c.primaryForeground}
+                    />
+                    <Body
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "700",
+                        color: c.primaryForeground,
+                      }}
+                    >
+                      施工台帳をPDF・印刷
                     </Body>
                   </Pressable>
                 </Card>
