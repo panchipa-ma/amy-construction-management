@@ -404,6 +404,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/print-html':
+        specifier: workspace:*
+        version: link:../../lib/print-html
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -861,6 +864,8 @@ importers:
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.14
+
+  lib/print-html: {}
 
   scripts:
     devDependencies:

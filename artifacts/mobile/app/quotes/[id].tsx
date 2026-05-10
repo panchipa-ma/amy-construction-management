@@ -1,3 +1,4 @@
+import { useAuth } from "@clerk/expo";
 import { Feather } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { COST_CATEGORY_LABEL, fmtDate, yen } from "@/lib/format";
+import { printApiDoc } from "@/lib/print-doc";
 
 function todayStr() {
   const d = new Date();
@@ -61,11 +63,13 @@ function QuoteDetail() {
   const c = useColors();
   const router = useRouter();
   const qc = useQueryClient();
+  const { getToken } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const q = useGetQuote(id);
 
   const [convertOpen, setConvertOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [printing, setPrinting] = useState(false);
 
   const convertMut = useConvertQuoteToInvoice();
   const importMut = useImportQuoteToLedger();
@@ -128,10 +132,28 @@ function QuoteDetail() {
             onPress={() => router.push(`/quotes/edit?id=${quote.id}`)}
           />
           <ActionBtn
+            icon="printer"
+            label={printing ? "作成中" : "PDF"}
+            tone="primary"
+            onPress={async () => {
+              try {
+                setPrinting(true);
+                await printApiDoc({
+                  path: `/api/print/quote/${quote.id}`,
+                  fileName: `見積書-${quote.quoteNumber}.pdf`,
+                  getToken: () => getToken(),
+                });
+              } catch (e) {
+                Alert.alert("PDFを作成できませんでした", String((e as Error).message ?? e));
+              } finally {
+                setPrinting(false);
+              }
+            }}
+          />
+          <ActionBtn
             icon="file-text"
             label="請求書化"
             onPress={() => setConvertOpen(true)}
-            tone="primary"
           />
           <ActionBtn
             icon="download"

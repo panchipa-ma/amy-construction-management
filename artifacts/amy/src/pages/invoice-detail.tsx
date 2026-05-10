@@ -89,7 +89,9 @@ export default function InvoiceDetailPage() {
   };
 
   const handlePrint = () => {
-    window.print();
+    // 共有テンプレート (`@workspace/print-html`) を `?autoprint=1` で開いて
+    // 印刷ダイアログを起動。モバイル版と完全に同一の出力を保証する。
+    window.open(`/api/print/invoice/${id}?autoprint=1`, "_blank");
   };
 
   if (isLoading || !inv) {

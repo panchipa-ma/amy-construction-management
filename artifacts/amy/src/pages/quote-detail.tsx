@@ -346,7 +346,9 @@ export default function QuoteDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.print()}
+                onClick={() =>
+                  window.open(`/api/print/quote/${id}?autoprint=1`, "_blank")
+                }
                 className="gap-2"
               >
                 <Printer className="w-4 h-4" />

@@ -1,3 +1,4 @@
+import { useAuth } from "@clerk/expo";
 import { Feather } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -7,11 +8,12 @@ import {
   useUpdateInvoice,
 } from "@workspace/api-client-react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React from "react";
-import { Pressable, RefreshControl, ScrollView, View } from "react-native";
+import React, { useState } from "react";
+import { Alert, Pressable, RefreshControl, ScrollView, View } from "react-native";
 
 import { InternalOnly } from "@/components/InternalOnly";
 import { Switch } from "@/components/form";
+import { printApiDoc } from "@/lib/print-doc";
 import {
   Badge,
   Body,
@@ -38,9 +40,11 @@ function InvoiceDetail() {
   const c = useColors();
   const router = useRouter();
   const qc = useQueryClient();
+  const { getToken } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const q = useGetInvoice(id);
   const updateMut = useUpdateInvoice();
+  const [printing, setPrinting] = useState(false);
 
   if (q.isLoading) return <Loader />;
   if (q.isError) return <ErrorState onRetry={() => q.refetch()} />;
@@ -106,26 +110,65 @@ function InvoiceDetail() {
         </View>
       </View>
 
-      <Pressable
-        onPress={() => router.push(`/invoices/edit?id=${inv.id}`)}
-        style={({ pressed }) => [
-          {
-            paddingVertical: 12,
-            borderRadius: 8,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            backgroundColor: c.card,
-            borderWidth: 1,
-            borderColor: c.border,
-          },
-          pressed && { opacity: 0.7 },
-        ]}
-      >
-        <Feather name="edit-2" size={14} color={c.foreground} />
-        <Body style={{ fontWeight: "600" }}>請求書を編集</Body>
-      </Pressable>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Pressable
+          onPress={() => router.push(`/invoices/edit?id=${inv.id}`)}
+          style={({ pressed }) => [
+            {
+              flex: 1,
+              paddingVertical: 12,
+              borderRadius: 8,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              backgroundColor: c.card,
+              borderWidth: 1,
+              borderColor: c.border,
+            },
+            pressed && { opacity: 0.7 },
+          ]}
+        >
+          <Feather name="edit-2" size={14} color={c.foreground} />
+          <Body style={{ fontWeight: "600" }}>編集</Body>
+        </Pressable>
+        <Pressable
+          disabled={printing}
+          onPress={async () => {
+            try {
+              setPrinting(true);
+              await printApiDoc({
+                path: `/api/print/invoice/${inv.id}`,
+                fileName: `請求書-${inv.invoiceNumber}.pdf`,
+                getToken: () => getToken(),
+              });
+            } catch (e) {
+              Alert.alert("PDFを作成できませんでした", String((e as Error).message ?? e));
+            } finally {
+              setPrinting(false);
+            }
+          }}
+          style={({ pressed }) => [
+            {
+              flex: 1,
+              paddingVertical: 12,
+              borderRadius: 8,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              backgroundColor: c.primary,
+              opacity: printing ? 0.6 : 1,
+            },
+            pressed && { opacity: 0.7 },
+          ]}
+        >
+          <Feather name="printer" size={14} color={c.primaryForeground} />
+          <Body style={{ fontWeight: "600", color: c.primaryForeground }}>
+            {printing ? "作成中…" : "PDF / 印刷"}
+          </Body>
+        </Pressable>
+      </View>
 
       <Card>
         <SectionTitle>ステータス</SectionTitle>

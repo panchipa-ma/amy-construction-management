@@ -19,6 +19,7 @@ import storageRouter from "./storage";
 import ocrRouter from "./ocr";
 import usersRouter from "./users";
 import commissionsRouter from "./commissions";
+import printRouter from "./print";
 import { requireApproved, requireInternal } from "../lib/auth";
 
 const router: IRouter = Router();
@@ -53,6 +54,9 @@ router.use(staffRouter);
 router.use(requireInternal, employeesRouter);
 router.use(quotesRouter);
 router.use(invoicesRouter);
+// 請求書/見積書の印刷HTMLは社内文書なので社内のみ。
+// (vendor-invoices/quotes 用の印刷はモバイル側で localストレージ + html ローカル生成)
+router.use(requireInternal, printRouter);
 router.use(costsRouter);
 router.use(scheduleRouter);
 router.use(progressRouter);

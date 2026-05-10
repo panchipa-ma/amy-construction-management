@@ -198,6 +198,11 @@ export type LineItemJson = {
   unit?: string | null;
   quantity: number;
   unitPrice: number;
+  /**
+   * 備考。Web の quote 編集 UI が `it.notes` で書き込み・表示する追加フィールド。
+   * 請求書 (invoices) では現状未使用だが共通型に含める。
+   */
+  notes?: string | null;
 };
 
 export const quotesTable = pgTable("quotes", {
