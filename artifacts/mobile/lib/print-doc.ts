@@ -21,12 +21,12 @@ export async function printApiDoc(opts: {
   fileName: string; // "請求書-INV001.pdf"
   getToken: () => Promise<string | null>;
 }): Promise<void> {
-  // Web (Safari/Chrome on iPad など) では expo-print も Alert のマルチボタンも
-  // 信頼できないので、HTML を新しいタブで開いてブラウザネイティブの
-  // 印刷 / PDF保存 を使ってもらう。
+  // Web (Safari/Chrome on iPad など): html2pdf.js で実 PDF Blob を生成 →
+  // Web Share API (PDF データそのもの) → 失敗時はダウンロードにフォールバック。
+  // URL ではなく PDF データで送る (受取人がアプリ登録不要)。
   if (Platform.OS === "web") {
     const html = await fetchPrintHtml(opts.path, opts.getToken);
-    openHtmlInNewTabAndPrint(html, opts.fileName);
+    await generateAndSharePdfWeb(html, opts.fileName);
     return;
   }
 
@@ -64,60 +64,77 @@ export async function printApiDoc(opts: {
 }
 
 /**
- * Web 専用: HTML を Blob URL に変換 → 新しいタブで開く。
- * ロード後に自動で window.print() を呼ぶので、ユーザーは即「PDF として保存」
- * または「プリント」を選べる。Safari の popup blocker 回避のため
- * `window.open` は同期的にユーザー操作の延長で呼ぶ必要があるが、ここでは
- * fetch 後なのでブロックされる場合がある — その時は Blob URL を別タブで
- * 開くフォールバックとして a タグの click() を使う。
+ * Web 専用: HTML を実 PDF Blob に変換 → Web Share API で PDF ファイルを共有
+ * (ファイル送信に対応しているブラウザの場合)。失敗 / 非対応時は通常の
+ * ダウンロードにフォールバック。
+ *
+ * Web Share API (level 2) で `files` が共有できる場合 (iOS Safari/Chrome on
+ * Android など)、AirDrop/メール/LINE 等に PDF データそのものを渡せる。
  */
-function openHtmlInNewTabAndPrint(html: string, fileName: string): void {
-  // Title を fileName にしておくとブラウザの "PDFとして保存" の
-  // デフォルトファイル名になる。
-  const titledHtml = html.replace(
-    /<head>/i,
-    `<head><title>${escapeHtml(fileName.replace(/\.pdf$/i, ""))}</title>`,
-  );
-  const blob = new Blob([titledHtml], { type: "text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
+async function generateAndSharePdfWeb(
+  html: string,
+  fileName: string,
+): Promise<void> {
+  const pdfBlob = await renderHtmlToPdfBlob(html);
 
-  const win = typeof window !== "undefined" ? window.open(url, "_blank") : null;
-  if (win) {
-    // ロード完了後に印刷ダイアログを自動表示
-    const trigger = () => {
-      try {
-        win.focus();
-        win.print();
-      } catch {
-        /* ignore */
-      }
-    };
-    win.addEventListener?.("load", trigger);
-    // Safari など load イベントが取れない場合の fallback
-    setTimeout(() => {
-      if (!win.closed) trigger();
-    }, 1500);
-  } else {
-    // popup blocked → ダウンロードリンクとして開く
-    const a = document.createElement("a");
-    a.href = url;
-    a.target = "_blank";
-    a.rel = "noopener";
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  const file = new File([pdfBlob], fileName, { type: "application/pdf" });
+  const nav = typeof navigator !== "undefined" ? navigator : undefined;
+  const shareData: ShareData = { files: [file], title: fileName };
+  if (nav?.canShare?.(shareData) && nav.share) {
+    try {
+      await nav.share(shareData);
+      return;
+    } catch (e) {
+      // ユーザーがキャンセルした場合は静かに終了
+      const err = e as { name?: string };
+      if (err?.name === "AbortError") return;
+      // 他のエラーは下のダウンロードにフォールバック
+    }
   }
-  // Blob URL は数分後に解放
+
+  // フォールバック: PDF を直接ダウンロード
+  const url = URL.createObjectURL(pdfBlob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+/** html2pdf.js で HTML 文字列 → PDF Blob に変換する。 */
+async function renderHtmlToPdfBlob(html: string): Promise<Blob> {
+  // html2pdf.js は web 専用 (window/document に依存)。dynamic import で
+  // native bundle に入らないようにする。
+  const mod = await import("html2pdf.js");
+  const html2pdf = (mod as { default?: unknown }).default ?? mod;
+
+  // off-screen container に HTML を流し込み
+  const container = document.createElement("div");
+  container.style.position = "fixed";
+  container.style.left = "-100000px";
+  container.style.top = "0";
+  container.style.width = "210mm"; // A4 幅
+  container.innerHTML = html;
+  document.body.appendChild(container);
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const blob: Blob = await (html2pdf as any)()
+      .from(container)
+      .set({
+        margin: [10, 10, 10, 10],
+        filename: "document.pdf",
+        image: { type: "jpeg", quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      })
+      .outputPdf("blob");
+    return blob;
+  } finally {
+    container.remove();
+  }
 }
 
 async function fetchPrintHtml(
