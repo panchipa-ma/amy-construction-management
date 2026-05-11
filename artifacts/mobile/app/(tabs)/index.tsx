@@ -107,29 +107,43 @@ function InternalDashboard() {
       </View>
 
       <View style={{ flexDirection: "row", gap: 12 }}>
-        <KpiCard icon="briefcase" label="進行中案件" value={String(d.activeProjects)} />
-        <KpiCard icon="check-circle" label="今月竣工" value={String(d.completedThisMonth)} />
-      </View>
-
-      <Card>
-        <SectionTitle>進行中案件 合計</SectionTitle>
-        <Row label="契約金額" value={yen(d.contractValueActive)} />
-        <Row label="実績原価" value={yen(d.actualCostActive)} />
-        <Row
-          label="粗利"
-          value={
-            <Body
-              style={{
-                color: d.grossProfitActive >= 0 ? c.success : c.destructive,
-                fontWeight: "700",
-              }}
-            >
-              {yen(d.grossProfitActive)}
-              {grossPct !== null ? `  (${grossPct.toFixed(1)}%)` : ""}
-            </Body>
+        <KpiCard
+          icon="briefcase"
+          label="進行中案件"
+          value={String(d.activeProjects)}
+          onPress={() => router.push("/(tabs)/projects")}
+        />
+        <KpiCard
+          icon="check-circle"
+          label="今月竣工"
+          value={String(d.completedThisMonth)}
+          onPress={() =>
+            router.push(`/projects/completed?month=${d.currentMonth}`)
           }
         />
-      </Card>
+      </View>
+
+      <Pressable onPress={() => router.push("/(tabs)/projects")}>
+        <Card>
+          <SectionTitle>進行中案件 合計</SectionTitle>
+          <Row label="契約金額" value={yen(d.contractValueActive)} />
+          <Row label="実績原価" value={yen(d.actualCostActive)} />
+          <Row
+            label="粗利"
+            value={
+              <Body
+                style={{
+                  color: d.grossProfitActive >= 0 ? c.success : c.destructive,
+                  fontWeight: "700",
+                }}
+              >
+                {yen(d.grossProfitActive)}
+                {grossPct !== null ? `  (${grossPct.toFixed(1)}%)` : ""}
+              </Body>
+            }
+          />
+        </Card>
+      </Pressable>
 
       <View style={{ flexDirection: "row", gap: 12 }}>
         <KpiCard

@@ -9,8 +9,8 @@ import {
   useListProjects,
   useUpdateProject,
 } from "@workspace/api-client-react";
-import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, ScrollView, View } from "react-native";
 
 import { ListToolbar } from "@/components/select-button";
@@ -39,7 +39,17 @@ export default function CompletedProjectsScreen() {
   const updateMut = useUpdateProject();
   const deleteMut = useDeleteProject();
   const [statusTarget, setStatusTarget] = useState<Project | null>(null);
-  const [month, setMonth] = useState<string>("all");
+  const params = useLocalSearchParams<{ month?: string }>();
+  const [month, setMonth] = useState<string>(
+    params.month && /^\d{4}-\d{2}$/.test(params.month) ? params.month : "all",
+  );
+  useEffect(() => {
+    if (params.month && /^\d{4}-\d{2}$/.test(params.month)) {
+      setMonth(params.month);
+    } else if (params.month === undefined) {
+      setMonth("all");
+    }
+  }, [params.month]);
   const [busy, setBusy] = useState(false);
 
   const data = q.data ?? [];

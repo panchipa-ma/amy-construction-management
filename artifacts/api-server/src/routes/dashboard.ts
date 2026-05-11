@@ -34,11 +34,14 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   const activeIds = new Set(activeProjects.map((p) => p.id));
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const yyyymm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  // 「今月竣工」: 工期終了 (endDate) が当月の completed 案件。
+  // 一覧 (/projects/completed) も endDate 月でフィルタするので 1:1 で揃う。
   const completedThisMonth = projects.filter(
     (p) =>
       p.status === "completed" &&
-      new Date(p.createdAt as unknown as string) >= monthStart,
+      p.endDate &&
+      String(p.endDate).slice(0, 7) === yyyymm,
   ).length;
 
   const contractValueActive = activeProjects.reduce(
@@ -68,9 +71,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
 
   // 「請求中案件」 — currentMonth 末日以前に発行された未入金請求書のみを対象。
   // 入金済になれば自動的に外れ、件数 / 金額両方から減る。
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const currentMonth = `${yyyy}-${mm}`;
+  const currentMonth = yyyymm;
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   let unpaidInvoiceTotal = 0;
   const outstandingProjectIds = new Set<string>();
