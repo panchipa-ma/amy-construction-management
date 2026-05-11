@@ -1,12 +1,7 @@
 import { useAuth } from "@clerk/expo";
 import { Feather } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  getGetInvoiceQueryKey,
-  getListInvoicesQueryKey,
-  useGetInvoice,
-  useUpdateInvoice,
-} from "@workspace/api-client-react";
+import { useGetInvoice } from "@workspace/api-client-react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, View } from "react-native";
@@ -27,7 +22,7 @@ import {
 } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { fmtDate, yen } from "@/lib/format";
-import { invalidateDashboard } from "@/lib/invalidate";
+import { toggleInvoiceField } from "@/lib/invoice-toggle";
 
 export default function InvoiceDetailGuarded() {
   return (
@@ -44,7 +39,6 @@ function InvoiceDetail() {
   const { getToken } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const q = useGetInvoice(id);
-  const updateMut = useUpdateInvoice();
   const [printing, setPrinting] = useState(false);
 
   if (q.isLoading) return <Loader />;
@@ -52,49 +46,8 @@ function InvoiceDetail() {
   const inv = q.data;
   if (!inv) return null;
 
-  const togglePaid = async (v: boolean) => {
-    await updateMut.mutateAsync({
-      id: inv.id,
-      data: {
-        projectId: inv.projectId,
-        invoiceNumber: inv.invoiceNumber,
-        customerName: inv.customerName ?? null,
-        contactName: inv.contactName ?? null,
-        subject: inv.subject ?? null,
-        issueDate: inv.issueDate,
-        dueDate: inv.dueDate ?? null,
-        notes: inv.notes ?? null,
-        paid: v,
-        sentToClient: inv.sentToClient,
-        items: inv.items,
-      },
-    });
-    await qc.invalidateQueries({ queryKey: getGetInvoiceQueryKey(inv.id) });
-    await qc.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
-    await invalidateDashboard(qc);
-  };
-
-  const toggleSent = async (v: boolean) => {
-    await updateMut.mutateAsync({
-      id: inv.id,
-      data: {
-        projectId: inv.projectId,
-        invoiceNumber: inv.invoiceNumber,
-        customerName: inv.customerName ?? null,
-        contactName: inv.contactName ?? null,
-        subject: inv.subject ?? null,
-        issueDate: inv.issueDate,
-        dueDate: inv.dueDate ?? null,
-        notes: inv.notes ?? null,
-        paid: inv.paid,
-        sentToClient: v,
-        items: inv.items,
-      },
-    });
-    await qc.invalidateQueries({ queryKey: getGetInvoiceQueryKey(inv.id) });
-    await qc.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
-    await invalidateDashboard(qc);
-  };
+  const togglePaid = (v: boolean) => toggleInvoiceField(qc, inv, "paid", v);
+  const toggleSent = (v: boolean) => toggleInvoiceField(qc, inv, "sentToClient", v);
 
   return (
     <ScrollView

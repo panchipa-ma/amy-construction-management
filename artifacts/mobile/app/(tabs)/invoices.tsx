@@ -24,6 +24,7 @@ import { useColors } from "@/hooks/useColors";
 import { useSelection } from "@/hooks/useSelection";
 import { runBulkDelete } from "@/lib/bulk-delete";
 import { invalidateDashboard } from "@/lib/invalidate";
+import { toggleInvoiceField } from "@/lib/invoice-toggle";
 import { fmtDate, yen } from "@/lib/format";
 
 const FILTERS: { label: string; value: "all" | "unpaid" | "paid" }[] = [
@@ -160,10 +161,31 @@ export default function InvoicesTab() {
                   <Muted style={{ marginTop: 2 }}>{item.customerName}</Muted>
                 ) : null}
                 <View style={{ marginTop: 6, flexDirection: "row", gap: 6 }}>
-                  <Badge tone={item.paid ? "success" : "warning"}>
-                    {item.paid ? "入金済" : "未入金"}
-                  </Badge>
-                  {item.sentToClient ? <Badge tone="accent">送付済</Badge> : null}
+                  <Pressable
+                    disabled={sel.selectionMode}
+                    onPress={() =>
+                      toggleInvoiceField(qc, item, "paid", !item.paid)
+                    }
+                  >
+                    <Badge tone={item.paid ? "success" : "warning"}>
+                      {item.paid ? "入金済" : "未入金"}
+                    </Badge>
+                  </Pressable>
+                  <Pressable
+                    disabled={sel.selectionMode}
+                    onPress={() =>
+                      toggleInvoiceField(
+                        qc,
+                        item,
+                        "sentToClient",
+                        !item.sentToClient,
+                      )
+                    }
+                  >
+                    <Badge tone={item.sentToClient ? "accent" : "default"}>
+                      {item.sentToClient ? "送付済" : "未送付"}
+                    </Badge>
+                  </Pressable>
                 </View>
               </View>
               <View style={{ alignItems: "flex-end" }}>
