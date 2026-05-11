@@ -81,7 +81,7 @@ function InternalDashboard() {
         />
         <QuickAction
           icon="check-circle"
-          label="今月竣工一覧"
+          label="竣工一覧"
           onPress={() => router.push("/(tabs)/projects?status=completed")}
         />
         <QuickAction
