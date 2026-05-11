@@ -136,21 +136,26 @@ function InternalDashboard() {
           icon="file-text"
           label={`請求中案件 (${monthLabel(d.currentMonth)})`}
           value={String(d.billedProjectsCount)}
+          onPress={() => router.push("/(tabs)/invoices?outstanding=1")}
         />
       </View>
 
-      <Card>
-        <SectionTitle>請求中案件 合計</SectionTitle>
-        <Row label="請求金額" value={yen(d.unpaidInvoiceTotal)} />
-        <Row
-          label="未入金 合計"
-          value={
-            <Body style={{ color: c.destructive, fontWeight: "700" }}>
-              {yen(d.unpaidInvoiceTotal)}
-            </Body>
-          }
-        />
-      </Card>
+      <Pressable
+        onPress={() => router.push("/(tabs)/invoices?outstanding=1")}
+      >
+        <Card>
+          <SectionTitle>請求中案件 合計</SectionTitle>
+          <Row label="請求金額" value={yen(d.unpaidInvoiceTotal)} />
+          <Row
+            label="未入金 合計"
+            value={
+              <Body style={{ color: c.destructive, fontWeight: "700" }}>
+                {yen(d.unpaidInvoiceTotal)}
+              </Body>
+            }
+          />
+        </Card>
+      </Pressable>
 
       <Muted style={{ marginTop: 8, textAlign: "center" }}>
         最終更新: {fmtDate(new Date().toISOString())}
@@ -212,13 +217,15 @@ function KpiCard({
   icon,
   label,
   value,
+  onPress,
 }: {
   icon: keyof typeof Feather.glyphMap;
   label: string;
   value: string;
+  onPress?: () => void;
 }) {
   const c = useColors();
-  return (
+  const inner = (
     <Card style={{ flex: 1 }}>
       <Feather name={icon} size={20} color={c.primary} />
       <Body style={{ marginTop: 8, color: c.mutedForeground, fontSize: 12 }}>
@@ -235,6 +242,12 @@ function KpiCard({
         {value}
       </Body>
     </Card>
+  );
+  if (!onPress) return inner;
+  return (
+    <Pressable onPress={onPress} style={{ flex: 1 }}>
+      {inner}
+    </Pressable>
   );
 }
 

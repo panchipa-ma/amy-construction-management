@@ -27,24 +27,41 @@ import { invalidateDashboard } from "@/lib/invalidate";
 import { toggleInvoiceField } from "@/lib/invoice-toggle";
 import { fmtDate, yen } from "@/lib/format";
 
-const FILTERS: { label: string; value: "all" | "unpaid" | "paid" }[] = [
+type Filter = "all" | "unpaid" | "paid" | "outstanding";
+
+const FILTERS: { label: string; value: Filter }[] = [
   { label: "全て", value: "all" },
+  { label: "請求中 (当月)", value: "outstanding" },
   { label: "未入金", value: "unpaid" },
   { label: "入金済", value: "paid" },
 ];
+
+function isOutstanding(issueDate: string | null | undefined, paid: boolean): boolean {
+  if (paid) return false;
+  if (!issueDate || !/^\d{4}-\d{2}-\d{2}/.test(String(issueDate))) return false;
+  const now = new Date();
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return new Date(String(issueDate)) < monthEnd;
+}
 
 export default function InvoicesTab() {
   const c = useColors();
   const router = useRouter();
   const qc = useQueryClient();
-  const params = useLocalSearchParams<{ paid?: string }>();
-  const [filter, setFilter] = useState<"all" | "unpaid" | "paid">(
-    params.paid === "true" ? "paid" : "unpaid",
+  const params = useLocalSearchParams<{ paid?: string; outstanding?: string }>();
+  const [filter, setFilter] = useState<Filter>(
+    params.outstanding === "1"
+      ? "outstanding"
+      : params.paid === "true"
+        ? "paid"
+        : "unpaid",
   );
   useEffect(() => {
-    if (params.paid === "true") setFilter("paid");
-    else if (params.paid === undefined) setFilter("unpaid");
-  }, [params.paid]);
+    if (params.outstanding === "1") setFilter("outstanding");
+    else if (params.paid === "true") setFilter("paid");
+    else if (params.paid === undefined && params.outstanding === undefined)
+      setFilter("unpaid");
+  }, [params.paid, params.outstanding]);
 
   const q = useListInvoices();
   const all = q.data ?? [];
@@ -53,7 +70,9 @@ export default function InvoicesTab() {
       ? all
       : filter === "paid"
         ? all.filter((i) => i.paid)
-        : all.filter((i) => !i.paid);
+        : filter === "outstanding"
+          ? all.filter((i) => isOutstanding(i.issueDate, i.paid))
+          : all.filter((i) => !i.paid);
   const sel = useSelection(filtered);
   const deleteMut = useDeleteInvoice();
   const [busy, setBusy] = useState(false);
