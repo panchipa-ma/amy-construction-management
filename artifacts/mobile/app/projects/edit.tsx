@@ -26,6 +26,7 @@ import {
   Textarea,
 } from "@/components/form";
 import { Loader } from "@/components/ui";
+import { invalidateDashboard } from "@/lib/invalidate";
 
 const STATUS_OPTIONS: SelectOption<ProjectStatus>[] = [
   { value: "estimating", label: "見積中" },
@@ -180,6 +181,7 @@ function ProjectEdit() {
     else await createMut.mutateAsync({ data });
     await qc.invalidateQueries({ queryKey: getListProjectsQueryKey() });
     if (isEdit && id) await qc.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+    await invalidateDashboard(qc);
     router.back();
   };
 
@@ -187,6 +189,7 @@ function ProjectEdit() {
     ? async () => {
         await deleteMut.mutateAsync({ id: id! });
         await qc.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+        await invalidateDashboard(qc);
         router.back();
       }
     : undefined;

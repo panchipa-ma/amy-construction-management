@@ -45,6 +45,7 @@ import {
 import { Body } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { confirmDestructive, notify } from "@/lib/confirm";
+import { invalidateDashboard } from "@/lib/invalidate";
 
 function todayStr() {
   const d = new Date();
@@ -221,6 +222,7 @@ export function CostEntrySheet({
     Promise.all([
       qc.invalidateQueries({ queryKey: getGetProjectLedgerQueryKey(projectId) }),
       qc.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) }),
+      invalidateDashboard(qc),
     ]);
 
   const submit = async () => {

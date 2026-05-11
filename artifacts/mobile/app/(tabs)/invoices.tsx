@@ -23,6 +23,7 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { useSelection } from "@/hooks/useSelection";
 import { runBulkDelete } from "@/lib/bulk-delete";
+import { invalidateDashboard } from "@/lib/invalidate";
 import { fmtDate, yen } from "@/lib/format";
 
 const FILTERS: { label: string; value: "all" | "unpaid" | "paid" }[] = [
@@ -65,7 +66,10 @@ export default function InvoicesTab() {
       await runBulkDelete(
         sel.selectedItems,
         (id) => deleteMut.mutateAsync({ id }),
-        () => qc.invalidateQueries({ queryKey: getListInvoicesQueryKey() }),
+        async () => {
+          await qc.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
+          await invalidateDashboard(qc);
+        },
       );
       sel.clear();
     } finally {

@@ -36,6 +36,7 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { useSelection } from "@/hooks/useSelection";
 import { runBulkDelete } from "@/lib/bulk-delete";
+import { invalidateDashboard } from "@/lib/invalidate";
 import { PROJECT_STATUS_LABEL, fmtDate, yen } from "@/lib/format";
 
 // 案件一覧 = 進行中の案件 (竣工は別画面 /projects/completed)。
@@ -87,7 +88,10 @@ export default function ProjectsTab() {
       await runBulkDelete(
         sel.selectedItems,
         (id) => deleteMut.mutateAsync({ id }),
-        () => qc.invalidateQueries({ queryKey: getListProjectsQueryKey() }),
+        async () => {
+          await qc.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+          await invalidateDashboard(qc);
+        },
       );
       sel.clear();
     } finally {
@@ -118,6 +122,7 @@ export default function ProjectsTab() {
         qc.invalidateQueries({
           queryKey: getGetProjectQueryKey(project.id),
         }),
+        invalidateDashboard(qc),
       ]);
     } catch (e) {
       Alert.alert("更新失敗", e instanceof Error ? e.message : String(e));

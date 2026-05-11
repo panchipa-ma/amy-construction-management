@@ -34,6 +34,7 @@ import {
 } from "@/components/form/line-items";
 import { Body, Loader } from "@/components/ui";
 import { endOfNextMonthISO, todayLocalISO } from "@/lib/format";
+import { invalidateDashboard } from "@/lib/invalidate";
 
 function todayStr() {
   return todayLocalISO();
@@ -151,6 +152,7 @@ function InvoiceEdit() {
     else await createMut.mutateAsync({ data });
     await qc.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
     if (isEdit && id) await qc.invalidateQueries({ queryKey: getGetInvoiceQueryKey(id) });
+    await invalidateDashboard(qc);
     router.back();
   };
 
@@ -158,6 +160,7 @@ function InvoiceEdit() {
     ? async () => {
         await deleteMut.mutateAsync({ id: id! });
         await qc.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
+        await invalidateDashboard(qc);
         router.dismissAll();
         router.replace("/(tabs)/invoices");
       }

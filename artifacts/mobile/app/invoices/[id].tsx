@@ -27,6 +27,7 @@ import {
 } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { fmtDate, yen } from "@/lib/format";
+import { invalidateDashboard } from "@/lib/invalidate";
 
 export default function InvoiceDetailGuarded() {
   return (
@@ -70,6 +71,7 @@ function InvoiceDetail() {
     });
     await qc.invalidateQueries({ queryKey: getGetInvoiceQueryKey(inv.id) });
     await qc.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
+    await invalidateDashboard(qc);
   };
 
   const toggleSent = async (v: boolean) => {
@@ -91,6 +93,7 @@ function InvoiceDetail() {
     });
     await qc.invalidateQueries({ queryKey: getGetInvoiceQueryKey(inv.id) });
     await qc.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
+    await invalidateDashboard(qc);
   };
 
   return (
