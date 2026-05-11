@@ -71,6 +71,16 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="projects"
+        options={{
+          title: "案件",
+          href: internal ? "/(tabs)/projects" : null,
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="briefcase" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="gantt"
         options={{
           title: "工程表",
@@ -120,7 +130,6 @@ export default function TabsLayout() {
         }}
       />
       {/* Hidden routes registered so links continue to work */}
-      <Tabs.Screen name="projects" options={{ href: null, title: "案件" }} />
       <Tabs.Screen name="quotes" options={{ href: null, title: "見積" }} />
       <Tabs.Screen name="invoices" options={{ href: null, title: "請求" }} />
     </Tabs>
