@@ -131,13 +131,30 @@ function InternalDashboard() {
         />
       </Card>
 
+      <View style={{ flexDirection: "row", gap: 12 }}>
+        <KpiCard
+          icon="file-text"
+          label="請求中案件"
+          value={String(d.billedProjectsCount)}
+        />
+      </View>
+
       <Card>
-        <SectionTitle>未収請求</SectionTitle>
+        <SectionTitle>請求中案件 合計</SectionTitle>
+        <Row label="請求金額 合計" value={yen(d.invoicedTotal)} />
         <Row
           label="未入金 合計"
           value={
             <Body style={{ color: c.destructive, fontWeight: "700" }}>
               {yen(d.unpaidInvoiceTotal)}
+            </Body>
+          }
+        />
+        <Row
+          label="入金済 合計"
+          value={
+            <Body style={{ color: c.success, fontWeight: "700" }}>
+              {yen(d.paidInvoiceTotal)}
             </Body>
           }
         />

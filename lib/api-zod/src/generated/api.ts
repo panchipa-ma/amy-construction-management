@@ -25,6 +25,13 @@ export const GetDashboardSummaryResponse = zod.object({
   actualCostActive: zod.number(),
   grossProfitActive: zod.number(),
   unpaidInvoiceTotal: zod.number(),
+  billedProjectsCount: zod
+    .number()
+    .describe("請求書が 1 件以上ある案件数 (請求中案件)"),
+  invoicedTotal: zod.number().describe("全請求書の税込合計 (請求金額合計)"),
+  paidInvoiceTotal: zod
+    .number()
+    .describe("入金済請求書の税込合計 (入金済合計)"),
   statusBreakdown: zod
     .array(
       zod.object({

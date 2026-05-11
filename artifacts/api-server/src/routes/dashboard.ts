@@ -57,12 +57,18 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   );
   const grossProfitActive = contractValueActive - actualCostActive;
 
-  const unpaidInvoiceTotal = invoices
-    .filter((inv) => !inv.paid)
-    .reduce((s, inv) => {
-      const items = (inv.items ?? []) as LineItemJson[];
-      return s + computeTotals(items).total;
-    }, 0);
+  let invoicedTotal = 0;
+  let paidInvoiceTotal = 0;
+  let unpaidInvoiceTotal = 0;
+  for (const inv of invoices) {
+    const items = (inv.items ?? []) as LineItemJson[];
+    const total = computeTotals(items).total;
+    invoicedTotal += total;
+    if (inv.paid) paidInvoiceTotal += total;
+    else unpaidInvoiceTotal += total;
+  }
+  const billedProjectsCount = new Set(invoices.map((inv) => inv.projectId))
+    .size;
 
   // Monthly invoice totals grouped by the month of dueDate (支払期限).
   // Uses computeTotals over invoice line items so the figure exactly matches
@@ -172,6 +178,9 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       actualCostActive,
       grossProfitActive,
       unpaidInvoiceTotal,
+      billedProjectsCount,
+      invoicedTotal,
+      paidInvoiceTotal,
       statusBreakdown,
       monthlyInvoiceTotals,
       invoicesWithoutDueDate: {

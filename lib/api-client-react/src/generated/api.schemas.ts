@@ -837,6 +837,12 @@ export interface DashboardSummary {
   actualCostActive: number;
   grossProfitActive: number;
   unpaidInvoiceTotal: number;
+  /** 請求書が 1 件以上ある案件数 (請求中案件) */
+  billedProjectsCount: number;
+  /** 全請求書の税込合計 (請求金額合計) */
+  invoicedTotal: number;
+  /** 入金済請求書の税込合計 (入金済合計) */
+  paidInvoiceTotal: number;
   /** Counts grouped by computed dashboard bucket. Buckets are not the
 raw project status enum; they are: estimating / in_progress /
 completed / billed / paid.

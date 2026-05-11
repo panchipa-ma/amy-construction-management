@@ -1960,7 +1960,7 @@ components:
 
     DashboardSummary:
       type: object
-      required: [activeProjects, completedThisMonth, contractValueActive, plannedCostActive, actualCostActive, grossProfitActive, unpaidInvoiceTotal, statusBreakdown, monthlyInvoiceTotals, invoicesWithoutDueDate]
+      required: [activeProjects, completedThisMonth, contractValueActive, plannedCostActive, actualCostActive, grossProfitActive, unpaidInvoiceTotal, billedProjectsCount, invoicedTotal, paidInvoiceTotal, statusBreakdown, monthlyInvoiceTotals, invoicesWithoutDueDate]
       properties:
         activeProjects: { type: integer }
         completedThisMonth: { type: integer }
@@ -1969,6 +1969,9 @@ components:
         actualCostActive: { type: number }
         grossProfitActive: { type: number }
         unpaidInvoiceTotal: { type: number }
+        billedProjectsCount: { type: integer, description: "請求書が 1 件以上ある案件数 (請求中案件)" }
+        invoicedTotal: { type: number, description: "全請求書の税込合計 (請求金額合計)" }
+        paidInvoiceTotal: { type: number, description: "入金済請求書の税込合計 (入金済合計)" }
         statusBreakdown:
           type: array
           description: |
