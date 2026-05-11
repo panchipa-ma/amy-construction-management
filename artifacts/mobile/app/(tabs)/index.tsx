@@ -134,27 +134,19 @@ function InternalDashboard() {
       <View style={{ flexDirection: "row", gap: 12 }}>
         <KpiCard
           icon="file-text"
-          label="請求中案件"
+          label={`請求中案件 (${monthLabel(d.currentMonth)})`}
           value={String(d.billedProjectsCount)}
         />
       </View>
 
       <Card>
         <SectionTitle>請求中案件 合計</SectionTitle>
-        <Row label="請求金額 合計" value={yen(d.invoicedTotal)} />
+        <Row label="請求金額" value={yen(d.unpaidInvoiceTotal)} />
         <Row
           label="未入金 合計"
           value={
             <Body style={{ color: c.destructive, fontWeight: "700" }}>
               {yen(d.unpaidInvoiceTotal)}
-            </Body>
-          }
-        />
-        <Row
-          label="入金済 合計"
-          value={
-            <Body style={{ color: c.success, fontWeight: "700" }}>
-              {yen(d.paidInvoiceTotal)}
             </Body>
           }
         />
@@ -165,6 +157,11 @@ function InternalDashboard() {
       </Muted>
     </ScrollView>
   );
+}
+
+function monthLabel(yyyymm: string): string {
+  const m = /^\d{4}-(\d{2})$/.exec(yyyymm);
+  return m ? `${Number(m[1])}月` : yyyymm;
 }
 
 function QuickAction({

@@ -16,12 +16,15 @@ export interface DashboardSummary {
   plannedCostActive: number;
   actualCostActive: number;
   grossProfitActive: number;
+  /** サーバ基準の現在月 (YYYY-MM) */
+  currentMonth: string;
+  /** 請求中案件の未入金合計。currentMonth 以前に発行された未入金請求書の税込合計。入金済になれば自動的に減る。 */
   unpaidInvoiceTotal: number;
-  /** 請求書が 1 件以上ある案件数 (請求中案件) */
+  /** 請求中案件 (currentMonth 以前に発行された未入金請求書を持つ distinct project 数) */
   billedProjectsCount: number;
-  /** 全請求書の税込合計 (請求金額合計) */
+  /** 全請求書の税込合計 (legacy) */
   invoicedTotal: number;
-  /** 入金済請求書の税込合計 (入金済合計) */
+  /** 入金済請求書の税込合計 (legacy) */
   paidInvoiceTotal: number;
   /** Counts grouped by computed dashboard bucket. Buckets are not the
 raw project status enum; they are: estimating / in_progress /

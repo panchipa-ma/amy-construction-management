@@ -24,14 +24,19 @@ export const GetDashboardSummaryResponse = zod.object({
   plannedCostActive: zod.number(),
   actualCostActive: zod.number(),
   grossProfitActive: zod.number(),
-  unpaidInvoiceTotal: zod.number(),
+  currentMonth: zod.string().describe("サーバ基準の現在月 (YYYY-MM)"),
+  unpaidInvoiceTotal: zod
+    .number()
+    .describe(
+      "請求中案件の未入金合計。currentMonth 以前に発行された未入金請求書の税込合計。入金済になれば自動的に減る。",
+    ),
   billedProjectsCount: zod
     .number()
-    .describe("請求書が 1 件以上ある案件数 (請求中案件)"),
-  invoicedTotal: zod.number().describe("全請求書の税込合計 (請求金額合計)"),
-  paidInvoiceTotal: zod
-    .number()
-    .describe("入金済請求書の税込合計 (入金済合計)"),
+    .describe(
+      "請求中案件 (currentMonth 以前に発行された未入金請求書を持つ distinct project 数)",
+    ),
+  invoicedTotal: zod.number().describe("全請求書の税込合計 (legacy)"),
+  paidInvoiceTotal: zod.number().describe("入金済請求書の税込合計 (legacy)"),
   statusBreakdown: zod
     .array(
       zod.object({

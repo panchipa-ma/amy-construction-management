@@ -59,16 +59,31 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
 
   let invoicedTotal = 0;
   let paidInvoiceTotal = 0;
-  let unpaidInvoiceTotal = 0;
   for (const inv of invoices) {
     const items = (inv.items ?? []) as LineItemJson[];
     const total = computeTotals(items).total;
     invoicedTotal += total;
     if (inv.paid) paidInvoiceTotal += total;
-    else unpaidInvoiceTotal += total;
   }
-  const billedProjectsCount = new Set(invoices.map((inv) => inv.projectId))
-    .size;
+
+  // 「請求中案件」 — currentMonth 末日以前に発行された未入金請求書のみを対象。
+  // 入金済になれば自動的に外れ、件数 / 金額両方から減る。
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const currentMonth = `${yyyy}-${mm}`;
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  let unpaidInvoiceTotal = 0;
+  const outstandingProjectIds = new Set<string>();
+  for (const inv of invoices) {
+    if (inv.paid) continue;
+    const issue = inv.issueDate ? String(inv.issueDate) : null;
+    if (!issue || !/^\d{4}-\d{2}-\d{2}/.test(issue)) continue;
+    if (new Date(issue) >= monthEnd) continue;
+    const items = (inv.items ?? []) as LineItemJson[];
+    unpaidInvoiceTotal += computeTotals(items).total;
+    outstandingProjectIds.add(inv.projectId);
+  }
+  const billedProjectsCount = outstandingProjectIds.size;
 
   // Monthly invoice totals grouped by the month of dueDate (支払期限).
   // Uses computeTotals over invoice line items so the figure exactly matches
@@ -177,6 +192,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       plannedCostActive,
       actualCostActive,
       grossProfitActive,
+      currentMonth,
       unpaidInvoiceTotal,
       billedProjectsCount,
       invoicedTotal,

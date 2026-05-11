@@ -1960,7 +1960,7 @@ components:
 
     DashboardSummary:
       type: object
-      required: [activeProjects, completedThisMonth, contractValueActive, plannedCostActive, actualCostActive, grossProfitActive, unpaidInvoiceTotal, billedProjectsCount, invoicedTotal, paidInvoiceTotal, statusBreakdown, monthlyInvoiceTotals, invoicesWithoutDueDate]
+      required: [activeProjects, completedThisMonth, contractValueActive, plannedCostActive, actualCostActive, grossProfitActive, unpaidInvoiceTotal, billedProjectsCount, invoicedTotal, paidInvoiceTotal, currentMonth, statusBreakdown, monthlyInvoiceTotals, invoicesWithoutDueDate]
       properties:
         activeProjects: { type: integer }
         completedThisMonth: { type: integer }
@@ -1968,10 +1968,11 @@ components:
         plannedCostActive: { type: number }
         actualCostActive: { type: number }
         grossProfitActive: { type: number }
-        unpaidInvoiceTotal: { type: number }
-        billedProjectsCount: { type: integer, description: "請求書が 1 件以上ある案件数 (請求中案件)" }
-        invoicedTotal: { type: number, description: "全請求書の税込合計 (請求金額合計)" }
-        paidInvoiceTotal: { type: number, description: "入金済請求書の税込合計 (入金済合計)" }
+        currentMonth: { type: string, description: "サーバ基準の現在月 (YYYY-MM)" }
+        unpaidInvoiceTotal: { type: number, description: "請求中案件の未入金合計。currentMonth 以前に発行された未入金請求書の税込合計。入金済になれば自動的に減る。" }
+        billedProjectsCount: { type: integer, description: "請求中案件 (currentMonth 以前に発行された未入金請求書を持つ distinct project 数)" }
+        invoicedTotal: { type: number, description: "全請求書の税込合計 (legacy)" }
+        paidInvoiceTotal: { type: number, description: "入金済請求書の税込合計 (legacy)" }
         statusBreakdown:
           type: array
           description: |
