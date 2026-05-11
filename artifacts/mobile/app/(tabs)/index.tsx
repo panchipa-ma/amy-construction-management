@@ -114,7 +114,6 @@ function InternalDashboard() {
       <Card>
         <SectionTitle>進行中案件 合計</SectionTitle>
         <Row label="契約金額" value={yen(d.contractValueActive)} />
-        <Row label="予算原価" value={yen(d.plannedCostActive)} />
         <Row label="実績原価" value={yen(d.actualCostActive)} />
         <Row
           label="粗利"
