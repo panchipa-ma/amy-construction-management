@@ -252,6 +252,7 @@ function KpiCard({
 
 function ExternalHome() {
   const c = useColors();
+  const router = useRouter();
   const invoicesQ = useListVendorInvoices();
   const quotesQ = useListVendorQuotes();
 
@@ -260,6 +261,7 @@ function ExternalHome() {
 
   const recentInvoices = (invoicesQ.data ?? []).slice(0, 5);
   const recentQuotes = (quotesQ.data ?? []).slice(0, 5);
+  const paidCount = (invoicesQ.data ?? []).filter((inv) => inv.paid).length;
 
   return (
     <ScrollView
@@ -275,8 +277,32 @@ function ExternalHome() {
         />
       }
     >
-      <H1>職人 見積/請求</H1>
-      <Muted>あなたが提出した書類</Muted>
+      <H1>職人 メニュー</H1>
+      <Muted>あなたが提出した書類のみ表示されます</Muted>
+
+      <SectionTitle>クイック操作</SectionTitle>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+        <QuickAction
+          icon="edit-3"
+          label="職人見積書"
+          onPress={() => router.push("/vendor-quotes")}
+        />
+        <QuickAction
+          icon="upload"
+          label="職人請求書"
+          onPress={() => router.push("/vendor-invoices")}
+        />
+        <QuickAction
+          icon="check-circle"
+          label={`職人振込済 (${paidCount})`}
+          onPress={() => router.push("/vendor-invoices?paid=true")}
+        />
+        <QuickAction
+          icon="calendar"
+          label="職人出面表"
+          onPress={() => router.push("/(tabs)/schedule")}
+        />
+      </View>
 
       <SectionTitle>請求書 (最新)</SectionTitle>
       {recentInvoices.length === 0 ? (
