@@ -6,7 +6,6 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useContext, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -21,6 +20,7 @@ import {
 } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+import { confirmDestructive, notify } from "@/lib/confirm";
 
 /**
  * Set of field `name`s that failed validation. Set by FormScreen, read by
@@ -635,12 +635,11 @@ export function FormScreen({
         setErrors(names);
         // Scroll back to top so the user sees the highlighted fields.
         scrollRef.current?.scrollTo({ y: 0, animated: true });
-        Alert.alert(
+        notify(
           "未入力の項目があります",
           `下記を入力してください (赤くハイライトされています):\n\n${labels
             .map((f) => `・${f}`)
             .join("\n")}`,
-          [{ text: "OK" }],
         );
         return;
       }
@@ -650,26 +649,23 @@ export function FormScreen({
     try {
       await onSave();
     } catch (err: unknown) {
-      Alert.alert("保存に失敗しました", err instanceof Error ? err.message : String(err));
+      notify("保存に失敗しました", err instanceof Error ? err.message : String(err));
     }
   }, [onSave, validate]);
 
-  const handleDelete = useCallback(() => {
+  const handleDelete = useCallback(async () => {
     if (!onDelete) return;
-    Alert.alert("削除しますか？", "この操作は取り消せません。", [
-      { text: "キャンセル", style: "cancel" },
-      {
-        text: "削除",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await onDelete();
-          } catch (err: unknown) {
-            Alert.alert("削除に失敗しました", err instanceof Error ? err.message : String(err));
-          }
-        },
-      },
-    ]);
+    const ok = await confirmDestructive({
+      title: "削除しますか？",
+      message: "この操作は取り消せません。",
+      confirmLabel: "削除",
+    });
+    if (!ok) return;
+    try {
+      await onDelete();
+    } catch (err: unknown) {
+      notify("削除に失敗しました", err instanceof Error ? err.message : String(err));
+    }
   }, [onDelete]);
 
   return (

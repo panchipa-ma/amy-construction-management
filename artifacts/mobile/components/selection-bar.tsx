@@ -1,9 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { ActivityIndicator, Alert, Pressable, View } from "react-native";
+import { ActivityIndicator, Pressable, View } from "react-native";
 
 import { Body } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { confirmDestructive } from "@/lib/confirm";
 
 export function SelectionBar({
   count,
@@ -24,22 +25,15 @@ export function SelectionBar({
 }) {
   const c = useColors();
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (busy) return;
-    Alert.alert(
-      "選択した項目を削除",
-      `${count} 件を削除します。元に戻せません。`,
-      [
-        { text: "キャンセル", style: "cancel" },
-        {
-          text: "削除する",
-          style: "destructive",
-          onPress: async () => {
-            await onDelete();
-          },
-        },
-      ],
-    );
+    const ok = await confirmDestructive({
+      title: "選択した項目を削除",
+      message: `${count} 件を削除します。元に戻せません。`,
+      confirmLabel: "削除する",
+    });
+    if (!ok) return;
+    await onDelete();
   };
 
   return (

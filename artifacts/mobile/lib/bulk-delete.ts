@@ -1,4 +1,4 @@
-import { Alert } from "react-native";
+import { notify } from "./confirm";
 
 export type BulkDeleteItem = { id: string };
 
@@ -28,7 +28,7 @@ export async function runBulkDelete<T extends BulkDeleteItem>(
   if (failed.length > 0) {
     const sample = failed[0]!.error;
     const msg = sample instanceof Error ? sample.message : String(sample);
-    Alert.alert(
+    notify(
       "一部の削除に失敗しました",
       `${succeeded.length} 件削除、${failed.length} 件失敗\n${msg}`,
     );

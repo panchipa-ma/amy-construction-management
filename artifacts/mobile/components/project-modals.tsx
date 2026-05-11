@@ -30,7 +30,7 @@ import {
   useUpdateScheduleEntry,
 } from "@workspace/api-client-react";
 import React, { useEffect, useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   DateInput,
@@ -44,6 +44,7 @@ import {
 } from "@/components/form";
 import { Body } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { confirmDestructive, notify } from "@/lib/confirm";
 
 function todayStr() {
   const d = new Date();
@@ -90,12 +91,15 @@ function SheetWrapper({
   deleteConfirmTitle?: string;
 }) {
   const c = useColors();
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!onDelete) return;
-    Alert.alert(deleteConfirmTitle ?? "削除しますか？", "この操作は元に戻せません。", [
-      { text: "キャンセル", style: "cancel" },
-      { text: "削除", style: "destructive", onPress: onDelete },
-    ]);
+    const ok = await confirmDestructive({
+      title: deleteConfirmTitle ?? "削除しますか？",
+      message: "この操作は元に戻せません。",
+      confirmLabel: "削除",
+    });
+    if (!ok) return;
+    onDelete();
   };
   return (
     <Modal transparent animationType="slide" visible={open} onRequestClose={onClose}>
@@ -240,7 +244,7 @@ export function CostEntrySheet({
       await invalidate();
       onClose();
     } catch (e) {
-      Alert.alert("保存失敗", e instanceof Error ? e.message : String(e));
+      notify("保存失敗", e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -251,7 +255,7 @@ export function CostEntrySheet({
       await invalidate();
       onClose();
     } catch (e) {
-      Alert.alert("削除失敗", e instanceof Error ? e.message : String(e));
+      notify("削除失敗", e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -382,7 +386,7 @@ export function PhaseSheet({
   const submit = async () => {
     if (!name.trim()) return;
     if (!effectiveProjectId) {
-      Alert.alert("案件未選択", "案件を選択してください");
+      notify("案件未選択", "案件を選択してください");
       return;
     }
     const body = {
@@ -402,7 +406,7 @@ export function PhaseSheet({
       await invalidate();
       onClose();
     } catch (e) {
-      Alert.alert("保存失敗", e instanceof Error ? e.message : String(e));
+      notify("保存失敗", e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -413,7 +417,7 @@ export function PhaseSheet({
       await invalidate();
       onClose();
     } catch (e) {
-      Alert.alert("削除失敗", e instanceof Error ? e.message : String(e));
+      notify("削除失敗", e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -522,7 +526,7 @@ export function ProgressLogSheet({
       await invalidate();
       onClose();
     } catch (e) {
-      Alert.alert("保存失敗", e instanceof Error ? e.message : String(e));
+      notify("保存失敗", e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -533,7 +537,7 @@ export function ProgressLogSheet({
       await invalidate();
       onClose();
     } catch (e) {
-      Alert.alert("削除失敗", e instanceof Error ? e.message : String(e));
+      notify("削除失敗", e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -658,7 +662,7 @@ export function ScheduleEntrySheet({
       await invalidate();
       onClose();
     } catch (e) {
-      Alert.alert("保存失敗", e instanceof Error ? e.message : String(e));
+      notify("保存失敗", e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -669,7 +673,7 @@ export function ScheduleEntrySheet({
       await invalidate();
       onClose();
     } catch (e) {
-      Alert.alert("削除失敗", e instanceof Error ? e.message : String(e));
+      notify("削除失敗", e instanceof Error ? e.message : String(e));
     }
   };
 

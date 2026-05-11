@@ -3,10 +3,11 @@ import { Feather } from "@expo/vector-icons";
 import { useGetMe } from "@workspace/api-client-react";
 import { useRouter } from "expo-router";
 import React from "react";
-import { Alert, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 
 import { Body, Card, Loader, Muted, SectionTitle } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { confirmDestructive } from "@/lib/confirm";
 import { isInternal } from "@/lib/role";
 
 type NavEntry = {
@@ -50,18 +51,15 @@ export default function MoreTab() {
   const internal = isInternal(meQ.data ?? null);
   const visible = NAV.filter((n) => !n.internalOnly || internal);
 
-  const onSignOut = () => {
-    Alert.alert("ログアウト", "ログアウトしますか?", [
-      { text: "キャンセル", style: "cancel" },
-      {
-        text: "ログアウト",
-        style: "destructive",
-        onPress: async () => {
-          await signOut();
-          router.replace("/(auth)/sign-in");
-        },
-      },
-    ]);
+  const onSignOut = async () => {
+    const ok = await confirmDestructive({
+      title: "ログアウト",
+      message: "ログアウトしますか?",
+      confirmLabel: "ログアウト",
+    });
+    if (!ok) return;
+    await signOut();
+    router.replace("/(auth)/sign-in");
   };
 
   return (
