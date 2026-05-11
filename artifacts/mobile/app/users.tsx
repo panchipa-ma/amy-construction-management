@@ -2,13 +2,24 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   type AppUser,
   getListUsersQueryKey,
+  useCreateInvitation,
   useDeleteUser,
   useGetMe,
   useListUsers,
   useUpdateUser,
 } from "@workspace/api-client-react";
 import React, { useState } from "react";
-import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
+import {
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  TextInput,
+  View,
+} from "react-native";
 
 import { InternalOnly } from "@/components/InternalOnly";
 import { SelectButton } from "@/components/select-button";
@@ -72,6 +83,14 @@ function UsersList() {
       Alert.alert("変更不可", "自分自身の権限は変更できません");
       return;
     }
+    // Policy: 承認されていないユーザーは社内に昇格できない (社外+pending のまま)。
+    if (u.role === "external" && u.status !== "approved") {
+      Alert.alert(
+        "先に承認が必要です",
+        "社内に昇格する前に、まずこのユーザーを承認してください。",
+      );
+      return;
+    }
     const next = u.role === "internal" ? "external" : "internal";
     const label = next === "internal" ? "社内に昇格" : "社外に降格";
     Alert.alert(label, `${u.email ?? u.clerkUserId} を${label}しますか?`, [
@@ -82,10 +101,7 @@ function UsersList() {
           try {
             await updateMut.mutateAsync({
               id: u.id,
-              data:
-                next === "internal"
-                  ? { role: "internal", status: "approved" }
-                  : { role: "external" },
+              data: { role: next },
             });
             await refresh();
           } catch (e: any) {
@@ -133,7 +149,8 @@ function UsersList() {
           busy={busy}
         />
       ) : (
-        <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 12, paddingTop: 10 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 12, paddingTop: 10, gap: 8 }}>
+          <InviteButton onSent={refresh} />
           <SelectButton onPress={sel.enter} disabled={items.length === 0} />
         </View>
       )}
@@ -187,6 +204,135 @@ function UsersList() {
         }}
       />
     </View>
+  );
+}
+
+function InviteButton({ onSent }: { onSent: () => void }) {
+  const c = useColors();
+  const inviteMut = useCreateInvitation();
+  const [open, setOpen] = React.useState(false);
+  const [email, setEmail] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+
+  const close = () => {
+    if (busy) return;
+    setOpen(false);
+    setEmail("");
+  };
+
+  const submit = async () => {
+    const e = email.trim();
+    if (!e) {
+      Alert.alert("入力エラー", "メールアドレスを入力してください");
+      return;
+    }
+    setBusy(true);
+    try {
+      await inviteMut.mutateAsync({ data: { emailAddress: e } });
+      onSent();
+      setOpen(false);
+      setEmail("");
+      Alert.alert("送信しました", `${e} に招待メールを送りました。`);
+    } catch (err: any) {
+      Alert.alert("エラー", err?.message ?? "招待の送信に失敗しました");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Pressable
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          backgroundColor: c.primary,
+          borderRadius: 8,
+          paddingVertical: 8,
+          paddingHorizontal: 14,
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <Body style={{ color: c.primaryForeground, fontWeight: "600", fontSize: 13 }}>
+          + 招待
+        </Body>
+      </Pressable>
+
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={close}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.4)", padding: 24 }}
+        >
+          <View style={{ backgroundColor: c.card, borderRadius: 12, padding: 20, gap: 12 }}>
+            <Body style={{ fontWeight: "700", fontSize: 16, color: c.foreground }}>
+              ユーザーを招待
+            </Body>
+            <Body style={{ fontSize: 13, color: c.mutedForeground }}>
+              招待メールを送信します。登録後は社外+承認待ちで作成されます。
+            </Body>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="email@example.com"
+              placeholderTextColor={c.mutedForeground}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              autoFocus
+              editable={!busy}
+              style={{
+                borderWidth: 1,
+                borderColor: c.border,
+                borderRadius: 8,
+                paddingVertical: 10,
+                paddingHorizontal: 12,
+                fontSize: 15,
+                color: c.foreground,
+                backgroundColor: c.background,
+              }}
+            />
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
+              <Pressable
+                onPress={close}
+                disabled={busy}
+                style={({ pressed }) => ({
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  opacity: busy ? 0.5 : pressed ? 0.85 : 1,
+                })}
+              >
+                <Body style={{ color: c.foreground }}>キャンセル</Body>
+              </Pressable>
+              <Pressable
+                onPress={submit}
+                disabled={busy}
+                style={({ pressed }) => ({
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                  borderRadius: 8,
+                  backgroundColor: c.primary,
+                  opacity: busy ? 0.6 : pressed ? 0.85 : 1,
+                })}
+              >
+                <Body style={{ color: c.primaryForeground, fontWeight: "600" }}>
+                  {busy ? "送信中…" : "招待を送信"}
+                </Body>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </>
   );
 }
 

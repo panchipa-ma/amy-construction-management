@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
+import { clerkClient } from "@clerk/express";
 import { db, appUsersTable } from "@workspace/db";
 import {
   GetMeResponse,
@@ -8,6 +9,8 @@ import {
   UpdateUserParams,
   UpdateUserResponse,
   DeleteUserParams,
+  CreateInvitationBody,
+  CreateInvitationResponse,
 } from "@workspace/api-zod";
 import {
   getOrCreateAppUser,
@@ -59,6 +62,28 @@ router.patch(
       }
     }
 
+    // Fetch the target user to validate state transitions
+    const [target] = await db
+      .select()
+      .from(appUsersTable)
+      .where(eq(appUsersTable.id, params.data.id));
+    if (!target) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const nextStatus = body.data.status ?? target.status;
+    const nextRole = body.data.role ?? target.role;
+
+    // Policy: 社内メンバーが承認した場合に限り、社外→社内に変更できる。
+    // つまり pending のまま社内権限は付与できない (社外として承認してから昇格)。
+    if (nextRole === "internal" && nextStatus !== "approved") {
+      res.status(400).json({
+        error: "社内権限を付与する前に、まずユーザーを承認してください",
+      });
+      return;
+    }
+
     const patch: Partial<typeof appUsersTable.$inferInsert> = {};
     if (body.data.role !== undefined) patch.role = body.data.role;
     if (body.data.status !== undefined) {
@@ -100,6 +125,43 @@ router.delete(
     }
     await db.delete(appUsersTable).where(eq(appUsersTable.id, params.data.id));
     res.sendStatus(204);
+  },
+);
+
+// Clerk invitation: 社内メンバーが email を指定して招待。サインアップ後は
+// 自動的に external + pending で app_users に登録される (getOrCreateAppUser)。
+router.post(
+  "/invitations",
+  requireInternal,
+  async (req, res): Promise<void> => {
+    const parsed = CreateInvitationBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    try {
+      const inv = await clerkClient.invitations.createInvitation({
+        emailAddress: parsed.data.emailAddress,
+        redirectUrl: parsed.data.redirectUrl ?? undefined,
+        ignoreExisting: true,
+      });
+      res.json(
+        CreateInvitationResponse.parse({
+          id: inv.id,
+          emailAddress: inv.emailAddress,
+          status: inv.status,
+          url: inv.url ?? null,
+          createdAt: new Date(inv.createdAt).toISOString(),
+        }),
+      );
+    } catch (e: any) {
+      const msg =
+        e?.errors?.[0]?.longMessage ??
+        e?.errors?.[0]?.message ??
+        e?.message ??
+        "招待の送信に失敗しました";
+      res.status(400).json({ error: msg });
+    }
   },
 );
 

@@ -288,6 +288,23 @@ paths:
         "204":
           description: Deleted
 
+  /invitations:
+    post:
+      operationId: createInvitation
+      tags: [users]
+      summary: Invite a new user by email (internal admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateInvitationBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invitation" }
+
   /employees:
     get:
       operationId: listEmployees
@@ -1302,6 +1319,23 @@ components:
         role: { type: string, enum: [internal, external] }
         status: { type: string, enum: [pending, approved] }
         displayName: { type: string, nullable: true }
+
+    CreateInvitationBody:
+      type: object
+      required: [emailAddress]
+      properties:
+        emailAddress: { type: string, format: email }
+        redirectUrl: { type: string, nullable: true }
+
+    Invitation:
+      type: object
+      required: [id, emailAddress, status, createdAt]
+      properties:
+        id: { type: string }
+        emailAddress: { type: string }
+        status: { type: string }
+        url: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
 
     Staff:
       type: object

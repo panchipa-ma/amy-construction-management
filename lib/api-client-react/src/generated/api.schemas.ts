@@ -115,6 +115,19 @@ export interface UpdateUserBody {
   displayName?: string | null;
 }
 
+export interface CreateInvitationBody {
+  emailAddress: string;
+  redirectUrl?: string | null;
+}
+
+export interface Invitation {
+  id: string;
+  emailAddress: string;
+  status: string;
+  url?: string | null;
+  createdAt: string;
+}
+
 export interface Staff {
   id: string;
   name: string;

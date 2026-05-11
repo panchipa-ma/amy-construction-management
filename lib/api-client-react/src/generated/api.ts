@@ -28,6 +28,7 @@ import type {
   CreateCostEntryBody,
   CreateCustomerBody,
   CreateEmployeeBody,
+  CreateInvitationBody,
   CreateInvoiceBody,
   CreateProgressLogBody,
   CreateProjectBody,
@@ -46,6 +47,7 @@ import type {
   GetCommissionsParams,
   HealthStatus,
   ImportQuoteToLedgerBody,
+  Invitation,
   Invoice,
   ListAllProjectPhasesParams,
   ListCostEntriesParams,
@@ -1487,6 +1489,92 @@ export const useDeleteUser = <
   TContext
 > => {
   return useMutation(getDeleteUserMutationOptions(options));
+};
+
+/**
+ * @summary Invite a new user by email (internal admin only)
+ */
+export const getCreateInvitationUrl = () => {
+  return `/api/invitations`;
+};
+
+export const createInvitation = async (
+  createInvitationBody: CreateInvitationBody,
+  options?: RequestInit,
+): Promise<Invitation> => {
+  return customFetch<Invitation>(getCreateInvitationUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createInvitationBody),
+  });
+};
+
+export const getCreateInvitationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createInvitation>>,
+    TError,
+    { data: BodyType<CreateInvitationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createInvitation>>,
+  TError,
+  { data: BodyType<CreateInvitationBody> },
+  TContext
+> => {
+  const mutationKey = ["createInvitation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createInvitation>>,
+    { data: BodyType<CreateInvitationBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createInvitation(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateInvitationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createInvitation>>
+>;
+export type CreateInvitationMutationBody = BodyType<CreateInvitationBody>;
+export type CreateInvitationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Invite a new user by email (internal admin only)
+ */
+export const useCreateInvitation = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createInvitation>>,
+    TError,
+    { data: BodyType<CreateInvitationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createInvitation>>,
+  TError,
+  { data: BodyType<CreateInvitationBody> },
+  TContext
+> => {
+  return useMutation(getCreateInvitationMutationOptions(options));
 };
 
 export const getListEmployeesUrl = () => {

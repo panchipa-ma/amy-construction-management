@@ -1,15 +1,16 @@
-import { useAuth } from "@clerk/expo";
+import { useAuth, useUser } from "@clerk/expo";
 import { Feather } from "@expo/vector-icons";
 import {
   getGetMeQueryKey,
   setAuthTokenGetter,
   useGetMe,
 } from "@workspace/api-client-react";
-import { Redirect, Tabs } from "expo-router";
-import React, { useRef, useState } from "react";
+import { Redirect, Tabs, usePathname, useRouter } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+import { isProfileComplete, readProfile } from "@/lib/profile";
 import { isInternal } from "@/lib/role";
 
 export default function TabsLayout() {
@@ -27,6 +28,22 @@ export default function TabsLayout() {
   const meQ = useGetMe({
     query: { queryKey: getGetMeQueryKey(), enabled: !!isSignedIn },
   });
+
+  const { user, isLoaded: userLoaded } = useUser();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // プロフィール (口座番号・会社情報など) 未入力ならプロフィール画面へ強制誘導。
+  // WEB の ProfileGate と同等。職人請求書/見積書の発行元・振込先に必須。
+  const profileComplete = userLoaded && user
+    ? isProfileComplete(readProfile(user))
+    : true;
+  useEffect(() => {
+    if (!userLoaded || !user) return;
+    if (!profileComplete && pathname !== "/profile") {
+      router.replace("/profile");
+    }
+  }, [userLoaded, user, profileComplete, pathname, router]);
 
   if (!isLoaded) return null;
   if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;

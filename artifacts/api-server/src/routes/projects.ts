@@ -5,6 +5,9 @@ import {
   projectsTable,
   customersTable,
   costEntriesTable,
+  vendorInvoicesTable,
+  vendorQuotesTable,
+  receiptsTable,
 } from "@workspace/db";
 import {
   CreateProjectBody,
@@ -221,7 +224,18 @@ router.delete("/projects/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  await db.delete(projectsTable).where(eq(projectsTable.id, params.data.id));
+  // 案件削除: 紐付く資料 (見積/請求/工程表/施工台帳/出面/進捗) は schema 側で
+  // onDelete: cascade。職人見積・職人請求・領収書 は projectId set null なので
+  // 明示的に削除して 案件と一緒に消す。
+  const projectId = params.data.id;
+  await db
+    .delete(vendorInvoicesTable)
+    .where(eq(vendorInvoicesTable.projectId, projectId));
+  await db
+    .delete(vendorQuotesTable)
+    .where(eq(vendorQuotesTable.projectId, projectId));
+  await db.delete(receiptsTable).where(eq(receiptsTable.projectId, projectId));
+  await db.delete(projectsTable).where(eq(projectsTable.id, projectId));
   res.sendStatus(204);
 });
 

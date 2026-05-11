@@ -617,6 +617,22 @@ export const DeleteUserParams = zod.object({
   id: zod.coerce.string(),
 });
 
+/**
+ * @summary Invite a new user by email (internal admin only)
+ */
+export const CreateInvitationBody = zod.object({
+  emailAddress: zod.string().email(),
+  redirectUrl: zod.string().nullish(),
+});
+
+export const CreateInvitationResponse = zod.object({
+  id: zod.string(),
+  emailAddress: zod.string(),
+  status: zod.string(),
+  url: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
 export const ListEmployeesResponseItem = zod.object({
   id: zod.string(),
   name: zod.string(),
