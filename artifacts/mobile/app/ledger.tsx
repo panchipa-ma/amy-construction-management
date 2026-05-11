@@ -134,7 +134,7 @@ export default function LedgerScreen() {
               : 0;
           return (
             <Pressable
-              onPress={() => router.push(`/projects/${item.id}` as never)}
+              onPress={() => router.push(`/ledger/${item.id}` as never)}
             >
               {({ pressed }) => (
                 <Card style={pressed ? { opacity: 0.7 } : undefined}>

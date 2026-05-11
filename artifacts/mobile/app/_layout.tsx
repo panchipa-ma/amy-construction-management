@@ -78,6 +78,7 @@ function RootLayoutNav() {
       />
       <Stack.Screen name="profile" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="ledger" options={{ title: "施工台帳" }} />
+      <Stack.Screen name="ledger/[id]" options={{ title: "施工台帳" }} />
     </Stack>
   );
 }
