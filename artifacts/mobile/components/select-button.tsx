@@ -58,9 +58,12 @@ export function ListToolbar({
   children,
 }: {
   onSelect: () => void;
+  /** 互換のため残すが、空リストでも 選択 を押せるよう既定で無効化を無視する */
   selectDisabled?: boolean;
   children?: React.ReactNode;
 }) {
+  // 空リストでも 選択 ボタンは押せるようにする (フィルタ切り替え後に即選択モードへ)
+  void selectDisabled;
   return (
     <View
       style={{
@@ -72,7 +75,7 @@ export function ListToolbar({
       }}
     >
       <View style={{ flex: 1, minWidth: 0 }}>{children}</View>
-      <SelectButton onPress={onSelect} disabled={selectDisabled} />
+      <SelectButton onPress={onSelect} />
     </View>
   );
 }

@@ -26,9 +26,9 @@ import { runBulkDelete } from "@/lib/bulk-delete";
 import { fmtDate, yen } from "@/lib/format";
 
 const FILTERS: { label: string; value: "all" | "unpaid" | "paid" }[] = [
+  { label: "全て", value: "all" },
   { label: "未入金", value: "unpaid" },
   { label: "入金済", value: "paid" },
-  { label: "全て", value: "all" },
 ];
 
 export default function InvoicesTab() {

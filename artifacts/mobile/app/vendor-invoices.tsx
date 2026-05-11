@@ -26,9 +26,9 @@ import { runBulkDelete } from "@/lib/bulk-delete";
 import { fmtDate, yen } from "@/lib/format";
 
 const FILTERS = [
+  { label: "全て", value: "all" as const },
   { label: "未払", value: "unpaid" as const },
   { label: "支払済", value: "paid" as const },
-  { label: "全て", value: "all" as const },
 ];
 
 export default function VendorInvoicesScreen() {
