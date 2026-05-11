@@ -44,6 +44,7 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="pending" options={{ headerShown: false }} />
       <Stack.Screen name="projects/[id]" options={{ title: "案件" }} />
+      <Stack.Screen name="projects/completed" options={{ title: "竣工一覧" }} />
       <Stack.Screen name="projects/edit" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="quotes/[id]" options={{ title: "見積書" }} />
       <Stack.Screen name="quotes/edit" options={{ headerShown: false, presentation: "modal" }} />

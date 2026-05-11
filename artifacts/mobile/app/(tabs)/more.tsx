@@ -20,7 +20,7 @@ type NavEntry = {
 const NAV: NavEntry[] = [
   { label: "ダッシュボード", icon: "home", href: "/(tabs)" },
   { label: "案件", icon: "briefcase", href: "/(tabs)/projects" },
-  { label: "竣工", icon: "check-circle", href: "/(tabs)/projects?status=completed" },
+  { label: "竣工", icon: "check-circle", href: "/projects/completed" },
   { label: "施工台帳", icon: "book-open", href: "/ledger" },
   { label: "工程表", icon: "bar-chart-2", href: "/gantt" },
   { label: "見積", icon: "file-text", href: "/(tabs)/quotes" },

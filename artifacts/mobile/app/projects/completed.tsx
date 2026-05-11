@@ -9,18 +9,10 @@ import {
   useListProjects,
   useUpdateProject,
 } from "@workspace/api-client-react";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import {
-  Alert,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  View,
-} from "react-native";
+import { useRouter } from "expo-router";
+import React, { useMemo, useState } from "react";
+import { Alert, FlatList, Pressable, RefreshControl, ScrollView, View } from "react-native";
 
-import { Fab } from "@/components/form";
 import { ListToolbar } from "@/components/select-button";
 import { SelectionBar } from "@/components/selection-bar";
 import { StatusPicker } from "@/components/status-picker";
@@ -38,45 +30,45 @@ import { useSelection } from "@/hooks/useSelection";
 import { runBulkDelete } from "@/lib/bulk-delete";
 import { PROJECT_STATUS_LABEL, fmtDate, yen } from "@/lib/format";
 
-// 案件一覧 = 進行中の案件 (竣工は別画面 /projects/completed)。
-// 「受注」(contracted) は WEB 版にも独立タブ無し → 廃止。
-const FILTERS: { label: string; value: ProjectStatus | "all" }[] = [
-  { label: "全て", value: "all" },
-  { label: "見積中", value: "estimating" },
-  { label: "施工中", value: "in_progress" },
-];
-
-export default function ProjectsTab() {
+export default function CompletedProjectsScreen() {
   const c = useColors();
   const router = useRouter();
-  const params = useLocalSearchParams<{ status?: string }>();
-  const initial: ProjectStatus | "all" =
-    params.status === "in_progress" || params.status === "estimating"
-      ? (params.status as ProjectStatus)
-      : "all";
-  const [filter, setFilter] = useState<ProjectStatus | "all">(initial);
-  // URL param に応じて filter を同期。竣工は受け付けない (別画面へ)。
-  useEffect(() => {
-    if (params.status === "in_progress" || params.status === "estimating") {
-      setFilter(params.status as ProjectStatus);
-    } else if (params.status === undefined) {
-      setFilter("all");
-    }
-  }, [params.status]);
-
-  // 「全て」でも竣工は除外。 in_progress/estimating はそのままサーバへ。
-  const queryParams = filter === "all" ? undefined : { status: filter };
-  const q = useListProjects(queryParams);
+  const q = useListProjects({ status: "completed" });
   const qc = useQueryClient();
   const updateMut = useUpdateProject();
   const deleteMut = useDeleteProject();
   const [statusTarget, setStatusTarget] = useState<Project | null>(null);
-  // クライアント側でも完了案件をガード (サーバから漏れて来ても弾く)。
-  const data = (q.data ?? []).filter((p) =>
-    filter === "all" ? p.status !== "completed" : true,
-  );
-  const sel = useSelection(data);
+  const [month, setMonth] = useState<string>("all");
   const [busy, setBusy] = useState(false);
+
+  const data = q.data ?? [];
+
+  // 工期終了月オプション (新→旧)
+  const monthOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of data) {
+      const d = p.endDate ? String(p.endDate).slice(0, 7) : "";
+      if (d) set.add(d);
+    }
+    return Array.from(set)
+      .sort((a, b) => (a < b ? 1 : -1))
+      .map((m) => ({
+        value: m,
+        label: `${m.slice(0, 4)}年${m.slice(5, 7)}月`,
+      }));
+  }, [data]);
+
+  const rows = useMemo(
+    () =>
+      month === "all"
+        ? data
+        : data.filter(
+            (p) => p.endDate && String(p.endDate).slice(0, 7) === month,
+          ),
+    [data, month],
+  );
+
+  const sel = useSelection(rows);
 
   if (q.isLoading) return <Loader />;
   if (q.isError) return <ErrorState onRetry={() => q.refetch()} />;
@@ -106,88 +98,89 @@ export default function ProjectsTab() {
   const applyStatus = async (project: Project, value: ProjectStatus) => {
     if (value === project.status) return;
     try {
-      await updateMut.mutateAsync({
-        id: project.id,
-        data: { status: value },
-      });
+      await updateMut.mutateAsync({ id: project.id, data: { status: value } });
       await Promise.all([
         qc.invalidateQueries({ queryKey: getListProjectsQueryKey() }),
-        qc.invalidateQueries({
-          queryKey: getListProjectsQueryKey(queryParams),
-        }),
-        qc.invalidateQueries({
-          queryKey: getGetProjectQueryKey(project.id),
-        }),
+        qc.invalidateQueries({ queryKey: getGetProjectQueryKey(project.id) }),
       ]);
     } catch (e) {
       Alert.alert("更新失敗", e instanceof Error ? e.message : String(e));
     }
   };
 
+  const FILTERS: { label: string; value: string }[] = [
+    { label: "全て", value: "all" },
+    ...monthOptions,
+  ];
+
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
       {sel.selectionMode ? (
         <SelectionBar
           count={sel.count}
-          total={data.length}
+          total={rows.length}
           onCancel={sel.clear}
           onSelectAll={sel.selectAll}
           onDelete={onBulkDelete}
           busy={busy}
         />
       ) : (
-        <ListToolbar onSelect={sel.enter} selectDisabled={data.length === 0}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8 }}
-      >
-        {FILTERS.map((f) => {
-          const active = filter === f.value;
-          return (
-            <Pressable
-              key={f.value}
-              onPress={() => setFilter(f.value)}
-              style={({ pressed }) => [
-                {
-                  paddingHorizontal: 14,
-                  paddingVertical: 7,
-                  borderRadius: 999,
-                  backgroundColor: active ? c.primary : c.card,
-                  borderWidth: 1,
-                  borderColor: active ? c.primary : c.border,
-                },
-                pressed && { opacity: 0.7 },
-              ]}
-            >
-              <Body
-                style={{
-                  color: active ? c.primaryForeground : c.foreground,
-                  fontSize: 13,
-                  fontWeight: "600",
-                }}
-              >
-                {f.label}
-              </Body>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+        <ListToolbar onSelect={sel.enter} selectDisabled={rows.length === 0}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8 }}
+          >
+            {FILTERS.map((f) => {
+              const active = month === f.value;
+              return (
+                <Pressable
+                  key={f.value}
+                  onPress={() => setMonth(f.value)}
+                  style={({ pressed }) => [
+                    {
+                      paddingHorizontal: 14,
+                      paddingVertical: 7,
+                      borderRadius: 999,
+                      backgroundColor: active ? c.primary : c.card,
+                      borderWidth: 1,
+                      borderColor: active ? c.primary : c.border,
+                    },
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <Body
+                    style={{
+                      color: active ? c.primaryForeground : c.foreground,
+                      fontSize: 13,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {f.label}
+                  </Body>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </ListToolbar>
       )}
 
       <FlatList
-        data={data}
+        data={rows}
         keyExtractor={(p) => p.id}
-        contentContainerStyle={{ padding: 12, gap: 10, paddingBottom: 96 }}
+        contentContainerStyle={{ padding: 12, gap: 10, paddingBottom: 40 }}
         refreshControl={
           <RefreshControl refreshing={q.isFetching} onRefresh={() => q.refetch()} />
         }
         ListEmptyComponent={
-          <EmptyState icon="briefcase" title="案件がありません" subtitle="フィルタを切り替えてみてください" />
+          <EmptyState
+            icon="check-circle"
+            title="竣工案件がありません"
+            subtitle="ステータスを「竣工」にした案件がここに表示されます"
+          />
         }
         renderItem={({ item }) => {
-          const profit = item.contractAmount - item.actualCost;
+          const profit = Number(item.contractAmount ?? 0) - Number(item.actualCost ?? 0);
           return (
             <Card
               selectable={sel.selectionMode}
@@ -201,15 +194,16 @@ export default function ProjectsTab() {
             >
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <View style={{ flex: 1, paddingRight: 12 }}>
-                  <Body style={{ fontWeight: "600" }} >{item.name}</Body>
+                  <Body style={{ fontWeight: "600" }}>{item.name}</Body>
                   <Muted style={{ marginTop: 2 }}>
                     {item.customerName}
                     {item.unitNumber ? ` · ${item.unitNumber}` : ""}
                   </Muted>
                   <Muted style={{ marginTop: 2 }}>
-                    {fmtDate(item.startDate)}{item.endDate ? ` 〜 ${fmtDate(item.endDate)}` : ""}
+                    {fmtDate(item.startDate)}
+                    {item.endDate ? ` 〜 ${fmtDate(item.endDate)}` : ""}
                   </Muted>
-                  <View style={{ marginTop: 8, flexDirection: "row", gap: 6, alignItems: "center" }}>
+                  <View style={{ marginTop: 8, flexDirection: "row", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                     <Pressable
                       onPress={(e) => {
                         e.stopPropagation?.();
@@ -221,21 +215,13 @@ export default function ProjectsTab() {
                         pressed && { opacity: 0.6 },
                       ]}
                     >
-                      <Badge tone={statusTone(item.status)}>
+                      <Badge tone="success">
                         {PROJECT_STATUS_LABEL[item.status] ?? item.status}
                       </Badge>
-                      <Feather
-                        name="chevron-down"
-                        size={12}
-                        color={c.mutedForeground}
-                      />
+                      <Feather name="chevron-down" size={12} color={c.mutedForeground} />
                     </Pressable>
-                    {item.salesRep ? (
-                      <Badge>営業: {item.salesRep}</Badge>
-                    ) : null}
-                    {item.siteSupervisor ? (
-                      <Badge>監督: {item.siteSupervisor}</Badge>
-                    ) : null}
+                    {item.salesRep ? <Badge>営業: {item.salesRep}</Badge> : null}
+                    {item.siteSupervisor ? <Badge>監督: {item.siteSupervisor}</Badge> : null}
                   </View>
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
@@ -251,9 +237,7 @@ export default function ProjectsTab() {
           );
         }}
       />
-      {!sel.selectionMode ? (
-        <Fab onPress={() => router.push("/projects/edit")} label="新規案件" inTabs />
-      ) : null}
+
       <StatusPicker<ProjectStatus>
         open={!!statusTarget}
         title="ステータスを変更"
@@ -266,19 +250,4 @@ export default function ProjectsTab() {
       />
     </View>
   );
-}
-
-function statusTone(s: ProjectStatus): "default" | "success" | "warning" | "danger" | "accent" {
-  switch (s) {
-    case "in_progress":
-      return "accent";
-    case "completed":
-      return "success";
-    case "contracted":
-      return "default";
-    case "estimating":
-      return "warning";
-    default:
-      return "default";
-  }
 }
