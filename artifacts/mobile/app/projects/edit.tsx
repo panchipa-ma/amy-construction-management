@@ -111,32 +111,28 @@ function ProjectEdit() {
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((s) => ({ ...s, [k]: v }));
 
-  // 顧客選択時に規定値をプリフィル（空欄のフィールドのみ）
+  // 顧客選択時、その顧客の規定値で常に上書き（顧客に値がなければクリア）
   const onCustomerChange = (cid: string) => {
     const cust = customersQ.data?.find((c) => c.id === cid);
     setForm((s) => ({
       ...s,
       customerId: cid,
       standardProfitRate:
-        s.standardProfitRate || (cust?.defaultProfitRate != null ? String(cust.defaultProfitRate) : ""),
+        cust?.defaultProfitRate != null ? String(cust.defaultProfitRate) : "",
       salesCommissionRate:
-        s.salesCommissionRate && s.salesCommissionRate !== "5"
-          ? s.salesCommissionRate
-          : cust?.defaultSalesCommissionRate != null
-            ? String(cust.defaultSalesCommissionRate)
-            : s.salesCommissionRate,
+        cust?.defaultSalesCommissionRate != null
+          ? String(cust.defaultSalesCommissionRate)
+          : "",
       supervisorCommissionRate:
-        s.supervisorCommissionRate && s.supervisorCommissionRate !== "30"
-          ? s.supervisorCommissionRate
-          : cust?.defaultSupervisorCommissionRate != null
-            ? String(cust.defaultSupervisorCommissionRate)
-            : s.supervisorCommissionRate,
-      salesRep: s.salesRep || cust?.defaultSalesRep || "",
-      otherSalesBonusRecipient:
-        s.otherSalesBonusRecipient || cust?.defaultOtherSalesBonusRecipient || "",
+        cust?.defaultSupervisorCommissionRate != null
+          ? String(cust.defaultSupervisorCommissionRate)
+          : "",
+      salesRep: cust?.defaultSalesRep ?? "",
+      otherSalesBonusRecipient: cust?.defaultOtherSalesBonusRecipient ?? "",
       otherSalesBonusRate:
-        s.otherSalesBonusRate ||
-        (cust?.defaultOtherSalesBonusRate != null ? String(cust.defaultOtherSalesBonusRate) : ""),
+        cust?.defaultOtherSalesBonusRate != null
+          ? String(cust.defaultOtherSalesBonusRate)
+          : "",
     }));
   };
 

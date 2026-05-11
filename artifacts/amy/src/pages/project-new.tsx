@@ -172,29 +172,29 @@ export default function ProjectNewPage() {
                     const cust = (customersQ.data ?? []).find(
                       (c) => c.id === v,
                     );
+                    // 顧客の規定値で常に上書き（顧客に値がなければクリア）
                     setForm((f) => ({
                       ...f,
                       customerId: v,
                       standardProfitRate:
                         cust?.defaultProfitRate != null
                           ? String(cust.defaultProfitRate)
-                          : f.standardProfitRate,
-                      salesCommissionRate: cust?.defaultSalesCommissionRate
-                        != null
-                        ? String(cust.defaultSalesCommissionRate)
-                        : f.salesCommissionRate,
+                          : "",
+                      salesCommissionRate:
+                        cust?.defaultSalesCommissionRate != null
+                          ? String(cust.defaultSalesCommissionRate)
+                          : "",
                       supervisorCommissionRate:
                         cust?.defaultSupervisorCommissionRate != null
                           ? String(cust.defaultSupervisorCommissionRate)
-                          : f.supervisorCommissionRate,
-                      salesRep: cust?.defaultSalesRep || f.salesRep,
+                          : "",
+                      salesRep: cust?.defaultSalesRep ?? "",
                       otherSalesBonusRecipient:
-                        cust?.defaultOtherSalesBonusRecipient ||
-                        f.otherSalesBonusRecipient,
+                        cust?.defaultOtherSalesBonusRecipient ?? "",
                       otherSalesBonusRate:
                         cust?.defaultOtherSalesBonusRate != null
                           ? String(cust.defaultOtherSalesBonusRate)
-                          : f.otherSalesBonusRate,
+                          : "",
                     }));
                   }}
                 >
