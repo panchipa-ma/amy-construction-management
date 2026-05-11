@@ -67,13 +67,13 @@ Keys 自動 (`CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABL
 
 `GET /api/commissions?month=YYYY-MM` — 対象月に `invoices.sentAt` が入る請求書を担当者ごとに集計。`sentAt` は `sentToClient` の false→true 遷移で自動 stamp (true→false でクリア)。client 指定優先。
 
-**全 3 種とも「ステータス=竣工 (completed) 案件」でのみ発生する。** 受注/施工中の案件の請求書は対象外。
+**「竣工ベース統一」**: 3 種すべて、ステータス=`completed` 案件で **最新の送付請求書が対象月** にある時、その案件の **全請求書合計 (税込)** をベースに **一度に** 計上する (案件 1 つにつき各歩合 1 回)。受注/施工中の案件は対象外。`commissionableProjects` で gating 済。
 
-3 components:
+3 components (同じ `sales = sum(税込)` を共有):
 
-1. **営業歩合** — per invoice: `invoice税込合計 × 実効営業歩合率%` を `project.salesRep` に計上 (案件が completed の時のみ)。**実効率 = `project.salesCommissionRate − Σマネジメント報酬率`**。例: エディ案件 (営業 7.5%) + 亘 (2.5%) なら エディ 5%、亘 2.5%。負は 0 でクリップ。
-2. **現場監督歩合** — completed 案件の最新送付請求書が対象月にある時のみ (各案件 1 回)。`規定超過粗利 × project.supervisorCommissionRate%`、`規定超過粗利 = max(0, sum(税込) − 営業歩合 − sum(税込) × standardProfitRate% − sum(actualAmount))`。`standardProfitRate` がなければ `customer.defaultProfitRate` にフォールバック。`project.siteSupervisor` に計上。
-3. **マネジメント報酬** — giver-driven, per-project。`projects.otherSalesBonusRecipient` + `otherSalesBonusRate` (recipient ≠ salesRep の時のみ有効)。completed 案件の各請求書税込 × rate% を recipient に。**営業歩合から差し引いた分** — 二重計上ではない。
+1. **営業歩合** — `sales × 実効営業歩合率%` を `project.salesRep` に計上。**実効率 = `project.salesCommissionRate − Σマネジメント報酬率`**。例: エディ案件 (営業 7.5%) + 亘 (2.5%) なら エディ 5%、亘 2.5%。負は 0 でクリップ。
+2. **現場監督歩合** — `規定超過粗利 × project.supervisorCommissionRate%`、`規定超過粗利 = max(0, sales − sales × salesRate% − sales × standardProfitRate% − sum(actualAmount))`。`standardProfitRate` がなければ `customer.defaultProfitRate` にフォールバック。`project.siteSupervisor` に計上。
+3. **マネジメント報酬** — giver-driven, per-project。`projects.otherSalesBonusRecipient` + `otherSalesBonusRate` (recipient ≠ salesRep の時のみ有効)。`sales × rate%` を recipient に。**営業歩合から差し引いた分** — 二重計上ではない。
 
 Page: month picker + 3 つのクリック可能サマリタイル (全体 / 営業含むマネジメント報酬 / 現場監督)。Expandable per-person table、kind タグ付き invoice 行は project にリンク。
 

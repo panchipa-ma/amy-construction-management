@@ -35,7 +35,7 @@ import {
   SectionTitle,
 } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
-import { COST_CATEGORY_LABEL, fmtDate, yen } from "@/lib/format";
+import { COST_CATEGORY_LABEL, endOfNextMonthISO, fmtDate, yen } from "@/lib/format";
 import { printApiDoc } from "@/lib/print-doc";
 
 function todayStr() {
@@ -294,8 +294,18 @@ function ConvertModal({
 }) {
   const c = useColors();
   const [num, setNum] = useState(defaultNumber);
-  const [issue, setIssue] = useState(defaultIssueDate);
-  const [due, setDue] = useState("");
+  const [issue, setIssueRaw] = useState(defaultIssueDate);
+  // 翌月末を初期値に。ユーザーが手動で変更したら自動同期を停止。
+  const [due, setDueRaw] = useState(endOfNextMonthISO(defaultIssueDate));
+  const [dueTouched, setDueTouched] = useState(false);
+  const setIssue = (v: string) => {
+    setIssueRaw(v);
+    if (!dueTouched && v) setDueRaw(endOfNextMonthISO(v));
+  };
+  const setDue = (v: string) => {
+    setDueRaw(v);
+    setDueTouched(true);
+  };
   return (
     <Modal transparent animationType="slide" visible={open} onRequestClose={onClose}>
       <Pressable

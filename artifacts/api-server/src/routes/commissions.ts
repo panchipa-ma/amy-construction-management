@@ -224,135 +224,121 @@ router.get("/commissions", async (req, res): Promise<void> => {
     return { recipient, rate };
   }
 
-  // 1) 営業歩合 (請求書ごと)
-  // 歩合は「竣工」案件でのみ発生する。
-  for (const inv of monthInvoices) {
-    const project = projectMap.get(inv.projectId);
-    if (!project) continue;
-    if (project.status !== "completed") continue;
-    const items = (inv.items ?? []) as LineItemJson[];
-    const { total } = computeTotals(items);
-    const sentAt = isoDate(inv.sentAt)!;
-    const salesRep = project.salesRep?.trim() || null;
-    const siteSupervisor = project.siteSupervisor?.trim() || null;
-
-    if (salesRep && total > 0) {
-      const rate = n(project.salesCommissionRate);
-      const bonus = bonusForProject(project);
-      const bonusOut = bonus?.rate ?? 0;
-      const effectiveRate = Math.max(0, rate - bonusOut);
-      const amount = Math.round((total * effectiveRate) / 100);
-      if (amount > 0) {
-        const p = getPerson(salesRep);
-        p.salesCommission += amount;
-        p.lines.push({
-          invoiceId: inv.id,
-          invoiceNumber: inv.invoiceNumber,
-          projectId: project.id,
-          projectName: project.name,
-          salesRep,
-          siteSupervisor,
-          sentAt,
-          invoiceTotal: total,
-          kind: "sales",
-          amount,
-          rate: effectiveRate,
-          baseAmount: total,
-          note:
-            bonusOut > 0
-              ? `${rate}% − マネジメント報酬 ${bonusOut}% = ${effectiveRate}%`
-              : null,
-        });
-      }
-    }
-  }
-
-  // 2) 監督歩合 (竣工 + 最新請求が当月)
-  const supervisorProjects = projects.filter((p) => {
+  // 「竣工ベース」: ステータス=completed の案件で、最新の送付請求書が当月にある時、
+  // その案件の全請求書合計をベースに 営業/監督/マネジメント の3歩合を一度に計上する。
+  const commissionableProjects = projects.filter((p) => {
     if (p.status !== "completed") return false;
     const latest = latestSentByProject.get(p.id);
     return latest != null && monthOf(latest) === month;
   });
-  for (const project of supervisorProjects) {
-    const supervisor = project.siteSupervisor?.trim() || null;
-    if (!supervisor) continue;
+
+  for (const project of commissionableProjects) {
     const sales = invoiceTotalByProject.get(project.id) ?? 0;
     if (sales <= 0) continue;
-    const customer = customerMap.get(project.customerId);
-    const standardRate =
-      project.standardProfitRate != null
-        ? n(project.standardProfitRate)
-        : customer
-          ? n(customer.defaultProfitRate)
-          : 20;
-    const salesRate = n(project.salesCommissionRate);
-    const supervisorRate = n(project.supervisorCommissionRate);
-    const salesCom = sales * (salesRate / 100);
-    const standardProfit = sales * (standardRate / 100);
-    const actualCost = actualByProject.get(project.id) ?? 0;
-    const excessProfit = Math.max(
-      0,
-      sales - salesCom - standardProfit - actualCost,
-    );
-    const amount = Math.round((excessProfit * supervisorRate) / 100);
-    if (amount <= 0) continue;
     const latestSent = latestSentByProject.get(project.id)!;
-    // 当月の最新請求書 (ライン表示用)
     const latestInv =
       monthInvoices.find(
         (i) => i.projectId === project.id && isoDate(i.sentAt) === latestSent,
       ) ?? monthInvoices.find((i) => i.projectId === project.id);
-    const p = getPerson(supervisor);
-    p.supervisorCommission += amount;
-    p.lines.push({
-      invoiceId: latestInv?.id ?? "",
-      invoiceNumber: latestInv?.invoiceNumber ?? "",
-      projectId: project.id,
-      projectName: project.name,
-      salesRep: project.salesRep?.trim() || null,
-      siteSupervisor: supervisor,
-      sentAt: latestSent,
-      invoiceTotal: sales,
-      kind: "supervisor",
-      amount,
-      rate: supervisorRate,
-      baseAmount: excessProfit,
-      note: `規定超過粗利 ¥${Math.round(excessProfit).toLocaleString()} × ${supervisorRate}%`,
-    });
-  }
-
-  // 3) マネジメント報酬 (亘ルール)
-  // 案件ごとに recipient + rate が指定されていれば、その案件の各請求書から計上する。
-  // 歩合は「竣工」案件でのみ発生する。
-  for (const inv of monthInvoices) {
-    const project = projectMap.get(inv.projectId);
-    if (!project) continue;
-    if (project.status !== "completed") continue;
-    const bonus = bonusForProject(project);
-    if (!bonus) continue;
-    const items = (inv.items ?? []) as LineItemJson[];
-    const { total } = computeTotals(items);
-    if (total <= 0) continue;
-    const amount = Math.round((total * bonus.rate) / 100);
-    if (amount <= 0) continue;
     const salesRep = project.salesRep?.trim() || null;
-    const p = getPerson(bonus.recipient);
-    p.otherSalesBonus += amount;
-    p.lines.push({
-      invoiceId: inv.id,
-      invoiceNumber: inv.invoiceNumber,
-      projectId: project.id,
-      projectName: project.name,
-      salesRep,
-      siteSupervisor: project.siteSupervisor?.trim() || null,
-      sentAt: isoDate(inv.sentAt)!,
-      invoiceTotal: total,
-      kind: "other_sales_bonus",
-      amount,
-      rate: bonus.rate,
-      baseAmount: total,
-      note: salesRep ? `${salesRep} 獲得分から ${bonus.rate}%` : `${bonus.rate}%`,
-    });
+    const siteSupervisor = project.siteSupervisor?.trim() || null;
+    const bonus = bonusForProject(project);
+
+    // 1) 営業歩合 — 案件全請求書合計 × 実効営業歩合率
+    if (salesRep) {
+      const rate = n(project.salesCommissionRate);
+      const bonusOut = bonus?.rate ?? 0;
+      const effectiveRate = Math.max(0, rate - bonusOut);
+      const amount = Math.round((sales * effectiveRate) / 100);
+      if (amount > 0) {
+        const p = getPerson(salesRep);
+        p.salesCommission += amount;
+        p.lines.push({
+          invoiceId: latestInv?.id ?? "",
+          invoiceNumber: latestInv?.invoiceNumber ?? "",
+          projectId: project.id,
+          projectName: project.name,
+          salesRep,
+          siteSupervisor,
+          sentAt: latestSent,
+          invoiceTotal: sales,
+          kind: "sales",
+          amount,
+          rate: effectiveRate,
+          baseAmount: sales,
+          note:
+            bonusOut > 0
+              ? `${rate}% − マネジメント報酬 ${bonusOut}% = ${effectiveRate}% (竣工)`
+              : `竣工 — 案件全請求合計 × ${effectiveRate}%`,
+        });
+      }
+    }
+
+    // 2) 現場監督歩合 — 規定超過粗利 × 監督歩合率
+    if (siteSupervisor) {
+      const customer = customerMap.get(project.customerId);
+      const standardRate =
+        project.standardProfitRate != null
+          ? n(project.standardProfitRate)
+          : customer
+            ? n(customer.defaultProfitRate)
+            : 20;
+      const salesRate = n(project.salesCommissionRate);
+      const supervisorRate = n(project.supervisorCommissionRate);
+      const salesCom = sales * (salesRate / 100);
+      const standardProfit = sales * (standardRate / 100);
+      const actualCost = actualByProject.get(project.id) ?? 0;
+      const excessProfit = Math.max(
+        0,
+        sales - salesCom - standardProfit - actualCost,
+      );
+      const amount = Math.round((excessProfit * supervisorRate) / 100);
+      if (amount > 0) {
+        const p = getPerson(siteSupervisor);
+        p.supervisorCommission += amount;
+        p.lines.push({
+          invoiceId: latestInv?.id ?? "",
+          invoiceNumber: latestInv?.invoiceNumber ?? "",
+          projectId: project.id,
+          projectName: project.name,
+          salesRep,
+          siteSupervisor,
+          sentAt: latestSent,
+          invoiceTotal: sales,
+          kind: "supervisor",
+          amount,
+          rate: supervisorRate,
+          baseAmount: excessProfit,
+          note: `規定超過粗利 ¥${Math.round(excessProfit).toLocaleString()} × ${supervisorRate}% (竣工)`,
+        });
+      }
+    }
+
+    // 3) マネジメント報酬 — 案件全請求合計 × bonus.rate
+    if (bonus) {
+      const amount = Math.round((sales * bonus.rate) / 100);
+      if (amount > 0) {
+        const p = getPerson(bonus.recipient);
+        p.otherSalesBonus += amount;
+        p.lines.push({
+          invoiceId: latestInv?.id ?? "",
+          invoiceNumber: latestInv?.invoiceNumber ?? "",
+          projectId: project.id,
+          projectName: project.name,
+          salesRep,
+          siteSupervisor,
+          sentAt: latestSent,
+          invoiceTotal: sales,
+          kind: "other_sales_bonus",
+          amount,
+          rate: bonus.rate,
+          baseAmount: sales,
+          note: salesRep
+            ? `${salesRep} 獲得分から ${bonus.rate}% (竣工)`
+            : `${bonus.rate}% (竣工)`,
+        });
+      }
+    }
   }
 
   const peopleArr = [...people.values()]
