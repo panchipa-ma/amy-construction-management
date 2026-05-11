@@ -60,29 +60,14 @@ function InternalDashboard() {
       <SectionTitle>クイック操作</SectionTitle>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
         <QuickAction
-          icon="briefcase"
-          label="案件一覧"
-          onPress={() => router.push("/(tabs)/projects")}
-        />
-        <QuickAction
-          icon="bar-chart-2"
-          label="工程表作成"
-          onPress={() => router.push("/gantt")}
-        />
-        <QuickAction
-          icon="clipboard"
-          label="出面表"
-          onPress={() => router.push("/staff-assignments")}
+          icon="users"
+          label="顧客一覧"
+          onPress={() => router.push("/customers")}
         />
         <QuickAction
           icon="file-text"
           label="見積書一覧"
           onPress={() => router.push("/(tabs)/quotes")}
-        />
-        <QuickAction
-          icon="check-circle"
-          label="竣工一覧"
-          onPress={() => router.push("/projects/completed")}
         />
         <QuickAction
           icon="dollar-sign"
