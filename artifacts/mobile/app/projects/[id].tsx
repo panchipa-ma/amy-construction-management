@@ -44,6 +44,43 @@ export default function ProjectDetailGuarded() {
   );
 }
 
+function QuickAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Feather>["name"];
+  label: string;
+  onPress: () => void;
+}) {
+  const c = useColors();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        {
+          flex: 1,
+          paddingVertical: 12,
+          borderRadius: 8,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          backgroundColor: c.primary,
+          borderWidth: 1,
+          borderColor: c.primary,
+        },
+        pressed && { opacity: 0.7 },
+      ]}
+    >
+      <Feather name={icon} size={14} color={c.primaryForeground} />
+      <Body style={{ fontWeight: "600", color: c.primaryForeground }}>
+        {label}
+      </Body>
+    </Pressable>
+  );
+}
+
 function ProjectDetail() {
   const c = useColors();
   const router = useRouter();
@@ -116,6 +153,24 @@ function ProjectDetail() {
           <Feather name="edit-2" size={14} color={c.foreground} />
           <Body style={{ fontWeight: "600" }}>案件を編集</Body>
         </Pressable>
+
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <QuickAction
+            icon="file-text"
+            label="見積書"
+            onPress={() => router.push(`/quotes/edit?projectId=${p.id}`)}
+          />
+          <QuickAction
+            icon="bar-chart-2"
+            label="工程表"
+            onPress={() => router.push(`/(tabs)/gantt`)}
+          />
+          <QuickAction
+            icon="dollar-sign"
+            label="請求書"
+            onPress={() => router.push(`/invoices/edit?projectId=${p.id}`)}
+          />
+        </View>
 
         <Card>
           <SectionTitle>基本情報</SectionTitle>

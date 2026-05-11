@@ -33,10 +33,10 @@ import {
   lineItemsToApi,
 } from "@/components/form/line-items";
 import { Body, Loader } from "@/components/ui";
+import { endOfNextMonthISO, todayLocalISO } from "@/lib/format";
 
 function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return todayLocalISO();
 }
 
 export default function InvoiceEditGuarded() {
@@ -73,8 +73,18 @@ function InvoiceEdit() {
   const [subject, setSubject] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [autoNumberSet, setAutoNumberSet] = useState(false);
-  const [issueDate, setIssueDate] = useState(todayStr());
-  const [dueDate, setDueDate] = useState("");
+  const [issueDate, setIssueDateRaw] = useState(todayStr());
+  // 翌月末を初期値に。ユーザーが手動で変更したら自動同期を停止。
+  const [dueDate, setDueDateRaw] = useState(endOfNextMonthISO(todayStr()));
+  const [dueDateTouched, setDueDateTouched] = useState(false);
+  const setIssueDate = (v: string) => {
+    setIssueDateRaw(v);
+    if (!dueDateTouched && v) setDueDateRaw(endOfNextMonthISO(v));
+  };
+  const setDueDate = (v: string) => {
+    setDueDateRaw(v);
+    setDueDateTouched(true);
+  };
   const [notes, setNotes] = useState("");
   const [paid, setPaid] = useState(false);
   const [sentToClient, setSentToClient] = useState(false);
@@ -103,8 +113,10 @@ function InvoiceEdit() {
       setContactName(inv.contactName ?? "");
       setSubject(inv.subject ?? "");
       setInvoiceNumber(inv.invoiceNumber);
-      setIssueDate(inv.issueDate);
-      setDueDate(inv.dueDate ?? "");
+      setIssueDateRaw(inv.issueDate);
+      setDueDateRaw(inv.dueDate ?? "");
+      // 既存値はユーザー設定済みとみなし、自動同期を停止
+      setDueDateTouched(true);
       setNotes(inv.notes ?? "");
       setPaid(inv.paid);
       setSentToClient(inv.sentToClient);

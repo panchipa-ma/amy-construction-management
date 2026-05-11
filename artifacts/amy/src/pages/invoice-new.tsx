@@ -22,7 +22,7 @@ import { invalidateDashboard } from "@/lib/invalidate";
 import { ArrowLeft, Save, Trash2, Plus } from "lucide-react";
 import { apiErrorMessage } from "@/lib/api-error";
 import { COMPANY_INFO } from "@/lib/company-info";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, endOfNextMonthISO } from "@/lib/format";
 import { UNIT_OPTIONS } from "@/lib/units";
 
 const ROWS = 8;
@@ -90,10 +90,22 @@ export default function InvoiceNewPage() {
     const d = new Date();
     return `INV-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`;
   });
-  const [issueDate, setIssueDate] = useState(
+  const [issueDate, setIssueDateRaw] = useState(
     () => new Date().toISOString().slice(0, 10),
   );
-  const [dueDate, setDueDate] = useState("");
+  // 翌月末を初期値に。ユーザーが手動で変更したら自動同期を停止。
+  const [dueDate, setDueDateRaw] = useState(() =>
+    endOfNextMonthISO(new Date().toISOString().slice(0, 10)),
+  );
+  const [dueDateTouched, setDueDateTouched] = useState(false);
+  const setIssueDate = (v: string) => {
+    setIssueDateRaw(v);
+    if (!dueDateTouched && v) setDueDateRaw(endOfNextMonthISO(v));
+  };
+  const setDueDate = (v: string) => {
+    setDueDateRaw(v);
+    setDueDateTouched(true);
+  };
   const [paid, setPaid] = useState(false);
   const [notes, setNotes] = useState("");
   const [rows, setRows] = useState<LineItem[]>(() =>

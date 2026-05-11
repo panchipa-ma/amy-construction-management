@@ -200,7 +200,12 @@ router.get("/commissions", async (req, res): Promise<void> => {
     return p;
   }
 
+  // 月内送付請求書の合計 (歩合ゲート前の活動指標 — invoiceCount と整合)
   let totalInvoiceAmount = 0;
+  for (const inv of monthInvoices) {
+    const items = (inv.items ?? []) as LineItemJson[];
+    totalInvoiceAmount += computeTotals(items).total;
+  }
 
   // 案件ごとに「マネジメント報酬の受取人」と「率」が直接設定される。
   // エディ (営業歩合 7.5%) の案件で 亘を受取人 / 2.5% に設定 →
@@ -220,12 +225,13 @@ router.get("/commissions", async (req, res): Promise<void> => {
   }
 
   // 1) 営業歩合 (請求書ごと)
+  // 歩合は「竣工」案件でのみ発生する。
   for (const inv of monthInvoices) {
     const project = projectMap.get(inv.projectId);
     if (!project) continue;
+    if (project.status !== "completed") continue;
     const items = (inv.items ?? []) as LineItemJson[];
     const { total } = computeTotals(items);
-    totalInvoiceAmount += total;
     const sentAt = isoDate(inv.sentAt)!;
     const salesRep = project.salesRep?.trim() || null;
     const siteSupervisor = project.siteSupervisor?.trim() || null;
@@ -317,9 +323,11 @@ router.get("/commissions", async (req, res): Promise<void> => {
 
   // 3) マネジメント報酬 (亘ルール)
   // 案件ごとに recipient + rate が指定されていれば、その案件の各請求書から計上する。
+  // 歩合は「竣工」案件でのみ発生する。
   for (const inv of monthInvoices) {
     const project = projectMap.get(inv.projectId);
     if (!project) continue;
+    if (project.status !== "completed") continue;
     const bonus = bonusForProject(project);
     if (!bonus) continue;
     const items = (inv.items ?? []) as LineItemJson[];
