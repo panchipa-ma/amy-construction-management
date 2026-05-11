@@ -22,10 +22,10 @@ export function fmtDateTime(s: string | null | undefined): string {
 
 export const PROJECT_STATUS_LABEL: Record<string, string> = {
   estimating: "見積中",
-  contracted: "契約済",
+  contracted: "受注",
   in_progress: "施工中",
   completed: "竣工",
-  archived: "アーカイブ",
+  archived: "完了",
 };
 
 export const COST_CATEGORY_LABEL: Record<string, string> = {

@@ -29,10 +29,10 @@ import { Loader } from "@/components/ui";
 
 const STATUS_OPTIONS: SelectOption<ProjectStatus>[] = [
   { value: "estimating", label: "見積中" },
-  { value: "contracted", label: "契約済" },
+  { value: "contracted", label: "受注" },
   { value: "in_progress", label: "施工中" },
   { value: "completed", label: "竣工" },
-  { value: "archived", label: "アーカイブ" },
+  { value: "archived", label: "完了" },
 ];
 
 const empty = {

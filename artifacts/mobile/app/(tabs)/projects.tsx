@@ -39,8 +39,8 @@ import { runBulkDelete } from "@/lib/bulk-delete";
 import { PROJECT_STATUS_LABEL, fmtDate, yen } from "@/lib/format";
 
 const FILTERS: { label: string; value: ProjectStatus | "all" }[] = [
-  { label: "進行中", value: "in_progress" },
-  { label: "契約済", value: "contracted" },
+  { label: "施工中", value: "in_progress" },
+  { label: "受注", value: "contracted" },
   { label: "見積中", value: "estimating" },
   { label: "竣工", value: "completed" },
   { label: "全て", value: "all" },
