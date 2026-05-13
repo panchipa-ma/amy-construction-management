@@ -8,6 +8,9 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { FlatList, RefreshControl, View } from "react-native";
 
+import { Feather } from "@expo/vector-icons";
+import { Pressable } from "react-native";
+
 import { Fab } from "@/components/form";
 import { SelectButton } from "@/components/select-button";
 import { SelectionBar } from "@/components/selection-bar";
@@ -24,6 +27,7 @@ import { useColors } from "@/hooks/useColors";
 import { useSelection } from "@/hooks/useSelection";
 import { runBulkDelete } from "@/lib/bulk-delete";
 import { fmtDate, yen } from "@/lib/format";
+import { openStorageFile } from "@/lib/open-file";
 
 export default function VendorQuotesScreen() {
   const c = useColors();
@@ -106,6 +110,43 @@ export default function VendorQuotesScreen() {
                 <Muted>税込</Muted>
               </View>
             </View>
+            {item.fileUrl ? (
+              <Pressable
+                onPress={() => {
+                  if (sel.selectionMode) sel.toggle(item.id);
+                  else void openStorageFile(item.fileUrl!);
+                }}
+                hitSlop={6}
+                style={({ pressed }) => [
+                  {
+                    marginTop: 8,
+                    paddingVertical: 6,
+                    paddingHorizontal: 8,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    backgroundColor: c.muted,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Feather name="file-text" size={14} color={c.primary} />
+                <Body
+                  style={{
+                    flex: 1,
+                    fontSize: 12,
+                    color: c.primary,
+                  }}
+                  numberOfLines={1}
+                >
+                  {item.fileName || "見積書PDF"}
+                </Body>
+                <Feather name="external-link" size={12} color={c.mutedForeground} />
+              </Pressable>
+            ) : null}
           </Card>
         )}
       />

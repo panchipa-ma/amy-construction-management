@@ -6,7 +6,8 @@ import {
 } from "@workspace/api-client-react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, FlatList, Pressable, RefreshControl, ScrollView, View } from "react-native";
+import { FlatList, Pressable, RefreshControl, ScrollView, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
 
 import { Fab } from "@/components/form";
 import { ListToolbar } from "@/components/select-button";
@@ -24,6 +25,8 @@ import { useColors } from "@/hooks/useColors";
 import { useSelection } from "@/hooks/useSelection";
 import { runBulkDelete } from "@/lib/bulk-delete";
 import { fmtDate, yen } from "@/lib/format";
+import { openStorageFile } from "@/lib/open-file";
+import { ActionSheetModal } from "@/components/ActionSheetModal";
 
 const FILTERS = [
   { label: "全て", value: "all" as const },
@@ -54,6 +57,7 @@ export default function VendorInvoicesScreen() {
   const sel = useSelection(filtered);
   const deleteMut = useDeleteVendorInvoice();
   const [busy, setBusy] = useState(false);
+  const [addSheet, setAddSheet] = useState(false);
 
   if (q.isLoading) return <Loader />;
   if (q.isError) return <ErrorState onRetry={() => q.refetch()} />;
@@ -163,27 +167,95 @@ export default function VendorInvoicesScreen() {
                 <Muted>税込</Muted>
               </View>
             </View>
+            {item.fileUrl ? (
+              <Pressable
+                onPress={() => {
+                  if (sel.selectionMode) sel.toggle(item.id);
+                  else void openStorageFile(item.fileUrl!);
+                }}
+                hitSlop={6}
+                style={({ pressed }) => [
+                  {
+                    marginTop: 8,
+                    paddingVertical: 6,
+                    paddingHorizontal: 8,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    backgroundColor: c.muted,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Feather name="file-text" size={14} color={c.primary} />
+                <Body
+                  style={{ flex: 1, fontSize: 12, color: c.primary }}
+                  numberOfLines={1}
+                >
+                  {item.fileName || "請求書PDF"}
+                </Body>
+                <Feather name="external-link" size={12} color={c.mutedForeground} />
+              </Pressable>
+            ) : null}
+            {item.quoteFileUrl ? (
+              <Pressable
+                onPress={() => {
+                  if (sel.selectionMode) sel.toggle(item.id);
+                  else void openStorageFile(item.quoteFileUrl!);
+                }}
+                hitSlop={6}
+                style={({ pressed }) => [
+                  {
+                    marginTop: 6,
+                    paddingVertical: 5,
+                    paddingHorizontal: 8,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Feather name="paperclip" size={12} color={c.mutedForeground} />
+                <Body
+                  style={{ flex: 1, fontSize: 11, color: c.mutedForeground }}
+                  numberOfLines={1}
+                >
+                  [見積] {item.quoteFileName || "見積書PDF"}
+                </Body>
+              </Pressable>
+            ) : null}
           </Card>
         )}
       />
       {!sel.selectionMode ? (
-        <Fab
-          onPress={() =>
-            Alert.alert("職人請求書を追加", "どちらの方法で追加しますか?", [
-              {
-                text: "写真をアップロード",
-                onPress: () => router.push("/vendor-invoices/upload"),
-              },
-              {
-                text: "フォームから作成 (PDF生成)",
-                onPress: () => router.push("/vendor-invoices/new"),
-              },
-              { text: "キャンセル", style: "cancel" },
-            ])
-          }
-          label="追加"
-        />
+        <Fab onPress={() => setAddSheet(true)} label="追加" />
       ) : null}
+
+      <ActionSheetModal
+        visible={addSheet}
+        title="職人請求書を追加"
+        message="どちらの方法で追加しますか?"
+        onClose={() => setAddSheet(false)}
+        options={[
+          {
+            label: "写真をアップロード",
+            icon: "image",
+            onPress: () => router.push("/vendor-invoices/upload"),
+          },
+          {
+            label: "フォームから作成 (PDF生成)",
+            icon: "file-text",
+            onPress: () => router.push("/vendor-invoices/new"),
+          },
+        ]}
+      />
     </View>
   );
 }
