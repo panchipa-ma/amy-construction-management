@@ -122,16 +122,11 @@ export default function VendorInvoiceNew() {
   // 請求書No 自動採番 (INV-YYYYMMDD-XXX)。ユーザーが任意で上書き可。
   const [docNumber, setDocNumber] = useState(() => autoInvoiceDocNumber());
   const [issueDate, setIssueDateRaw] = useState(todayStr());
-  // お支払期限デフォルト = 発行日の翌月末 (発行日変更で自動同期、ユーザー編集で停止)。
-  const [dueDate, setDueDateRaw] = useState(endOfNextMonthISO(todayStr()));
-  const [dueDateTouched, setDueDateTouched] = useState(false);
+  // お支払期限デフォルト = 発行日の翌月末。発行日変更で常に再計算。手動編集も可。
+  const [dueDate, setDueDate] = useState(endOfNextMonthISO(todayStr()));
   const setIssueDate = (v: string) => {
     setIssueDateRaw(v);
-    if (!dueDateTouched && v) setDueDateRaw(endOfNextMonthISO(v));
-  };
-  const setDueDate = (v: string) => {
-    setDueDateRaw(v);
-    setDueDateTouched(true);
+    if (v) setDueDate(endOfNextMonthISO(v));
   };
   const [recipientName, setRecipientName] = useState("株式会社AMY");
   const [recipientContactName, setRecipientContactName] = useState("");

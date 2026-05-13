@@ -140,16 +140,11 @@ export default function VendorQuoteNewPage() {
   const [defaults, setDefaults] = useState<CreatorDefaults>(EMPTY_DEFAULTS);
   const [projectId, setProjectId] = useState<string>("");
   const [issueDate, setIssueDateRaw] = useState<string>(todayISO());
-  // 有効期限デフォルト = 見積日の3ヶ月後 (見積日変更で自動同期、ユーザー編集で停止)。
-  const [validUntil, setValidUntilRaw] = useState<string>(plus3MonthsISO(todayISO()));
-  const [validUntilTouched, setValidUntilTouched] = useState(false);
+  // 有効期限デフォルト = 見積日の3ヶ月後。見積日変更で常に再計算。手動編集も可。
+  const [validUntil, setValidUntil] = useState<string>(plus3MonthsISO(todayISO()));
   const setIssueDate = (v: string) => {
     setIssueDateRaw(v);
-    if (!validUntilTouched && v) setValidUntilRaw(plus3MonthsISO(v));
-  };
-  const setValidUntil = (v: string) => {
-    setValidUntilRaw(v);
-    setValidUntilTouched(true);
+    if (v) setValidUntil(plus3MonthsISO(v));
   };
   const [notes, setNotes] = useState<string>("");
   const [items, setItems] = useState<LineRow[]>([

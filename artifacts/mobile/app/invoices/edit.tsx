@@ -75,16 +75,11 @@ function InvoiceEdit() {
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [autoNumberSet, setAutoNumberSet] = useState(false);
   const [issueDate, setIssueDateRaw] = useState(todayStr());
-  // 翌月末を初期値に。ユーザーが手動で変更したら自動同期を停止。
-  const [dueDate, setDueDateRaw] = useState(endOfNextMonthISO(todayStr()));
-  const [dueDateTouched, setDueDateTouched] = useState(false);
+  // お支払期限デフォルト = 発行日の翌月末。発行日変更で常に再計算。手動編集も可。
+  const [dueDate, setDueDate] = useState(endOfNextMonthISO(todayStr()));
   const setIssueDate = (v: string) => {
     setIssueDateRaw(v);
-    if (!dueDateTouched && v) setDueDateRaw(endOfNextMonthISO(v));
-  };
-  const setDueDate = (v: string) => {
-    setDueDateRaw(v);
-    setDueDateTouched(true);
+    if (v) setDueDate(endOfNextMonthISO(v));
   };
   const [notes, setNotes] = useState("");
   const [paid, setPaid] = useState(false);
@@ -115,9 +110,7 @@ function InvoiceEdit() {
       setSubject(inv.subject ?? "");
       setInvoiceNumber(inv.invoiceNumber);
       setIssueDateRaw(inv.issueDate);
-      setDueDateRaw(inv.dueDate ?? "");
-      // 既存値はユーザー設定済みとみなし、自動同期を停止
-      setDueDateTouched(true);
+      setDueDate(inv.dueDate ?? "");
       setNotes(inv.notes ?? "");
       setPaid(inv.paid);
       setSentToClient(inv.sentToClient);

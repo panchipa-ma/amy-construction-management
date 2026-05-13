@@ -183,16 +183,11 @@ export default function VendorInvoiceNewPage() {
   const [defaults, setDefaults] = useState<CreatorDefaults>(EMPTY_DEFAULTS);
   const [projectId, setProjectId] = useState<string>("");
   const [issueDate, setIssueDateRaw] = useState<string>(todayISO());
-  // お支払期限デフォルト = 請求日の翌月末 (請求日変更で自動同期、ユーザー編集で停止)。
-  const [dueDate, setDueDateRaw] = useState<string>(endOfNextMonthISO(todayISO()));
-  const [dueDateTouched, setDueDateTouched] = useState(false);
+  // お支払期限デフォルト = 請求日の翌月末。請求日変更で常に再計算。手動編集も可。
+  const [dueDate, setDueDate] = useState<string>(endOfNextMonthISO(todayISO()));
   const setIssueDate = (v: string) => {
     setIssueDateRaw(v);
-    if (!dueDateTouched && v) setDueDateRaw(endOfNextMonthISO(v));
-  };
-  const setDueDate = (v: string) => {
-    setDueDateRaw(v);
-    setDueDateTouched(true);
+    if (v) setDueDate(endOfNextMonthISO(v));
   };
   const [notes, setNotes] = useState<string>("");
   const [items, setItems] = useState<LineRow[]>([

@@ -71,16 +71,11 @@ function QuoteEdit() {
   const [quoteNumber, setQuoteNumber] = useState("");
   const [autoNumberSet, setAutoNumberSet] = useState(false);
   const [issueDate, setIssueDateRaw] = useState(todayStr());
-  // 有効期限デフォルト = 見積日の3ヶ月後 (発行日変更で自動同期、ユーザー編集で停止)。
-  const [validUntil, setValidUntilRaw] = useState(plus3MonthsISO(todayStr()));
-  const [validUntilTouched, setValidUntilTouched] = useState(false);
+  // 有効期限デフォルト = 見積日の3ヶ月後。発行日変更で常に再計算。手動編集も可。
+  const [validUntil, setValidUntil] = useState(plus3MonthsISO(todayStr()));
   const setIssueDate = (v: string) => {
     setIssueDateRaw(v);
-    if (!validUntilTouched && v) setValidUntilRaw(plus3MonthsISO(v));
-  };
-  const setValidUntil = (v: string) => {
-    setValidUntilRaw(v);
-    setValidUntilTouched(true);
+    if (v) setValidUntil(plus3MonthsISO(v));
   };
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItemForm[]>([{ ...emptyLineItem }]);
@@ -108,9 +103,7 @@ function QuoteEdit() {
       setContactName(q.contactName ?? "");
       setQuoteNumber(q.quoteNumber);
       setIssueDateRaw(q.issueDate);
-      setValidUntilRaw(q.validUntil ?? "");
-      // 既存値はユーザー設定済みとみなし、自動同期を停止
-      setValidUntilTouched(true);
+      setValidUntil(q.validUntil ?? "");
       setNotes(q.notes ?? "");
       setItems(lineItemsFromApi(q.items));
       setLoaded(true);

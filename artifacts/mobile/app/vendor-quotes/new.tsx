@@ -60,16 +60,11 @@ export default function VendorQuoteNew() {
   // 見積No 自動採番 (VQ-YYYYMMDD-XXX)。ユーザーが任意で上書き可。
   const [docNumber, setDocNumber] = useState(() => autoVendorDocNumber("VQ"));
   const [issueDate, setIssueDateRaw] = useState(todayStr());
-  // 有効期限デフォルト = 見積日の3ヶ月後 (発行日変更で自動同期、ユーザー編集で停止)。
-  const [validUntil, setValidUntilRaw] = useState(plus3MonthsISO(todayStr()));
-  const [validUntilTouched, setValidUntilTouched] = useState(false);
+  // 有効期限デフォルト = 見積日の3ヶ月後。発行日変更で常に再計算。手動編集も可。
+  const [validUntil, setValidUntil] = useState(plus3MonthsISO(todayStr()));
   const setIssueDate = (v: string) => {
     setIssueDateRaw(v);
-    if (!validUntilTouched && v) setValidUntilRaw(plus3MonthsISO(v));
-  };
-  const setValidUntil = (v: string) => {
-    setValidUntilRaw(v);
-    setValidUntilTouched(true);
+    if (v) setValidUntil(plus3MonthsISO(v));
   };
   const [recipientName, setRecipientName] = useState("株式会社AMY");
   const [recipientContactName, setRecipientContactName] = useState("");
