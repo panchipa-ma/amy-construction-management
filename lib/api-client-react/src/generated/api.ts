@@ -33,6 +33,7 @@ import type {
   CreateProgressLogBody,
   CreateProjectBody,
   CreateProjectPhaseBody,
+  CreateProjectPhotoBody,
   CreateQuoteBody,
   CreateReceiptBody,
   CreateScheduleEntryBody,
@@ -53,6 +54,7 @@ import type {
   ListCostEntriesParams,
   ListInvoicesParams,
   ListProgressLogsParams,
+  ListProjectPhotosParams,
   ListProjectsParams,
   ListQuotesParams,
   ListReceiptsParams,
@@ -69,6 +71,7 @@ import type {
   Project,
   ProjectLedger,
   ProjectPhase,
+  ProjectPhoto,
   Quote,
   Receipt,
   RequestUploadUrlBody,
@@ -78,6 +81,7 @@ import type {
   StaffAssignment,
   UpdateProjectBody,
   UpdateProjectPhaseBody,
+  UpdateProjectPhotoBody,
   UpdateUserBody,
   VendorInvoice,
   VendorQuote,
@@ -5125,6 +5129,335 @@ export const useMatchVendorInvoice = <
   TContext
 > => {
   return useMutation(getMatchVendorInvoiceMutationOptions(options));
+};
+
+export const getListProjectPhotosUrl = (params: ListProjectPhotosParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/project-photos?${stringifiedParams}`
+    : `/api/project-photos`;
+};
+
+export const listProjectPhotos = async (
+  params: ListProjectPhotosParams,
+  options?: RequestInit,
+): Promise<ProjectPhoto[]> => {
+  return customFetch<ProjectPhoto[]>(getListProjectPhotosUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListProjectPhotosQueryKey = (
+  params?: ListProjectPhotosParams,
+) => {
+  return [`/api/project-photos`, ...(params ? [params] : [])] as const;
+};
+
+export const getListProjectPhotosQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProjectPhotos>>,
+  TError = ErrorType<unknown>,
+>(
+  params: ListProjectPhotosParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listProjectPhotos>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListProjectPhotosQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listProjectPhotos>>
+  > = ({ signal }) => listProjectPhotos(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProjectPhotos>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListProjectPhotosQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProjectPhotos>>
+>;
+export type ListProjectPhotosQueryError = ErrorType<unknown>;
+
+export function useListProjectPhotos<
+  TData = Awaited<ReturnType<typeof listProjectPhotos>>,
+  TError = ErrorType<unknown>,
+>(
+  params: ListProjectPhotosParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listProjectPhotos>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListProjectPhotosQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateProjectPhotoUrl = () => {
+  return `/api/project-photos`;
+};
+
+export const createProjectPhoto = async (
+  createProjectPhotoBody: CreateProjectPhotoBody,
+  options?: RequestInit,
+): Promise<ProjectPhoto> => {
+  return customFetch<ProjectPhoto>(getCreateProjectPhotoUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createProjectPhotoBody),
+  });
+};
+
+export const getCreateProjectPhotoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProjectPhoto>>,
+    TError,
+    { data: BodyType<CreateProjectPhotoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createProjectPhoto>>,
+  TError,
+  { data: BodyType<CreateProjectPhotoBody> },
+  TContext
+> => {
+  const mutationKey = ["createProjectPhoto"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createProjectPhoto>>,
+    { data: BodyType<CreateProjectPhotoBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createProjectPhoto(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateProjectPhotoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createProjectPhoto>>
+>;
+export type CreateProjectPhotoMutationBody = BodyType<CreateProjectPhotoBody>;
+export type CreateProjectPhotoMutationError = ErrorType<unknown>;
+
+export const useCreateProjectPhoto = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProjectPhoto>>,
+    TError,
+    { data: BodyType<CreateProjectPhotoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createProjectPhoto>>,
+  TError,
+  { data: BodyType<CreateProjectPhotoBody> },
+  TContext
+> => {
+  return useMutation(getCreateProjectPhotoMutationOptions(options));
+};
+
+export const getUpdateProjectPhotoUrl = (id: string) => {
+  return `/api/project-photos/${id}`;
+};
+
+export const updateProjectPhoto = async (
+  id: string,
+  updateProjectPhotoBody: UpdateProjectPhotoBody,
+  options?: RequestInit,
+): Promise<ProjectPhoto> => {
+  return customFetch<ProjectPhoto>(getUpdateProjectPhotoUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateProjectPhotoBody),
+  });
+};
+
+export const getUpdateProjectPhotoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProjectPhoto>>,
+    TError,
+    { id: string; data: BodyType<UpdateProjectPhotoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateProjectPhoto>>,
+  TError,
+  { id: string; data: BodyType<UpdateProjectPhotoBody> },
+  TContext
+> => {
+  const mutationKey = ["updateProjectPhoto"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateProjectPhoto>>,
+    { id: string; data: BodyType<UpdateProjectPhotoBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateProjectPhoto(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateProjectPhotoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateProjectPhoto>>
+>;
+export type UpdateProjectPhotoMutationBody = BodyType<UpdateProjectPhotoBody>;
+export type UpdateProjectPhotoMutationError = ErrorType<unknown>;
+
+export const useUpdateProjectPhoto = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProjectPhoto>>,
+    TError,
+    { id: string; data: BodyType<UpdateProjectPhotoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateProjectPhoto>>,
+  TError,
+  { id: string; data: BodyType<UpdateProjectPhotoBody> },
+  TContext
+> => {
+  return useMutation(getUpdateProjectPhotoMutationOptions(options));
+};
+
+export const getDeleteProjectPhotoUrl = (id: string) => {
+  return `/api/project-photos/${id}`;
+};
+
+export const deleteProjectPhoto = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteProjectPhotoUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteProjectPhotoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProjectPhoto>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteProjectPhoto>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteProjectPhoto"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteProjectPhoto>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteProjectPhoto(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteProjectPhotoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteProjectPhoto>>
+>;
+
+export type DeleteProjectPhotoMutationError = ErrorType<unknown>;
+
+export const useDeleteProjectPhoto = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProjectPhoto>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteProjectPhoto>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteProjectPhotoMutationOptions(options));
 };
 
 export const getListVendorQuotesUrl = (params?: ListVendorQuotesParams) => {

@@ -262,6 +262,28 @@ export interface ImportQuoteToLedgerBody {
   replaceExisting?: boolean;
 }
 
+export interface ProjectPhoto {
+  id: string;
+  projectId: string;
+  /** objectPath (e.g. /api/storage/objects/...) */
+  fileUrl: string;
+  fileName: string;
+  caption?: string | null;
+  createdBy?: string | null;
+  createdAt: string;
+}
+
+export interface CreateProjectPhotoBody {
+  projectId: string;
+  fileUrl: string;
+  fileName: string;
+  caption?: string | null;
+}
+
+export interface UpdateProjectPhotoBody {
+  caption?: string | null;
+}
+
 export type VendorInvoiceStatus =
   (typeof VendorInvoiceStatus)[keyof typeof VendorInvoiceStatus];
 
@@ -967,6 +989,10 @@ export const ListVendorInvoicesStatus = {
   matched: "matched",
   unmatched: "unmatched",
 } as const;
+
+export type ListProjectPhotosParams = {
+  projectId: string;
+};
 
 export type ListVendorQuotesParams = {
   projectId?: string;

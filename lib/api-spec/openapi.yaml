@@ -1035,6 +1035,70 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/VendorInvoice" }
 
+  /project-photos:
+    get:
+      operationId: listProjectPhotos
+      tags: [projectPhotos]
+      parameters:
+        - in: query
+          name: projectId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ProjectPhoto" }
+    post:
+      operationId: createProjectPhoto
+      tags: [projectPhotos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateProjectPhotoBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectPhoto" }
+
+  /project-photos/{id}:
+    patch:
+      operationId: updateProjectPhoto
+      tags: [projectPhotos]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateProjectPhotoBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectPhoto" }
+    delete:
+      operationId: deleteProjectPhoto
+      tags: [projectPhotos]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
   /vendor-quotes:
     get:
       operationId: listVendorQuotes
@@ -1469,6 +1533,32 @@ components:
         category: { $ref: "#/components/schemas/CostCategory" }
         entryDate: { type: string, format: date }
         replaceExisting: { type: boolean, description: "既存の同案件の計画原価を全削除してから取込", default: false }
+
+    ProjectPhoto:
+      type: object
+      required: [id, projectId, fileUrl, fileName, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        fileUrl: { type: string, description: "objectPath (e.g. /api/storage/objects/...)" }
+        fileName: { type: string }
+        caption: { type: string, nullable: true }
+        createdBy: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    CreateProjectPhotoBody:
+      type: object
+      required: [projectId, fileUrl, fileName]
+      properties:
+        projectId: { type: string }
+        fileUrl: { type: string }
+        fileName: { type: string }
+        caption: { type: string, nullable: true }
+
+    UpdateProjectPhotoBody:
+      type: object
+      properties:
+        caption: { type: string, nullable: true }
 
     VendorInvoice:
       type: object

@@ -14,6 +14,7 @@ import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 
 import { InternalOnly } from "@/components/InternalOnly";
 import { CostEntrySheet, PhaseSheet, ProgressLogSheet } from "@/components/project-modals";
+import { ProjectPhotos } from "@/components/ProjectPhotos";
 import {
   Badge,
   Body,
@@ -346,6 +347,7 @@ function ProjectDetail() {
             ))
           )}
         </Card>
+        <ProjectPhotos projectId={p.id} />
       </ScrollView>
 
       <CostEntrySheet

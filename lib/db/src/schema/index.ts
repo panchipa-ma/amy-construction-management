@@ -308,6 +308,20 @@ export const projectPhasesTable = pgTable("project_phases", {
     .defaultNow(),
 });
 
+export const projectPhotosTable = pgTable("project_photos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projectsTable.id, { onDelete: "cascade" }),
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name").notNull(),
+  caption: text("caption"),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const progressLogsTable = pgTable("progress_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
   projectId: uuid("project_id")

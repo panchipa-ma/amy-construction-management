@@ -1841,6 +1841,68 @@ export const MatchVendorInvoiceResponse = zod.object({
   uploadedAt: zod.coerce.date(),
 });
 
+export const ListProjectPhotosQueryParams = zod.object({
+  projectId: zod.coerce.string(),
+});
+
+export const ListProjectPhotosResponseItem = zod.object({
+  id: zod.string(),
+  projectId: zod.string(),
+  fileUrl: zod
+    .string()
+    .describe("objectPath (e.g. \/api\/storage\/objects\/...)"),
+  fileName: zod.string(),
+  caption: zod.string().nullish(),
+  createdBy: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListProjectPhotosResponse = zod.array(
+  ListProjectPhotosResponseItem,
+);
+
+export const CreateProjectPhotoBody = zod.object({
+  projectId: zod.string(),
+  fileUrl: zod.string(),
+  fileName: zod.string(),
+  caption: zod.string().nullish(),
+});
+
+export const CreateProjectPhotoResponse = zod.object({
+  id: zod.string(),
+  projectId: zod.string(),
+  fileUrl: zod
+    .string()
+    .describe("objectPath (e.g. \/api\/storage\/objects\/...)"),
+  fileName: zod.string(),
+  caption: zod.string().nullish(),
+  createdBy: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+export const UpdateProjectPhotoParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateProjectPhotoBody = zod.object({
+  caption: zod.string().nullish(),
+});
+
+export const UpdateProjectPhotoResponse = zod.object({
+  id: zod.string(),
+  projectId: zod.string(),
+  fileUrl: zod
+    .string()
+    .describe("objectPath (e.g. \/api\/storage\/objects\/...)"),
+  fileName: zod.string(),
+  caption: zod.string().nullish(),
+  createdBy: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+export const DeleteProjectPhotoParams = zod.object({
+  id: zod.coerce.string(),
+});
+
 export const ListVendorQuotesQueryParams = zod.object({
   projectId: zod.coerce.string().optional(),
   staffId: zod.coerce.string().optional(),

@@ -15,6 +15,11 @@ import {
   useDeleteCostEntry,
   useCreateProgressLog,
   useDeleteProgressLog,
+  useListProjectPhotos,
+  useCreateProjectPhoto,
+  useDeleteProjectPhoto,
+  useRequestUploadUrl,
+  getListProjectPhotosQueryKey,
   getGetProjectQueryKey,
   getGetProjectLedgerQueryKey,
   getListProjectsQueryKey,
@@ -25,6 +30,7 @@ import {
   CostCategory,
   type CostEntry,
 } from "@workspace/api-client-react";
+import { ObjectUploader } from "@workspace/object-storage-web";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -359,6 +365,7 @@ export default function ProjectDetailPage() {
           <TabsTrigger value="schedule">スケジュール</TabsTrigger>
           <TabsTrigger value="phases">工程表</TabsTrigger>
           <TabsTrigger value="progress">進捗記録</TabsTrigger>
+          <TabsTrigger value="photos">現場写真</TabsTrigger>
         </TabsList>
 
         <TabsContent value="phases" className="mt-4">
@@ -949,6 +956,10 @@ export default function ProjectDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="photos" className="space-y-4 mt-4">
+          <ProjectPhotosPanel projectId={id} />
+        </TabsContent>
       </Tabs>
 
       <Dialog open={costOpen} onOpenChange={setCostOpen}>
@@ -1100,5 +1111,196 @@ export default function ProjectDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function ProjectPhotosPanel({ projectId }: { projectId: string }) {
+  const qc = useQueryClient();
+  const photosQ = useListProjectPhotos({ projectId });
+  const createMut = useCreateProjectPhoto();
+  const deleteMut = useDeleteProjectPhoto();
+  const requestUrlMut = useRequestUploadUrl();
+  const objectPathByFileIdRef = useRef<Map<string, string>>(new Map());
+  const [viewer, setViewer] = useState<{ url: string; name: string } | null>(
+    null,
+  );
+  const [askDelete, setAskDelete] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const invalidate = () =>
+    qc.invalidateQueries({
+      queryKey: getListProjectPhotosQueryKey({ projectId }),
+    });
+
+  const photos = photosQ.data ?? [];
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-base">現場写真</CardTitle>
+          <CardDescription>
+            現場で撮影した写真をアップロードして案件にひも付けて保存できます。
+          </CardDescription>
+        </div>
+        <ObjectUploader
+          maxNumberOfFiles={10}
+          maxFileSize={20 * 1024 * 1024}
+          buttonClassName="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90"
+          onGetUploadParameters={async (file) => {
+            const contentType = (file.type as string) ?? "image/jpeg";
+            const res = await requestUrlMut.mutateAsync({
+              data: {
+                name: (file.name as string) ?? "photo.jpg",
+                size: (file.size as number) ?? 0,
+                contentType,
+              },
+            });
+            objectPathByFileIdRef.current.set(file.id, res.objectPath);
+            return {
+              method: "PUT",
+              url: res.uploadURL,
+              headers: { "Content-Type": contentType },
+            };
+          }}
+          onComplete={async (result) => {
+            const successful = result.successful ?? [];
+            const failures: string[] = [];
+            for (const ok of successful) {
+              const objectPath = objectPathByFileIdRef.current.get(ok.id);
+              objectPathByFileIdRef.current.delete(ok.id);
+              if (!objectPath) {
+                failures.push((ok.name as string) ?? "unknown");
+                continue;
+              }
+              try {
+                await createMut.mutateAsync({
+                  data: {
+                    projectId,
+                    fileUrl: `/api/storage${objectPath}`,
+                    fileName: (ok.name as string) ?? "photo.jpg",
+                  },
+                });
+              } catch (err) {
+                console.error("[project-photos] create failed", err);
+                failures.push((ok.name as string) ?? "unknown");
+              }
+            }
+            await invalidate();
+            if (failures.length > 0) {
+              setUploadError(
+                `${failures.length} 件の写真の保存に失敗しました: ${failures.join(", ")}`,
+              );
+            }
+          }}
+        >
+          <ImagePlus className="w-4 h-4" />
+          写真を追加
+        </ObjectUploader>
+      </CardHeader>
+      <CardContent>
+        {uploadError ? (
+          <div className="mb-3 px-3 py-2 rounded-md bg-destructive/10 text-destructive text-sm flex items-center justify-between gap-2">
+            <span>{uploadError}</span>
+            <button
+              type="button"
+              onClick={() => setUploadError(null)}
+              className="text-xs underline shrink-0"
+            >
+              閉じる
+            </button>
+          </div>
+        ) : null}
+        {photosQ.isLoading ? (
+          <Skeleton className="h-40 w-full" />
+        ) : photos.length === 0 ? (
+          <div className="py-12 flex flex-col items-center gap-2 text-center">
+            <ImagePlus className="w-8 h-8 text-muted-foreground" />
+            <div className="text-sm text-muted-foreground">
+              現場写真はまだありません。右上のボタンから追加してください。
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {photos.map((p) => (
+              <div
+                key={p.id}
+                className="relative group rounded-md overflow-hidden border bg-muted aspect-square"
+              >
+                <button
+                  type="button"
+                  onClick={() => setViewer({ url: p.fileUrl, name: p.fileName })}
+                  className="block w-full h-full"
+                >
+                  <img
+                    src={p.fileUrl}
+                    alt={p.fileName}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAskDelete(p.id)}
+                  className="absolute top-1 right-1 p-1.5 rounded-md bg-black/60 text-white opacity-70 hover:opacity-100 hover:bg-destructive transition-colors"
+                  aria-label="削除"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+                <div className="absolute bottom-0 left-0 right-0 px-2 py-1 text-[10px] text-white bg-black/50 truncate">
+                  {p.fileName}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+
+      <Dialog open={!!viewer} onOpenChange={(o) => !o && setViewer(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-normal break-all">
+              {viewer?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {viewer ? (
+            <a href={viewer.url} target="_blank" rel="noreferrer">
+              <img
+                src={viewer.url}
+                alt={viewer.name}
+                className="w-full max-h-[75vh] object-contain"
+              />
+            </a>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={!!askDelete}
+        onOpenChange={(o) => !o && setAskDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>この写真を削除しますか?</AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!askDelete) return;
+                try {
+                  await deleteMut.mutateAsync({ id: askDelete });
+                  await invalidate();
+                } finally {
+                  setAskDelete(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground"
+            >
+              削除する
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
   );
 }

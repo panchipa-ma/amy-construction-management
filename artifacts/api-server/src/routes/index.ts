@@ -13,6 +13,7 @@ import progressRouter from "./progress";
 import dashboardRouter from "./dashboard";
 import vendorInvoicesRouter from "./vendor-invoices";
 import vendorQuotesRouter from "./vendor-quotes";
+import projectPhotosRouter from "./project-photos";
 import receiptsRouter from "./receipts";
 import phasesRouter from "./phases";
 import storageRouter from "./storage";
@@ -62,6 +63,8 @@ router.use(scheduleRouter);
 router.use(progressRouter);
 router.use(vendorInvoicesRouter);
 router.use(vendorQuotesRouter);
+// 現場写真は社内マスタなので社内のみ
+router.use(requireInternal, projectPhotosRouter);
 router.use(receiptsRouter);
 router.use(phasesRouter);
 router.use(ocrRouter);
