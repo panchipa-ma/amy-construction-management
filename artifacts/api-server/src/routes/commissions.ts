@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, gte, lte, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, gte, lte, eq, inArray, isNotNull, or } from "drizzle-orm";
 import {
   db,
   invoicesTable,
@@ -25,10 +25,6 @@ function monthRange(month: string): { start: string; end: string } {
   return { start, end };
 }
 
-function monthOf(dateIso: string): string {
-  return dateIso.slice(0, 7);
-}
-
 type Line = {
   invoiceId: string;
   invoiceNumber: string;
@@ -36,6 +32,7 @@ type Line = {
   projectName: string;
   salesRep: string | null;
   siteSupervisor: string | null;
+  // 歩合発生基準日: 営業/マネジメントは sentAt、監督は paidAt が入る。
   sentAt: string;
   invoiceTotal: number;
   kind: "sales" | "supervisor" | "other_sales_bonus";
@@ -53,15 +50,25 @@ router.get("/commissions", async (req, res): Promise<void> => {
   }
   const { start, end } = monthRange(month);
 
-  // 対象月に送付済になった請求書
+  // 対象月に「送付済」または「入金済」になった請求書を取得。
+  // 営業歩合 + マネジメント報酬 → sentAt 月で発生。
+  // 現場監督歩合 → paidAt 月で発生。
+  // (案件のステータスは問わない — 請求書の状態のみがトリガー)
   const monthInvoices = await db
     .select()
     .from(invoicesTable)
     .where(
-      and(
-        isNotNull(invoicesTable.sentAt),
-        gte(invoicesTable.sentAt, start),
-        lte(invoicesTable.sentAt, end),
+      or(
+        and(
+          isNotNull(invoicesTable.sentAt),
+          gte(invoicesTable.sentAt, start),
+          lte(invoicesTable.sentAt, end),
+        ),
+        and(
+          isNotNull(invoicesTable.paidAt),
+          gte(invoicesTable.paidAt, start),
+          lte(invoicesTable.paidAt, end),
+        ),
       ),
     );
 
@@ -83,9 +90,17 @@ router.get("/commissions", async (req, res): Promise<void> => {
     return;
   }
 
-  const projectIds = [...new Set(monthInvoices.map((i) => i.projectId))];
+  // 当月送付分のみで集計する活動指標 (画面上の「送付済請求件数 / 送付額合計」)。
+  const sentInvoices = monthInvoices.filter((i) => {
+    const d = isoDate(i.sentAt);
+    return d != null && d >= start && d <= end;
+  });
+  const paidInvoices = monthInvoices.filter((i) => {
+    const d = isoDate(i.paidAt);
+    return d != null && d >= start && d <= end;
+  });
 
-  // 対象案件
+  const projectIds = [...new Set(monthInvoices.map((i) => i.projectId))];
   const projects = await db
     .select()
     .from(projectsTable)
@@ -103,59 +118,34 @@ router.get("/commissions", async (req, res): Promise<void> => {
       : [];
   const customerMap = new Map(customers.map((c) => [c.id, c]));
 
-  // 監督歩合は「竣工案件のみ」「最新の送付請求書がこの月に入っている」案件で1回だけ計上。
-  const completedIds = projects
-    .filter((p) => p.status === "completed")
-    .map((p) => p.id);
-  const allCompletedInvoices =
-    completedIds.length > 0
-      ? await db
-          .select({
-            projectId: invoicesTable.projectId,
-            sentAt: invoicesTable.sentAt,
-          })
-          .from(invoicesTable)
-          .where(
-            and(
-              inArray(invoicesTable.projectId, completedIds),
-              isNotNull(invoicesTable.sentAt),
-            ),
-          )
-      : [];
-  const latestSentByProject = new Map<string, string>();
-  for (const inv of allCompletedInvoices) {
-    const d = isoDate(inv.sentAt);
-    if (!d) continue;
-    const cur = latestSentByProject.get(inv.projectId);
-    if (!cur || d > cur) latestSentByProject.set(inv.projectId, d);
-  }
-
-  // 監督歩合計算用に、案件の請求書合計 (税込) と実原価合計を取得
-  const allInvoicesForCompleted =
-    completedIds.length > 0
+  // 監督歩合用: paidAt が当月の請求書ごとに「規定超過粗利」を出すため、
+  // 案件の実原価合計 と 案件の請求書合計 (税込) を取得して請求額按分する。
+  const paidProjectIds = [...new Set(paidInvoices.map((i) => i.projectId))];
+  const allInvoicesForPaid =
+    paidProjectIds.length > 0
       ? await db
           .select()
           .from(invoicesTable)
-          .where(inArray(invoicesTable.projectId, completedIds))
+          .where(inArray(invoicesTable.projectId, paidProjectIds))
       : [];
-  const invoiceTotalByProject = new Map<string, number>();
-  for (const inv of allInvoicesForCompleted) {
+  const projectInvoicedTotal = new Map<string, number>();
+  for (const inv of allInvoicesForPaid) {
     const items = (inv.items ?? []) as LineItemJson[];
     const { total } = computeTotals(items);
-    invoiceTotalByProject.set(
+    projectInvoicedTotal.set(
       inv.projectId,
-      (invoiceTotalByProject.get(inv.projectId) ?? 0) + total,
+      (projectInvoicedTotal.get(inv.projectId) ?? 0) + total,
     );
   }
   const costEntries =
-    completedIds.length > 0
+    paidProjectIds.length > 0
       ? await db
           .select({
             projectId: costEntriesTable.projectId,
             actualAmount: costEntriesTable.actualAmount,
           })
           .from(costEntriesTable)
-          .where(inArray(costEntriesTable.projectId, completedIds))
+          .where(inArray(costEntriesTable.projectId, paidProjectIds))
       : [];
   const actualByProject = new Map<string, number>();
   for (const ce of costEntries) {
@@ -170,7 +160,6 @@ router.get("/commissions", async (req, res): Promise<void> => {
   // 職人マスタは表示用フォールバック (人物名が社員になければ職人を見る)
   const allStaff = await db.select().from(staffTable);
 
-  // 担当者ごとに集計
   type Person = {
     name: string;
     staffId: string | null;
@@ -184,7 +173,6 @@ router.get("/commissions", async (req, res): Promise<void> => {
     const key = name.trim();
     let p = people.get(key);
     if (!p) {
-      // 社員 → 職人 の順で検索 (社員が一級市民)
       const emp = allEmployees.find((e) => e.name.trim() === key);
       const staff = emp ? null : allStaff.find((s) => s.name.trim() === key);
       p = {
@@ -200,17 +188,13 @@ router.get("/commissions", async (req, res): Promise<void> => {
     return p;
   }
 
-  // 月内送付請求書の合計 (歩合ゲート前の活動指標 — invoiceCount と整合)
+  // 月内送付請求書の合計 (歩合ゲート前の活動指標)
   let totalInvoiceAmount = 0;
-  for (const inv of monthInvoices) {
+  for (const inv of sentInvoices) {
     const items = (inv.items ?? []) as LineItemJson[];
     totalInvoiceAmount += computeTotals(items).total;
   }
 
-  // 案件ごとに「マネジメント報酬の受取人」と「率」が直接設定される。
-  // エディ (営業歩合 7.5%) の案件で 亘を受取人 / 2.5% に設定 →
-  // エディの実効営業歩合率は 7.5% - 2.5% = 5%。亘が 2.5% を別途受け取る。
-  // 営業歩合の支払い総額は変わらず、内訳だけが変わる。
   function bonusForProject(
     project: typeof projects[number],
   ): { recipient: string; rate: number } | null {
@@ -220,31 +204,23 @@ router.get("/commissions", async (req, res): Promise<void> => {
       project.otherSalesBonusRate == null ? 0 : n(project.otherSalesBonusRate);
     if (rate <= 0) return null;
     const salesRep = project.salesRep?.trim() || null;
-    if (salesRep && salesRep === recipient) return null; // 自分には渡さない
+    if (salesRep && salesRep === recipient) return null;
     return { recipient, rate };
   }
 
-  // 「竣工ベース」: ステータス=completed の案件で、最新の送付請求書が当月にある時、
-  // その案件の全請求書合計をベースに 営業/監督/マネジメント の3歩合を一度に計上する。
-  const commissionableProjects = projects.filter((p) => {
-    if (p.status !== "completed") return false;
-    const latest = latestSentByProject.get(p.id);
-    return latest != null && monthOf(latest) === month;
-  });
-
-  for (const project of commissionableProjects) {
-    const sales = invoiceTotalByProject.get(project.id) ?? 0;
+  // 1) 営業歩合 + マネジメント報酬 — 当月送付済の請求書ごとに per-invoice で計上。
+  for (const inv of sentInvoices) {
+    const project = projectMap.get(inv.projectId);
+    if (!project) continue;
+    const items = (inv.items ?? []) as LineItemJson[];
+    const sales = computeTotals(items).total;
     if (sales <= 0) continue;
-    const latestSent = latestSentByProject.get(project.id)!;
-    const latestInv =
-      monthInvoices.find(
-        (i) => i.projectId === project.id && isoDate(i.sentAt) === latestSent,
-      ) ?? monthInvoices.find((i) => i.projectId === project.id);
+    const sentAt = isoDate(inv.sentAt)!;
     const salesRep = project.salesRep?.trim() || null;
     const siteSupervisor = project.siteSupervisor?.trim() || null;
     const bonus = bonusForProject(project);
 
-    // 1) 営業歩合 — 案件全請求書合計 × 実効営業歩合率
+    // 営業歩合
     if (salesRep) {
       const rate = n(project.salesCommissionRate);
       const bonusOut = bonus?.rate ?? 0;
@@ -254,13 +230,13 @@ router.get("/commissions", async (req, res): Promise<void> => {
         const p = getPerson(salesRep);
         p.salesCommission += amount;
         p.lines.push({
-          invoiceId: latestInv?.id ?? "",
-          invoiceNumber: latestInv?.invoiceNumber ?? "",
+          invoiceId: inv.id,
+          invoiceNumber: inv.invoiceNumber,
           projectId: project.id,
           projectName: project.name,
           salesRep,
           siteSupervisor,
-          sentAt: latestSent,
+          sentAt,
           invoiceTotal: sales,
           kind: "sales",
           amount,
@@ -268,76 +244,91 @@ router.get("/commissions", async (req, res): Promise<void> => {
           baseAmount: sales,
           note:
             bonusOut > 0
-              ? `${rate}% − マネジメント報酬 ${bonusOut}% = ${effectiveRate}% (竣工)`
-              : `竣工 — 案件全請求合計 × ${effectiveRate}%`,
+              ? `${rate}% − マネジメント報酬 ${bonusOut}% = ${effectiveRate}% (送付月)`
+              : `請求額 × ${effectiveRate}% (送付月)`,
         });
       }
     }
 
-    // 2) 現場監督歩合 — 規定超過粗利 × 監督歩合率
-    if (siteSupervisor) {
-      const customer = customerMap.get(project.customerId);
-      const standardRate =
-        project.standardProfitRate != null
-          ? n(project.standardProfitRate)
-          : customer
-            ? n(customer.defaultProfitRate)
-            : 20;
-      const salesRate = n(project.salesCommissionRate);
-      const supervisorRate = n(project.supervisorCommissionRate);
-      const salesCom = sales * (salesRate / 100);
-      const standardProfit = sales * (standardRate / 100);
-      const actualCost = actualByProject.get(project.id) ?? 0;
-      const excessProfit = Math.max(
-        0,
-        sales - salesCom - standardProfit - actualCost,
-      );
-      const amount = Math.round((excessProfit * supervisorRate) / 100);
-      if (amount > 0) {
-        const p = getPerson(siteSupervisor);
-        p.supervisorCommission += amount;
-        p.lines.push({
-          invoiceId: latestInv?.id ?? "",
-          invoiceNumber: latestInv?.invoiceNumber ?? "",
-          projectId: project.id,
-          projectName: project.name,
-          salesRep,
-          siteSupervisor,
-          sentAt: latestSent,
-          invoiceTotal: sales,
-          kind: "supervisor",
-          amount,
-          rate: supervisorRate,
-          baseAmount: excessProfit,
-          note: `規定超過粗利 ¥${Math.round(excessProfit).toLocaleString()} × ${supervisorRate}% (竣工)`,
-        });
-      }
-    }
-
-    // 3) マネジメント報酬 — 案件全請求合計 × bonus.rate
+    // マネジメント報酬
     if (bonus) {
       const amount = Math.round((sales * bonus.rate) / 100);
       if (amount > 0) {
         const p = getPerson(bonus.recipient);
         p.otherSalesBonus += amount;
         p.lines.push({
-          invoiceId: latestInv?.id ?? "",
-          invoiceNumber: latestInv?.invoiceNumber ?? "",
+          invoiceId: inv.id,
+          invoiceNumber: inv.invoiceNumber,
           projectId: project.id,
           projectName: project.name,
           salesRep,
           siteSupervisor,
-          sentAt: latestSent,
+          sentAt,
           invoiceTotal: sales,
           kind: "other_sales_bonus",
           amount,
           rate: bonus.rate,
           baseAmount: sales,
           note: salesRep
-            ? `${salesRep} 獲得分から ${bonus.rate}% (竣工)`
-            : `${bonus.rate}% (竣工)`,
+            ? `${salesRep} 獲得分から ${bonus.rate}% (送付月)`
+            : `${bonus.rate}% (送付月)`,
         });
       }
+    }
+  }
+
+  // 2) 現場監督歩合 — 当月入金済の請求書ごとに per-invoice で計上。
+  // 規定超過粗利 = invoice.total − invoice.total×営業率% − invoice.total×規定利益率% − 案件実原価×按分率
+  // 按分率 = invoice.total / 案件全請求書合計 (税込)
+  for (const inv of paidInvoices) {
+    const project = projectMap.get(inv.projectId);
+    if (!project) continue;
+    const items = (inv.items ?? []) as LineItemJson[];
+    const sales = computeTotals(items).total;
+    if (sales <= 0) continue;
+    const paidAt = isoDate(inv.paidAt)!;
+    const salesRep = project.salesRep?.trim() || null;
+    const siteSupervisor = project.siteSupervisor?.trim() || null;
+    if (!siteSupervisor) continue;
+
+    const customer = customerMap.get(project.customerId);
+    const standardRate =
+      project.standardProfitRate != null
+        ? n(project.standardProfitRate)
+        : customer
+          ? n(customer.defaultProfitRate)
+          : 20;
+    const salesRate = n(project.salesCommissionRate);
+    const supervisorRate = n(project.supervisorCommissionRate);
+    const projectInvTotal = projectInvoicedTotal.get(project.id) ?? sales;
+    const allocationRatio = projectInvTotal > 0 ? sales / projectInvTotal : 1;
+    const allocatedActual =
+      (actualByProject.get(project.id) ?? 0) * allocationRatio;
+    const salesCom = sales * (salesRate / 100);
+    const standardProfit = sales * (standardRate / 100);
+    const excessProfit = Math.max(
+      0,
+      sales - salesCom - standardProfit - allocatedActual,
+    );
+    const amount = Math.round((excessProfit * supervisorRate) / 100);
+    if (amount > 0) {
+      const p = getPerson(siteSupervisor);
+      p.supervisorCommission += amount;
+      p.lines.push({
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        projectId: project.id,
+        projectName: project.name,
+        salesRep,
+        siteSupervisor,
+        sentAt: paidAt,
+        invoiceTotal: sales,
+        kind: "supervisor",
+        amount,
+        rate: supervisorRate,
+        baseAmount: excessProfit,
+        note: `規定超過粗利 ¥${Math.round(excessProfit).toLocaleString()} × ${supervisorRate}% (入金月)`,
+      });
     }
   }
 
@@ -370,7 +361,7 @@ router.get("/commissions", async (req, res): Promise<void> => {
       month,
       totals: {
         ...totals,
-        invoiceCount: monthInvoices.length,
+        invoiceCount: sentInvoices.length,
         invoiceTotal: totalInvoiceAmount,
       },
       people: peopleArr,
