@@ -167,6 +167,11 @@ function ProjectDetail() {
             onPress={() => router.push(`/(tabs)/gantt`)}
           />
           <QuickAction
+            icon="book-open"
+            label="施工台帳"
+            onPress={() => router.push(`/ledger/${p.id}` as never)}
+          />
+          <QuickAction
             icon="dollar-sign"
             label="請求書"
             onPress={() => router.push(`/invoices/edit?projectId=${p.id}`)}
