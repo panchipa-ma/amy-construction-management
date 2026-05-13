@@ -1,6 +1,7 @@
 import { requestUploadUrl } from "@workspace/api-client-react";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
+import { Platform } from "react-native";
 
 import type { UserProfile } from "./profile";
 
@@ -178,28 +179,41 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Generate a PDF on device, upload via /api/storage signed URL, return objectPath. */
+/**
+ * Generate a PDF, upload via /api/storage signed URL, return objectPath.
+ *
+ * Platform 別:
+ * - native (iOS/Android): expo-print の printToFileAsync で PDF 化
+ * - web: expo-print は web で動かないので html2canvas-pro + jsPDF で
+ *        hidden iframe を経由して PDF Blob を生成。
+ */
 export async function generateAndUploadVendorDoc(
   input: VendorDocInput,
   fileNameBase: string,
 ): Promise<{ fileUrl: string; fileName: string }> {
   const html = buildHtml(input);
-  const { uri } = await Print.printToFileAsync({ html, base64: false });
-  const info = await FileSystem.getInfoAsync(uri);
-  const size = (info as { size?: number }).size ?? 0;
   const fileName = `${fileNameBase}.pdf`;
+
+  let blob: Blob;
+  if (Platform.OS === "web") {
+    blob = await renderHtmlToPdfBlob(html);
+  } else {
+    const { uri } = await Print.printToFileAsync({ html, base64: false });
+    blob = await fetch(uri).then((r) => r.blob());
+    // info is fetched only to surface obvious file IO errors early
+    await FileSystem.getInfoAsync(uri);
+  }
 
   const reqRes = await requestUploadUrl({
     name: fileName,
-    size: size > 0 ? size : 1,
+    size: blob.size > 0 ? blob.size : 1,
     contentType: "application/pdf",
   });
 
-  const fileBlob = await fetch(uri).then((r) => r.blob());
   const putRes = await fetch(reqRes.uploadURL, {
     method: "PUT",
     headers: { "Content-Type": "application/pdf" },
-    body: fileBlob,
+    body: blob,
   });
   if (!putRes.ok) throw new Error(`PDFアップロード失敗 (HTTP ${putRes.status})`);
 
@@ -207,4 +221,107 @@ export async function generateAndUploadVendorDoc(
     fileUrl: `/api/storage${reqRes.objectPath}`,
     fileName,
   };
+}
+
+/**
+ * Web 専用: HTML 文字列 → PDF Blob。
+ * iframe srcdoc で完全な document としてレンダリング → html2canvas-pro でキャプチャ
+ * → jsPDF で A4 PDF に。複数ページ対応。
+ */
+async function renderHtmlToPdfBlob(html: string): Promise<Blob> {
+  const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+    import("html2canvas-pro"),
+    import("jspdf"),
+  ]);
+
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.left = "-100000px";
+  iframe.style.top = "0";
+  iframe.style.width = "794px";
+  iframe.style.height = "1123px";
+  iframe.style.border = "0";
+  iframe.setAttribute("aria-hidden", "true");
+  document.body.appendChild(iframe);
+
+  try {
+    await new Promise<void>((resolve) => {
+      iframe.addEventListener("load", () => resolve(), { once: true });
+      iframe.srcdoc = html;
+      setTimeout(resolve, 3000);
+    });
+
+    const doc = iframe.contentDocument;
+    if (!doc) throw new Error("iframe document が取得できません");
+
+    try {
+      await doc.fonts?.ready;
+    } catch {
+      /* ignore */
+    }
+    await new Promise((r) => setTimeout(r, 200));
+
+    const target = doc.body;
+    const fullHeight = Math.max(
+      target.scrollHeight,
+      doc.documentElement.scrollHeight,
+      1123,
+    );
+    iframe.style.height = `${fullHeight}px`;
+    await new Promise((r) => setTimeout(r, 100));
+
+    const canvas = await html2canvas(target, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      windowWidth: 794,
+      windowHeight: fullHeight,
+    });
+
+    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+    const pageWidthMm = 210;
+    const pageHeightMm = 297;
+    const imgHeightMm = (canvas.height * pageWidthMm) / canvas.width;
+
+    if (imgHeightMm <= pageHeightMm) {
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      pdf.addImage(imgData, "JPEG", 0, 0, pageWidthMm, imgHeightMm);
+    } else {
+      const pxPerMm = canvas.width / pageWidthMm;
+      const pageCanvasHeight = Math.floor(pageHeightMm * pxPerMm);
+      let yOffset = 0;
+      let pageNum = 0;
+      while (yOffset < canvas.height) {
+        const sliceHeight = Math.min(pageCanvasHeight, canvas.height - yOffset);
+        const slice = document.createElement("canvas");
+        slice.width = canvas.width;
+        slice.height = sliceHeight;
+        const ctx = slice.getContext("2d");
+        if (!ctx) throw new Error("canvas context が取得できません");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, slice.width, slice.height);
+        ctx.drawImage(
+          canvas,
+          0,
+          yOffset,
+          canvas.width,
+          sliceHeight,
+          0,
+          0,
+          canvas.width,
+          sliceHeight,
+        );
+        const sliceData = slice.toDataURL("image/jpeg", 0.95);
+        const sliceHeightMm = (sliceHeight * pageWidthMm) / canvas.width;
+        if (pageNum > 0) pdf.addPage();
+        pdf.addImage(sliceData, "JPEG", 0, 0, pageWidthMm, sliceHeightMm);
+        yOffset += sliceHeight;
+        pageNum += 1;
+      }
+    }
+
+    return pdf.output("blob");
+  } finally {
+    iframe.remove();
+  }
 }
