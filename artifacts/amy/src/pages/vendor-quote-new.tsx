@@ -107,7 +107,17 @@ function todayISO(): string {
   return `${y}-${m}-${day}`;
 }
 
-function plus30DaysISO(base: string): string {
+function plus3MonthsISO(base: string): string {
+  const d = new Date(base);
+  const dt = new Date(d.getFullYear(), d.getMonth() + 3, d.getDate());
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const day = String(dt.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _plus30DaysISO_unused(base: string): string {
   const d = new Date(base);
   d.setDate(d.getDate() + 30);
   const y = d.getFullYear();
@@ -129,8 +139,18 @@ export default function VendorQuoteNewPage() {
 
   const [defaults, setDefaults] = useState<CreatorDefaults>(EMPTY_DEFAULTS);
   const [projectId, setProjectId] = useState<string>("");
-  const [issueDate, setIssueDate] = useState<string>(todayISO());
-  const [validUntil, setValidUntil] = useState<string>(plus30DaysISO(todayISO()));
+  const [issueDate, setIssueDateRaw] = useState<string>(todayISO());
+  // 有効期限デフォルト = 見積日の3ヶ月後 (見積日変更で自動同期、ユーザー編集で停止)。
+  const [validUntil, setValidUntilRaw] = useState<string>(plus3MonthsISO(todayISO()));
+  const [validUntilTouched, setValidUntilTouched] = useState(false);
+  const setIssueDate = (v: string) => {
+    setIssueDateRaw(v);
+    if (!validUntilTouched && v) setValidUntilRaw(plus3MonthsISO(v));
+  };
+  const setValidUntil = (v: string) => {
+    setValidUntilRaw(v);
+    setValidUntilTouched(true);
+  };
   const [notes, setNotes] = useState<string>("");
   const [items, setItems] = useState<LineRow[]>([
     { description: "", unit: "", quantity: 0, unitPrice: 0, notes: "" },

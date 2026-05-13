@@ -31,10 +31,10 @@ import {
   lineItemsToApi,
 } from "@/components/form/line-items";
 import { Loader } from "@/components/ui";
+import { plus3MonthsISO, todayLocalISO } from "@/lib/format";
 
 function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return todayLocalISO();
 }
 
 export default function QuoteEditGuarded() {
@@ -70,8 +70,18 @@ function QuoteEdit() {
   const [contactName, setContactName] = useState("");
   const [quoteNumber, setQuoteNumber] = useState("");
   const [autoNumberSet, setAutoNumberSet] = useState(false);
-  const [issueDate, setIssueDate] = useState(todayStr());
-  const [validUntil, setValidUntil] = useState("");
+  const [issueDate, setIssueDateRaw] = useState(todayStr());
+  // 有効期限デフォルト = 見積日の3ヶ月後 (発行日変更で自動同期、ユーザー編集で停止)。
+  const [validUntil, setValidUntilRaw] = useState(plus3MonthsISO(todayStr()));
+  const [validUntilTouched, setValidUntilTouched] = useState(false);
+  const setIssueDate = (v: string) => {
+    setIssueDateRaw(v);
+    if (!validUntilTouched && v) setValidUntilRaw(plus3MonthsISO(v));
+  };
+  const setValidUntil = (v: string) => {
+    setValidUntilRaw(v);
+    setValidUntilTouched(true);
+  };
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItemForm[]>([{ ...emptyLineItem }]);
   const [loaded, setLoaded] = useState(!isEdit);
@@ -97,8 +107,10 @@ function QuoteEdit() {
       setSubject(q.subject ?? "");
       setContactName(q.contactName ?? "");
       setQuoteNumber(q.quoteNumber);
-      setIssueDate(q.issueDate);
-      setValidUntil(q.validUntil ?? "");
+      setIssueDateRaw(q.issueDate);
+      setValidUntilRaw(q.validUntil ?? "");
+      // 既存値はユーザー設定済みとみなし、自動同期を停止
+      setValidUntilTouched(true);
       setNotes(q.notes ?? "");
       setItems(lineItemsFromApi(q.items));
       setLoaded(true);

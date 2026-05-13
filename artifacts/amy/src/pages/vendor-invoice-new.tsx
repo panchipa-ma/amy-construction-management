@@ -108,12 +108,13 @@ function todayISO(): string {
   return `${y}-${m}-${day}`;
 }
 
-function endOfMonthISO(base: string): string {
+function endOfNextMonthISO(base: string): string {
   const d = new Date(base);
-  const eom = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-  const y = eom.getFullYear();
-  const m = String(eom.getMonth() + 1).padStart(2, "0");
-  const day = String(eom.getDate()).padStart(2, "0");
+  // 翌々月の0日 = 翌月末日
+  const eonm = new Date(d.getFullYear(), d.getMonth() + 2, 0);
+  const y = eonm.getFullYear();
+  const m = String(eonm.getMonth() + 1).padStart(2, "0");
+  const day = String(eonm.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
@@ -181,8 +182,18 @@ export default function VendorInvoiceNewPage() {
 
   const [defaults, setDefaults] = useState<CreatorDefaults>(EMPTY_DEFAULTS);
   const [projectId, setProjectId] = useState<string>("");
-  const [issueDate, setIssueDate] = useState<string>(todayISO());
-  const [dueDate, setDueDate] = useState<string>(endOfMonthISO(todayISO()));
+  const [issueDate, setIssueDateRaw] = useState<string>(todayISO());
+  // お支払期限デフォルト = 請求日の翌月末 (請求日変更で自動同期、ユーザー編集で停止)。
+  const [dueDate, setDueDateRaw] = useState<string>(endOfNextMonthISO(todayISO()));
+  const [dueDateTouched, setDueDateTouched] = useState(false);
+  const setIssueDate = (v: string) => {
+    setIssueDateRaw(v);
+    if (!dueDateTouched && v) setDueDateRaw(endOfNextMonthISO(v));
+  };
+  const setDueDate = (v: string) => {
+    setDueDateRaw(v);
+    setDueDateTouched(true);
+  };
   const [notes, setNotes] = useState<string>("");
   const [items, setItems] = useState<LineRow[]>([
     { description: "", quantity: 1, unitPrice: 0 },

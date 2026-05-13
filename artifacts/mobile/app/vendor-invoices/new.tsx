@@ -34,12 +34,18 @@ import {
   lineItemsToApi,
 } from "@/components/form/line-items";
 import { Body, Muted } from "@/components/ui";
+import { endOfNextMonthISO, todayLocalISO } from "@/lib/format";
 import { generateAndUploadVendorDoc } from "@/lib/pdf";
 import { EMPTY_PROFILE, isProfileComplete, readProfile } from "@/lib/profile";
 
 function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return todayLocalISO();
+}
+
+function autoInvoiceDocNumber(): string {
+  const datePart = todayStr().replace(/-/g, "");
+  const suffix = String(Math.floor(100 + Math.random() * 900));
+  return `INV-${datePart}-${suffix}`;
 }
 
 // Parse the " / " stamped notes block produced by vendor-quotes / vendor-invoices forms.
@@ -113,9 +119,20 @@ export default function VendorInvoiceNew() {
   const [projectId, setProjectId] = useState("");
   const [staffId, setStaffId] = useState("");
   const [vendorName, setVendorName] = useState("");
-  const [docNumber, setDocNumber] = useState("");
-  const [issueDate, setIssueDate] = useState(todayStr());
-  const [dueDate, setDueDate] = useState("");
+  // 請求書No 自動採番 (INV-YYYYMMDD-XXX)。ユーザーが任意で上書き可。
+  const [docNumber, setDocNumber] = useState(() => autoInvoiceDocNumber());
+  const [issueDate, setIssueDateRaw] = useState(todayStr());
+  // お支払期限デフォルト = 発行日の翌月末 (発行日変更で自動同期、ユーザー編集で停止)。
+  const [dueDate, setDueDateRaw] = useState(endOfNextMonthISO(todayStr()));
+  const [dueDateTouched, setDueDateTouched] = useState(false);
+  const setIssueDate = (v: string) => {
+    setIssueDateRaw(v);
+    if (!dueDateTouched && v) setDueDateRaw(endOfNextMonthISO(v));
+  };
+  const setDueDate = (v: string) => {
+    setDueDateRaw(v);
+    setDueDateTouched(true);
+  };
   const [recipientName, setRecipientName] = useState("株式会社AMY");
   const [recipientContactName, setRecipientContactName] = useState("");
   const [authorName, setAuthorName] = useState(user?.fullName ?? "");
@@ -177,19 +194,13 @@ export default function VendorInvoiceNew() {
       },
     ]);
 
-    // Auto-suggest a 請求書No so the user doesn't have to type one.
-    if (!docNumber) {
-      const datePart = (issueDate || todayStr()).replace(/-/g, "");
-      const suffix = String(Math.floor(100 + Math.random() * 900));
-      setDocNumber(`INV-${datePart}-${suffix}`);
-    }
+    // 請求書No は初期値として既に自動採番済 (autoInvoiceDocNumber)。
+    // 見積→請求 変換でも改めて再生成はせず、初期値をそのまま使う。
   }, [
     fromVendorQuoteId,
     sourceQuote,
     vendorQuotesQ.isLoading,
     vendorQuotesQ.isFetched,
-    docNumber,
-    issueDate,
   ]);
 
   const project = (projectsQ.data ?? []).find((p) => p.id === projectId);

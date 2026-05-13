@@ -97,10 +97,31 @@ export default function QuoteNewPage() {
     const d = new Date();
     return `Q-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`;
   });
-  const [issueDate, setIssueDate] = useState(
+  const [issueDate, setIssueDateRaw] = useState(
     () => new Date().toISOString().slice(0, 10),
   );
-  const [validUntil, setValidUntil] = useState("");
+  // 有効期限デフォルト = 見積日の3ヶ月後 (見積日変更で自動同期、ユーザー編集で停止)。
+  const plus3MonthsISO = (iso: string): string => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+    if (!m) return iso;
+    const dt = new Date(Number(m[1]), Number(m[2]) - 1 + 3, Number(m[3]));
+    const y = dt.getFullYear();
+    const mo = String(dt.getMonth() + 1).padStart(2, "0");
+    const d = String(dt.getDate()).padStart(2, "0");
+    return `${y}-${mo}-${d}`;
+  };
+  const [validUntil, setValidUntilRaw] = useState(() =>
+    plus3MonthsISO(new Date().toISOString().slice(0, 10)),
+  );
+  const [validUntilTouched, setValidUntilTouched] = useState(false);
+  const setIssueDate = (v: string) => {
+    setIssueDateRaw(v);
+    if (!validUntilTouched && v) setValidUntilRaw(plus3MonthsISO(v));
+  };
+  const setValidUntil = (v: string) => {
+    setValidUntilRaw(v);
+    setValidUntilTouched(true);
+  };
   const [contactName, setContactName] = useState("");
   const [subject, setSubject] = useState("");
   const [notes, setNotes] = useState("");

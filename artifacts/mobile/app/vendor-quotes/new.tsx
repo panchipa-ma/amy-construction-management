@@ -29,12 +29,18 @@ import {
   lineItemsToApi,
 } from "@/components/form/line-items";
 import { Body, Muted } from "@/components/ui";
+import { plus3MonthsISO, todayLocalISO } from "@/lib/format";
 import { generateAndUploadVendorDoc } from "@/lib/pdf";
 import { EMPTY_PROFILE, isProfileComplete, readProfile } from "@/lib/profile";
 
 function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return todayLocalISO();
+}
+
+function autoVendorDocNumber(prefix: "VQ" | "INV"): string {
+  const datePart = todayStr().replace(/-/g, "");
+  const suffix = String(Math.floor(100 + Math.random() * 900));
+  return `${prefix}-${datePart}-${suffix}`;
 }
 
 export default function VendorQuoteNew() {
@@ -51,9 +57,20 @@ export default function VendorQuoteNew() {
   const [projectId, setProjectId] = useState("");
   const [staffId, setStaffId] = useState("");
   const [vendorName, setVendorName] = useState("");
-  const [docNumber, setDocNumber] = useState("");
-  const [issueDate, setIssueDate] = useState(todayStr());
-  const [validUntil, setValidUntil] = useState("");
+  // 見積No 自動採番 (VQ-YYYYMMDD-XXX)。ユーザーが任意で上書き可。
+  const [docNumber, setDocNumber] = useState(() => autoVendorDocNumber("VQ"));
+  const [issueDate, setIssueDateRaw] = useState(todayStr());
+  // 有効期限デフォルト = 見積日の3ヶ月後 (発行日変更で自動同期、ユーザー編集で停止)。
+  const [validUntil, setValidUntilRaw] = useState(plus3MonthsISO(todayStr()));
+  const [validUntilTouched, setValidUntilTouched] = useState(false);
+  const setIssueDate = (v: string) => {
+    setIssueDateRaw(v);
+    if (!validUntilTouched && v) setValidUntilRaw(plus3MonthsISO(v));
+  };
+  const setValidUntil = (v: string) => {
+    setValidUntilRaw(v);
+    setValidUntilTouched(true);
+  };
   const [recipientName, setRecipientName] = useState("株式会社AMY");
   const [recipientContactName, setRecipientContactName] = useState("");
   const [authorName, setAuthorName] = useState(user?.fullName ?? "");

@@ -73,6 +73,26 @@ export function endOfNextMonthISO(iso: string): string {
   return `${yy}-${mm}-${dd}`;
 }
 
+/**
+ * 指定日の3ヶ月後を YYYY-MM-DD で返す (見積書の有効期限デフォルト)。
+ * 例: 2026-05-13 → 2026-08-13
+ */
+export function plus3MonthsISO(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  // JS の Date は月加算でオーバーフロー時に翌月へ繰り上がる。
+  // 5/31 + 3か月 = 8/31 だが、例えば 11/30 + 3 か月は 2/30 → 3/2 に。
+  // 業務上、月末ズレは許容として単純加算する。
+  const dt = new Date(y, mo - 1 + 3, d);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
 export function addDaysISO(iso: string, n: number): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   if (!m) return iso;
