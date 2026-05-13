@@ -141,7 +141,7 @@ function InternalDashboard() {
           icon="alert-circle"
           label="未入金請求案件"
           value={String(d.billedProjectsCount)}
-          onPress={() => router.push("/(tabs)/invoices?outstanding=1")}
+          onPress={() => router.push("/(tabs)/invoices?unpaid=1")}
         />
       </View>
 

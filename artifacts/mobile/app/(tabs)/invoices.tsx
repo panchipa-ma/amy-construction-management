@@ -48,7 +48,7 @@ export default function InvoicesTab() {
   const c = useColors();
   const router = useRouter();
   const qc = useQueryClient();
-  const params = useLocalSearchParams<{ paid?: string; outstanding?: string }>();
+  const params = useLocalSearchParams<{ paid?: string; outstanding?: string; unpaid?: string }>();
   const [filter, setFilter] = useState<Filter>(
     params.outstanding === "1"
       ? "outstanding"
@@ -59,9 +59,10 @@ export default function InvoicesTab() {
   useEffect(() => {
     if (params.outstanding === "1") setFilter("outstanding");
     else if (params.paid === "true") setFilter("paid");
-    else if (params.paid === undefined && params.outstanding === undefined)
+    else if (params.unpaid === "1") setFilter("unpaid");
+    else if (params.paid === undefined && params.outstanding === undefined && params.unpaid === undefined)
       setFilter("unpaid");
-  }, [params.paid, params.outstanding]);
+  }, [params.paid, params.outstanding, params.unpaid]);
 
   const q = useListInvoices();
   const all = q.data ?? [];
