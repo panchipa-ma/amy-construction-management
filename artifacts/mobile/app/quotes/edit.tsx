@@ -48,9 +48,14 @@ export default function QuoteEditGuarded() {
 function QuoteEdit() {
   const router = useRouter();
   const qc = useQueryClient();
-  const { id, projectId: presetProject } = useLocalSearchParams<{
+  const {
+    id,
+    projectId: presetProject,
+    fromQuoteId,
+  } = useLocalSearchParams<{
     id?: string;
     projectId?: string;
+    fromQuoteId?: string;
   }>();
   const isEdit = !!id;
 
@@ -61,6 +66,15 @@ function QuoteEdit() {
   const quoteQ = useGetQuote(id!, {
     query: { enabled: isEdit, queryKey: getGetQuoteQueryKey(id ?? "") },
   });
+  // 過去案件の見積書を流用: ?fromQuoteId=<id> で件名/ご担当/備考/明細をプリフィル。
+  // 案件 / 見積No / 見積日 / 有効期限はリセット (新規入力)。
+  const fromQuoteQ = useGetQuote(fromQuoteId!, {
+    query: {
+      enabled: !isEdit && !!fromQuoteId,
+      queryKey: getGetQuoteQueryKey(fromQuoteId ?? ""),
+    },
+  });
+  const [fromPrefilled, setFromPrefilled] = useState(false);
   const createMut = useCreateQuote();
   const updateMut = useUpdateQuote();
   const deleteMut = useDeleteQuote();
@@ -94,6 +108,16 @@ function QuoteEdit() {
     setQuoteNumber(`${prefix}${String(next).padStart(3, "0")}`);
     setAutoNumberSet(true);
   }, [isEdit, autoNumberSet, quoteNumber, quotesQ.data]);
+
+  useEffect(() => {
+    if (isEdit || fromPrefilled || !fromQuoteQ.data) return;
+    const src = fromQuoteQ.data;
+    setSubject(src.subject ?? "");
+    setContactName(src.contactName ?? "");
+    setNotes(src.notes ?? "");
+    setItems(lineItemsFromApi(src.items));
+    setFromPrefilled(true);
+  }, [isEdit, fromPrefilled, fromQuoteQ.data]);
 
   useEffect(() => {
     if (isEdit && quoteQ.data && !loaded) {

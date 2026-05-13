@@ -263,6 +263,11 @@ export const costEntriesTable = pgTable("cost_entries", {
   actualAmount: numeric("actual_amount").notNull().default("0"),
   entryDate: date("entry_date").notNull(),
   notes: text("notes"),
+  // 見積書から自動取込された予算原価。見積書の保存ごとに sync (削除→再作成)。
+  // 見積書が削除されたら cascade で消える。手動作成エントリは null。
+  sourceQuoteId: uuid("source_quote_id").references(() => quotesTable.id, {
+    onDelete: "cascade",
+  }),
   createdBy: text("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

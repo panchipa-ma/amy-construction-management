@@ -47,6 +47,34 @@ async function syncProjectContractAmount(projectId: string): Promise<void> {
     .where(eq(projectsTable.id, projectId));
 }
 
+// 見積書 → 施工台帳 (予算原価) 自動取込。
+// 見積書の作成・更新ごとに sourceQuoteId で紐付く既存エントリを削除して再作成。
+// 見積書削除時は FK cascade で消える。category default は subcontract、台帳側で手動編集可。
+async function syncCostEntriesFromQuote(
+  quote: typeof quotesTable.$inferSelect,
+): Promise<void> {
+  const items = (quote.items ?? []) as LineItemJson[];
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(costEntriesTable)
+      .where(eq(costEntriesTable.sourceQuoteId, quote.id));
+    if (items.length === 0) return;
+    await tx.insert(costEntriesTable).values(
+      items.map((it) => ({
+        projectId: quote.projectId,
+        category: "subcontract",
+        description: it.description,
+        vendor: null,
+        plannedAmount: String(n(it.quantity) * n(it.unitPrice)),
+        actualAmount: "0",
+        entryDate: quote.issueDate,
+        notes: `見積 ${quote.quoteNumber} より自動取込`,
+        sourceQuoteId: quote.id,
+      })),
+    );
+  });
+}
+
 async function serialize(q: typeof quotesTable.$inferSelect) {
   const [project] = await db
     .select({ name: projectsTable.name, customerId: projectsTable.customerId })
@@ -121,6 +149,7 @@ router.post("/quotes", async (req, res): Promise<void> => {
     })
     .returning();
   await syncProjectContractAmount(row.projectId);
+  await syncCostEntriesFromQuote(row);
   res.json(CreateQuoteResponse.parse(await serialize(row)));
 });
 
@@ -171,6 +200,7 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
     return;
   }
   await syncProjectContractAmount(row.projectId);
+  await syncCostEntriesFromQuote(row);
   res.json(UpdateQuoteResponse.parse(await serialize(row)));
 });
 
@@ -234,11 +264,17 @@ router.post(
         items: invoiceItems,
       })
       .returning();
-    // 「請求」へ移行: 案件を竣工に進めて、元の見積書を削除する
+    // 「請求」へ移行: 案件を竣工に進めて、元の見積書を削除する。
+    // 自動取込された予算原価は cost_entries.sourceQuoteId 経由で FK cascade されるため、
+    // 削除前に sourceQuoteId を NULL にして台帳上の予算 (planned) を保持する。
     await db
       .update(projectsTable)
       .set({ status: "completed" })
       .where(eq(projectsTable.id, quote.projectId));
+    await db
+      .update(costEntriesTable)
+      .set({ sourceQuoteId: null })
+      .where(eq(costEntriesTable.sourceQuoteId, quote.id));
     await db.delete(quotesTable).where(eq(quotesTable.id, quote.id));
     const { subtotal, tax, total } = computeTotals(invoiceItems);
     res.json(

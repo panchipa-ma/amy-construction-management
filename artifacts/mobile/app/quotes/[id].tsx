@@ -151,6 +151,11 @@ function QuoteDetail() {
             }}
           />
           <ActionBtn
+            icon="copy"
+            label="流用"
+            onPress={() => router.push(`/quotes/edit?fromQuoteId=${quote.id}`)}
+          />
+          <ActionBtn
             icon="file-text"
             label="請求書化"
             onPress={() => setConvertOpen(true)}
