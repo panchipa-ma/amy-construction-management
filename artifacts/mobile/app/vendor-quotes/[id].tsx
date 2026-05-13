@@ -1,28 +1,12 @@
 import { Feather } from "@expo/vector-icons";
-import { useQueryClient } from "@tanstack/react-query";
 import {
-  getGetDashboardSummaryQueryKey,
-  getGetProjectLedgerQueryKey,
-  getGetProjectQueryKey,
-  getListVendorInvoicesQueryKey,
   getListVendorQuotesQueryKey,
-  useConvertVendorQuoteToInvoice,
-  useDeleteVendorQuote,
   useListVendorQuotes,
 } from "@workspace/api-client-react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
-import {
-  Alert,
-  Modal,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
+import React from "react";
+import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 
-import { DateInput, Field, FormSection } from "@/components/form";
 import {
   Badge,
   Body,
@@ -38,23 +22,13 @@ import { useColors } from "@/hooks/useColors";
 import { fmtDate, yen } from "@/lib/format";
 import { openStorageFile } from "@/lib/open-file";
 
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 export default function VendorQuoteDetail() {
   const c = useColors();
   const router = useRouter();
-  const qc = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
   const q = useListVendorQuotes(undefined, {
     query: { enabled: true, queryKey: getListVendorQuotesQueryKey() },
   });
-
-  const [convertOpen, setConvertOpen] = useState(false);
-  const convertMut = useConvertVendorQuoteToInvoice();
-  const deleteMut = useDeleteVendorQuote();
 
   if (q.isLoading) return <Loader />;
   if (q.isError) return <ErrorState onRetry={() => q.refetch()} />;
@@ -70,39 +44,6 @@ export default function VendorQuoteDetail() {
 
   const subtotal = Math.round(quote.amount / 1.1);
   const tax = quote.amount - subtotal;
-
-  const handleConvert = async (invoiceDate: string) => {
-    try {
-      await convertMut.mutateAsync({
-        id: quote.id,
-        data: { invoiceDate, dueDate: null },
-      });
-      // 重複変換を防ぐため元の職人見積書を削除 (WEB と同じ挙動)。
-      try {
-        await deleteMut.mutateAsync({ id: quote.id });
-      } catch {
-        // 削除失敗は致命ではないので警告のみ
-      }
-      const invalidations = [
-        qc.invalidateQueries({ queryKey: getListVendorInvoicesQueryKey() }),
-        qc.invalidateQueries({ queryKey: getListVendorQuotesQueryKey() }),
-        qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
-      ];
-      if (quote.projectId) {
-        invalidations.push(
-          qc.invalidateQueries({ queryKey: getGetProjectQueryKey(quote.projectId) }),
-          qc.invalidateQueries({
-            queryKey: getGetProjectLedgerQueryKey(quote.projectId),
-          }),
-        );
-      }
-      await Promise.all(invalidations);
-      setConvertOpen(false);
-      router.replace("/vendor-invoices");
-    } catch (e) {
-      Alert.alert("変換失敗", e instanceof Error ? e.message : String(e));
-    }
-  };
 
   return (
     <>
@@ -142,7 +83,9 @@ export default function VendorQuoteDetail() {
           <ActionBtn
             icon="file-text"
             label="請求書化"
-            onPress={() => setConvertOpen(true)}
+            onPress={() =>
+              router.push(`/vendor-invoices/new?fromVendorQuoteId=${quote.id}`)
+            }
           />
         </View>
 
@@ -215,14 +158,6 @@ export default function VendorQuoteDetail() {
           </Pressable>
         ) : null}
       </ScrollView>
-
-      <ConvertModal
-        open={convertOpen}
-        onClose={() => setConvertOpen(false)}
-        defaultIssueDate={todayStr()}
-        loading={convertMut.isPending}
-        onSubmit={handleConvert}
-      />
     </>
   );
 }
@@ -277,80 +212,3 @@ function ActionBtn({
   );
 }
 
-function ConvertModal({
-  open,
-  onClose,
-  defaultIssueDate,
-  loading,
-  onSubmit,
-}: {
-  open: boolean;
-  onClose: () => void;
-  defaultIssueDate: string;
-  loading: boolean;
-  onSubmit: (invoiceDate: string) => void;
-}) {
-  const c = useColors();
-  const [issue, setIssue] = useState(defaultIssueDate);
-  return (
-    <Modal transparent animationType="slide" visible={open} onRequestClose={onClose}>
-      <Pressable
-        onPress={onClose}
-        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" }}
-      >
-        <Pressable
-          onPress={(e) => e.stopPropagation()}
-          style={{
-            backgroundColor: c.background,
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
-            padding: 16,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 12,
-              paddingBottom: 10,
-              borderBottomWidth: StyleSheet.hairlineWidth,
-              borderBottomColor: c.border,
-            }}
-          >
-            <Body style={{ fontWeight: "600", fontSize: 16 }}>職人請求書に変換</Body>
-            <Pressable onPress={onClose}>
-              <Feather name="x" size={20} color={c.mutedForeground} />
-            </Pressable>
-          </View>
-          <FormSection>
-            <Field label="請求日" required>
-              <DateInput value={issue} onChangeText={setIssue} />
-            </Field>
-          </FormSection>
-          <Muted style={{ fontSize: 12, marginTop: 4 }}>
-            施工台帳の実績原価としても自動反映され、元の職人見積書は削除されます。
-          </Muted>
-          <Pressable
-            disabled={loading || !issue}
-            onPress={() => onSubmit(issue)}
-            style={({ pressed }) => [
-              {
-                marginTop: 10,
-                paddingVertical: 14,
-                borderRadius: 10,
-                backgroundColor: !issue ? c.muted : c.primary,
-                alignItems: "center",
-              },
-              pressed && { opacity: 0.7 },
-            ]}
-          >
-            <Body style={{ color: c.primaryForeground, fontWeight: "700" }}>
-              {loading ? "変換中…" : "請求書に変換する"}
-            </Body>
-          </Pressable>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}

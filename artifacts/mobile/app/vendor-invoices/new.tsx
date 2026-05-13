@@ -4,13 +4,18 @@ import {
   getGetDashboardSummaryQueryKey,
   getGetProjectLedgerQueryKey,
   getGetProjectQueryKey,
+  getListProjectsQueryKey,
   getListVendorInvoicesQueryKey,
+  getListVendorQuotesQueryKey,
   useCreateVendorInvoice,
+  useDeleteVendorQuote,
   useListProjects,
   useListStaff,
+  useListVendorQuotes,
 } from "@workspace/api-client-react";
-import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Alert } from "react-native";
 
 import {
   DateInput,
@@ -37,6 +42,41 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// Parse the " / " stamped notes block produced by vendor-quotes / vendor-invoices forms.
+// Mirrors WEB's parseAuthorRecipient so 見積→請求 変換時 に作成者/宛先/ご担当 が復元される。
+function parseAuthorRecipient(notes: string | null | undefined): {
+  authorName?: string;
+  recipientName?: string;
+  recipientContactName?: string;
+  rest?: string;
+} {
+  if (!notes) return {};
+  // 見積側は `... / 宛名: Z\nfreeform` の形で stamp する。最初の改行までを meta、それ以降を rest 扱い。
+  const newlineIdx = notes.indexOf("\n");
+  const head = newlineIdx >= 0 ? notes.slice(0, newlineIdx) : notes;
+  const tailFromNewline = newlineIdx >= 0 ? notes.slice(newlineIdx + 1) : "";
+  const parts = head.split(" / ").map((s) => s.trim());
+  const out: {
+    authorName?: string;
+    recipientName?: string;
+    recipientContactName?: string;
+    rest?: string;
+  } = {};
+  const remaining: string[] = [];
+  for (const p of parts) {
+    const a = p.match(/^作成者:\s*(.+)$/);
+    const r = p.match(/^宛名:\s*(.+)$/);
+    const c = p.match(/^ご担当:\s*(.+)$/);
+    if (a) out.authorName = a[1];
+    else if (r) out.recipientName = r[1];
+    else if (c) out.recipientContactName = c[1];
+    else remaining.push(p);
+  }
+  const tailParts = [remaining.join(" / "), tailFromNewline].filter((s) => s.trim());
+  if (tailParts.length > 0) out.rest = tailParts.join("\n");
+  return out;
+}
+
 export default function VendorInvoiceNew() {
   const router = useRouter();
   const qc = useQueryClient();
@@ -44,9 +84,31 @@ export default function VendorInvoiceNew() {
   const profile = useMemo(() => (user ? readProfile(user) : EMPTY_PROFILE), [user]);
   const profileOk = isProfileComplete(profile);
 
+  // ?fromVendorQuoteId=<id> — WEB と同じ「職人見積書 → 職人請求書」引継ぎフロー。
+  // - projectId / vendorName / 単一サマリ行 / 作成者・宛先 を一度だけ prefill
+  // - 保存時 quoteFileUrl/quoteFileName で元見積書PDFを引き継ぎ、元の職人見積書を削除
+  const params = useLocalSearchParams<{ fromVendorQuoteId?: string }>();
+  const fromVendorQuoteId = params.fromVendorQuoteId ?? "";
+  const vendorQuotesQ = useListVendorQuotes(undefined, {
+    query: {
+      enabled: !!fromVendorQuoteId,
+      queryKey: getListVendorQuotesQueryKey(),
+    },
+  });
+  const sourceQuote = useMemo(
+    () =>
+      fromVendorQuoteId
+        ? (vendorQuotesQ.data ?? []).find((q) => q.id === fromVendorQuoteId)
+        : undefined,
+    [fromVendorQuoteId, vendorQuotesQ.data],
+  );
+  const prefilledFromQuoteRef = useRef(false);
+  const missingQuoteAlertedRef = useRef(false);
+
   const projectsQ = useListProjects();
   const staffQ = useListStaff();
   const createMut = useCreateVendorInvoice();
+  const deleteVendorQuoteMut = useDeleteVendorQuote();
 
   const [projectId, setProjectId] = useState("");
   const [staffId, setStaffId] = useState("");
@@ -70,6 +132,65 @@ export default function VendorInvoiceNew() {
       if (s && !vendorName) setVendorName(s.name);
     }
   }, [staffId, staffQ.data, vendorName]);
+
+  // One-shot prefill from source vendor quote.
+  useEffect(() => {
+    if (prefilledFromQuoteRef.current) return;
+    if (!fromVendorQuoteId) return;
+    if (!sourceQuote) {
+      if (
+        !vendorQuotesQ.isLoading &&
+        vendorQuotesQ.isFetched &&
+        !missingQuoteAlertedRef.current
+      ) {
+        missingQuoteAlertedRef.current = true;
+        Alert.alert(
+          "見積書が見つかりませんでした",
+          "削除された、もしくはアクセス権がない可能性があります。フォームは空のまま開いています。",
+        );
+      }
+      return;
+    }
+    prefilledFromQuoteRef.current = true;
+
+    if (sourceQuote.projectId) setProjectId(sourceQuote.projectId);
+    if (sourceQuote.vendorName) setVendorName(sourceQuote.vendorName);
+
+    const parsed = parseAuthorRecipient(sourceQuote.notes);
+    if (parsed.recipientName) setRecipientName(parsed.recipientName);
+    if (parsed.recipientContactName)
+      setRecipientContactName(parsed.recipientContactName);
+    if (parsed.authorName) setAuthorName(parsed.authorName);
+    if (parsed.rest) setNotes(parsed.rest);
+
+    // Vendor quote stores tax-included `amount`. Convert back to tax-excluded
+    // subtotal for a single summary line so total ≈ original amount.
+    const subtotalGuess = Math.round(sourceQuote.amount / 1.1);
+    const projName =
+      sourceQuote.projectName || sourceQuote.vendorName || "工事一式";
+    setItems([
+      {
+        ...emptyLineItem,
+        description: `${projName} 工事一式`,
+        quantity: "1",
+        unitPrice: String(subtotalGuess),
+      },
+    ]);
+
+    // Auto-suggest a 請求書No so the user doesn't have to type one.
+    if (!docNumber) {
+      const datePart = (issueDate || todayStr()).replace(/-/g, "");
+      const suffix = String(Math.floor(100 + Math.random() * 900));
+      setDocNumber(`INV-${datePart}-${suffix}`);
+    }
+  }, [
+    fromVendorQuoteId,
+    sourceQuote,
+    vendorQuotesQ.isLoading,
+    vendorQuotesQ.isFetched,
+    docNumber,
+    issueDate,
+  ]);
 
   const project = (projectsQ.data ?? []).find((p) => p.id === projectId);
   const projectOptions: SelectOption[] = (projectsQ.data ?? []).map((p) => ({
@@ -130,11 +251,29 @@ export default function VendorInvoiceNew() {
         invoiceDate: issueDate,
         fileUrl: upload.fileUrl,
         fileName: upload.fileName,
+        // 見積→請求 変換時のみ、元の見積書PDFを「引継ぎPDF」として添付。
+        quoteFileUrl: sourceQuote?.fileUrl ?? null,
+        quoteFileName: sourceQuote?.fileName ?? null,
         notes: stamped,
       },
     });
 
+    // 変換元の職人見積書を削除 (請求書化済みなので一覧から消す)。
+    // 削除に失敗しても請求書作成は成功済なので警告のみで処理続行。
+    if (sourceQuote) {
+      try {
+        await deleteVendorQuoteMut.mutateAsync({ id: sourceQuote.id });
+      } catch (e) {
+        Alert.alert(
+          "元の職人見積書の削除に失敗しました",
+          e instanceof Error ? e.message : String(e),
+        );
+      }
+    }
+
     await qc.invalidateQueries({ queryKey: getListVendorInvoicesQueryKey() });
+    await qc.invalidateQueries({ queryKey: getListVendorQuotesQueryKey() });
+    await qc.invalidateQueries({ queryKey: getListProjectsQueryKey() });
     await qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
     if (project.id) {
       await qc.invalidateQueries({ queryKey: getGetProjectQueryKey(project.id) });
