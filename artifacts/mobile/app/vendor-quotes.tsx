@@ -87,7 +87,10 @@ export default function VendorQuotesScreen() {
             selectable={sel.selectionMode}
             selected={sel.isSelected(item.id)}
             onLongPress={() => sel.toggle(item.id)}
-            onPress={() => sel.selectionMode && sel.toggle(item.id)}
+            onPress={() => {
+              if (sel.selectionMode) sel.toggle(item.id);
+              else router.push(`/vendor-quotes/${item.id}`);
+            }}
           >
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
               <View style={{ flex: 1, paddingRight: 12 }}>
