@@ -145,15 +145,21 @@ function InternalDashboard() {
         />
       </View>
 
-      <Pressable
-        onPress={() => router.push("/(tabs)/invoices?outstanding=1")}
-      >
-        <Card>
-          <SectionTitle>請求中案件 合計</SectionTitle>
+      <Card>
+        <SectionTitle>請求中案件 合計</SectionTitle>
+        <Pressable
+          onPress={() => router.push("/(tabs)/invoices?outstanding=1")}
+          style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+        >
           <Row
             label={`今月 (${monthLabel(d.currentMonth)}) 請求金額`}
             value={yen(d.currentMonthInvoiceTotal)}
           />
+        </Pressable>
+        <Pressable
+          onPress={() => router.push("/(tabs)/invoices?unpaid=1")}
+          style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+        >
           <Row
             label="未入金 (該当月以前)"
             value={
@@ -162,6 +168,11 @@ function InternalDashboard() {
               </Body>
             }
           />
+        </Pressable>
+        <Pressable
+          onPress={() => router.push("/(tabs)/invoices?unpaid=1")}
+          style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+        >
           <Row
             label="合計"
             value={
@@ -170,8 +181,8 @@ function InternalDashboard() {
               </Body>
             }
           />
-        </Card>
-      </Pressable>
+        </Pressable>
+      </Card>
 
       <Muted style={{ marginTop: 8, textAlign: "center" }}>
         最終更新: {fmtDate(new Date().toISOString())}
