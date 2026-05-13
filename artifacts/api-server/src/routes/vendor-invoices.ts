@@ -113,12 +113,20 @@ async function findProjectByUnit(unitNumber: string) {
   const target = normalizeUnit(unitNumber);
   if (!target) return null;
   const all = await db
-    .select({ id: projectsTable.id, unitNumber: projectsTable.unitNumber })
+    .select({
+      id: projectsTable.id,
+      unitNumber: projectsTable.unitNumber,
+      name: projectsTable.name,
+    })
     .from(projectsTable);
+  // 1) 号室 (unitNumber) 完全一致
+  const byUnit = all.find(
+    (p) => p.unitNumber && normalizeUnit(p.unitNumber) === target,
+  );
+  if (byUnit) return byUnit;
+  // 2) 号室未設定の案件は名称 (project.name) でフォールバック一致
   return (
-    all.find(
-      (p) => p.unitNumber && normalizeUnit(p.unitNumber) === target,
-    ) ?? null
+    all.find((p) => !p.unitNumber && normalizeUnit(p.name) === target) ?? null
   );
 }
 
