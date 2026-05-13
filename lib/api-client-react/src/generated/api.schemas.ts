@@ -855,6 +855,12 @@ export interface DashboardSummary {
   unpaidInvoiceTotal: number;
   /** 請求中案件 (currentMonth 以前に発行された未入金請求書を持つ distinct project 数) */
   billedProjectsCount: number;
+  /** 今月の請求中案件 (currentMonth に発行された未入金請求書を持つ distinct project 数) */
+  currentMonthBilledProjectsCount: number;
+  /** 未入金請求案件 (currentMonth より前の月に発行された未入金請求書を持つ distinct project 数) */
+  priorOutstandingProjectsCount: number;
+  /** 未入金請求案件の合計 (currentMonth より前の月に発行された未入金請求書の税込合計) */
+  priorOutstandingInvoiceTotal: number;
   /** 全請求書の税込合計 (legacy) */
   invoicedTotal: number;
   /** 入金済請求書の税込合計 (legacy) */

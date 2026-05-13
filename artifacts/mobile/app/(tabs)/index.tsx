@@ -134,7 +134,13 @@ function InternalDashboard() {
         <KpiCard
           icon="file-text"
           label={`請求中案件 (${monthLabel(d.currentMonth)})`}
-          value={String(d.billedProjectsCount)}
+          value={String(d.currentMonthBilledProjectsCount)}
+          onPress={() => router.push("/(tabs)/invoices?outstanding=1")}
+        />
+        <KpiCard
+          icon="alert-circle"
+          label="未入金請求案件"
+          value={String(d.priorOutstandingProjectsCount)}
           onPress={() => router.push("/(tabs)/invoices?outstanding=1")}
         />
       </View>

@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   type AppUser,
@@ -8,6 +9,7 @@ import {
   useListUsers,
   useUpdateUser,
 } from "@workspace/api-client-react";
+import * as Linking from "expo-linking";
 import React, { useState } from "react";
 import {
   Alert,
@@ -17,6 +19,8 @@ import {
   Platform,
   Pressable,
   RefreshControl,
+  Share,
+  Text,
   TextInput,
   View,
 } from "react-native";
@@ -207,17 +211,53 @@ function UsersList() {
   );
 }
 
+function ShareChip({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  const c = useColors();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        borderWidth: 1,
+        borderColor: c.border,
+        backgroundColor: c.background,
+        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <Feather name={icon} size={16} color={c.primary} />
+      <Body style={{ fontSize: 13, fontWeight: "600", color: c.foreground }}>
+        {label}
+      </Body>
+    </Pressable>
+  );
+}
+
 function InviteButton({ onSent }: { onSent: () => void }) {
   const c = useColors();
   const inviteMut = useCreateInvitation();
   const [open, setOpen] = React.useState(false);
   const [email, setEmail] = React.useState("");
   const [busy, setBusy] = React.useState(false);
+  const [shareUrl, setShareUrl] = React.useState<string | null>(null);
 
   const close = () => {
     if (busy) return;
     setOpen(false);
     setEmail("");
+    setShareUrl(null);
   };
 
   const submit = async () => {
@@ -228,15 +268,61 @@ function InviteButton({ onSent }: { onSent: () => void }) {
     }
     setBusy(true);
     try {
-      await inviteMut.mutateAsync({ data: { emailAddress: e } });
+      const inv = await inviteMut.mutateAsync({ data: { emailAddress: e } });
       onSent();
-      setOpen(false);
-      setEmail("");
-      Alert.alert("送信しました", `${e} に招待メールを送りました。`);
+      // メール送信は Clerk が自動で行う。加えて URL があれば LINE/SMS 等でも案内可能。
+      if (inv?.url) {
+        setShareUrl(inv.url);
+      } else {
+        setOpen(false);
+        setEmail("");
+        Alert.alert("送信しました", `${e} に招待メールを送りました。`);
+      }
     } catch (err: any) {
       Alert.alert("エラー", err?.message ?? "招待の送信に失敗しました");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const shareMessage = (url: string) =>
+    `AMY 施工管理アプリへ招待します。\n以下のリンクから登録してください:\n${url}`;
+
+  const openOrFail = async (urlScheme: string, label: string) => {
+    try {
+      const ok = await Linking.canOpenURL(urlScheme).catch(() => true);
+      if (!ok) {
+        Alert.alert("利用不可", `${label} は このデバイスで利用できません。`);
+        return;
+      }
+      await Linking.openURL(urlScheme);
+    } catch (err: any) {
+      Alert.alert("エラー", err?.message ?? `${label} を開けませんでした`);
+    }
+  };
+
+  const shareViaLine = (url: string) => {
+    const msg = encodeURIComponent(shareMessage(url));
+    openOrFail(`https://line.me/R/msg/text/?${msg}`, "LINE");
+  };
+  const shareViaMail = (url: string) => {
+    const subject = encodeURIComponent("AMY 施工管理アプリへの招待");
+    const body = encodeURIComponent(shareMessage(url));
+    openOrFail(
+      `mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`,
+      "メール",
+    );
+  };
+  const shareViaSms = (url: string) => {
+    const body = encodeURIComponent(shareMessage(url));
+    // iOS は `sms:&body=`、Android は `sms:?body=` だが `?body=` はどちらも動く
+    openOrFail(`sms:?body=${body}`, "SMS");
+  };
+  const shareViaSystem = async (url: string) => {
+    try {
+      await Share.share({ message: shareMessage(url) });
+    } catch (err: any) {
+      Alert.alert("エラー", err?.message ?? "共有に失敗しました");
     }
   };
 
@@ -271,64 +357,132 @@ function InviteButton({ onSent }: { onSent: () => void }) {
           style={{ flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.4)", padding: 24 }}
         >
           <View style={{ backgroundColor: c.card, borderRadius: 12, padding: 20, gap: 12 }}>
-            <Body style={{ fontWeight: "700", fontSize: 16, color: c.foreground }}>
-              ユーザーを招待
-            </Body>
-            <Body style={{ fontSize: 13, color: c.mutedForeground }}>
-              招待メールを送信します。登録後は社外+承認待ちで作成されます。
-            </Body>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="email@example.com"
-              placeholderTextColor={c.mutedForeground}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              autoFocus
-              editable={!busy}
-              style={{
-                borderWidth: 1,
-                borderColor: c.border,
-                borderRadius: 8,
-                paddingVertical: 10,
-                paddingHorizontal: 12,
-                fontSize: 15,
-                color: c.foreground,
-                backgroundColor: c.background,
-              }}
-            />
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
-              <Pressable
-                onPress={close}
-                disabled={busy}
-                style={({ pressed }) => ({
-                  paddingVertical: 10,
-                  paddingHorizontal: 16,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: c.border,
-                  opacity: busy ? 0.5 : pressed ? 0.85 : 1,
-                })}
-              >
-                <Body style={{ color: c.foreground }}>キャンセル</Body>
-              </Pressable>
-              <Pressable
-                onPress={submit}
-                disabled={busy}
-                style={({ pressed }) => ({
-                  paddingVertical: 10,
-                  paddingHorizontal: 16,
-                  borderRadius: 8,
-                  backgroundColor: c.primary,
-                  opacity: busy ? 0.6 : pressed ? 0.85 : 1,
-                })}
-              >
-                <Body style={{ color: c.primaryForeground, fontWeight: "600" }}>
-                  {busy ? "送信中…" : "招待を送信"}
+            {!shareUrl ? (
+              <>
+                <Body style={{ fontWeight: "700", fontSize: 16, color: c.foreground }}>
+                  ユーザーを招待
                 </Body>
-              </Pressable>
-            </View>
+                <Body style={{ fontSize: 13, color: c.mutedForeground }}>
+                  メールアドレスを入力して招待を作成します。送信後 LINE / メール / SMS で案内できます。登録後は社外+承認待ちで作成されます。
+                </Body>
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="email@example.com"
+                  placeholderTextColor={c.mutedForeground}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  autoFocus
+                  editable={!busy}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    borderRadius: 8,
+                    paddingVertical: 10,
+                    paddingHorizontal: 12,
+                    fontSize: 15,
+                    color: c.foreground,
+                    backgroundColor: c.background,
+                  }}
+                />
+                <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
+                  <Pressable
+                    onPress={close}
+                    disabled={busy}
+                    style={({ pressed }) => ({
+                      paddingVertical: 10,
+                      paddingHorizontal: 16,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      opacity: busy ? 0.5 : pressed ? 0.85 : 1,
+                    })}
+                  >
+                    <Body style={{ color: c.foreground }}>キャンセル</Body>
+                  </Pressable>
+                  <Pressable
+                    onPress={submit}
+                    disabled={busy}
+                    style={({ pressed }) => ({
+                      paddingVertical: 10,
+                      paddingHorizontal: 16,
+                      borderRadius: 8,
+                      backgroundColor: c.primary,
+                      opacity: busy ? 0.6 : pressed ? 0.85 : 1,
+                    })}
+                  >
+                    <Body style={{ color: c.primaryForeground, fontWeight: "600" }}>
+                      {busy ? "送信中…" : "招待を作成"}
+                    </Body>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <>
+                <Body style={{ fontWeight: "700", fontSize: 16, color: c.foreground }}>
+                  招待を作成しました
+                </Body>
+                <Body style={{ fontSize: 13, color: c.mutedForeground }}>
+                  {email} に招待メールが送信されました。さらに以下の方法でも案内できます:
+                </Body>
+                <View
+                  style={{
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    borderRadius: 8,
+                    paddingVertical: 8,
+                    paddingHorizontal: 10,
+                    backgroundColor: c.background,
+                  }}
+                >
+                  <Text
+                    selectable
+                    style={{ fontSize: 12, color: c.mutedForeground }}
+                  >
+                    {shareUrl}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <ShareChip
+                    icon="message-circle"
+                    label="LINE"
+                    onPress={() => shareViaLine(shareUrl)}
+                  />
+                  <ShareChip
+                    icon="mail"
+                    label="メール"
+                    onPress={() => shareViaMail(shareUrl)}
+                  />
+                  <ShareChip
+                    icon="message-square"
+                    label="SMS"
+                    onPress={() => shareViaSms(shareUrl)}
+                  />
+                  <ShareChip
+                    icon="share-2"
+                    label="その他"
+                    onPress={() => shareViaSystem(shareUrl)}
+                  />
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 4 }}>
+                  <Pressable
+                    onPress={close}
+                    style={({ pressed }) => ({
+                      paddingVertical: 10,
+                      paddingHorizontal: 16,
+                      borderRadius: 8,
+                      backgroundColor: c.primary,
+                      opacity: pressed ? 0.85 : 1,
+                    })}
+                  >
+                    <Body style={{ color: c.primaryForeground, fontWeight: "600" }}>
+                      閉じる
+                    </Body>
+                  </Pressable>
+                </View>
+              </>
+            )}
           </View>
         </KeyboardAvoidingView>
       </Modal>

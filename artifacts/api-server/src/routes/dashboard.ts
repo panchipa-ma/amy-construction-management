@@ -72,19 +72,35 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   // 「請求中案件」 — currentMonth 末日以前に発行された未入金請求書のみを対象。
   // 入金済になれば自動的に外れ、件数 / 金額両方から減る。
   const currentMonth = yyyymm;
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   let unpaidInvoiceTotal = 0;
+  let priorOutstandingInvoiceTotal = 0;
   const outstandingProjectIds = new Set<string>();
+  const currentMonthProjectIds = new Set<string>();
+  const priorOutstandingProjectIds = new Set<string>();
   for (const inv of invoices) {
     if (inv.paid) continue;
     const issue = inv.issueDate ? String(inv.issueDate) : null;
     if (!issue || !/^\d{4}-\d{2}-\d{2}/.test(issue)) continue;
-    if (new Date(issue) >= monthEnd) continue;
+    const issueDate = new Date(issue);
+    if (issueDate >= monthEnd) continue; // future month — out of scope
     const items = (inv.items ?? []) as LineItemJson[];
-    unpaidInvoiceTotal += computeTotals(items).total;
+    const total = computeTotals(items).total;
+    unpaidInvoiceTotal += total;
     outstandingProjectIds.add(inv.projectId);
+    if (issueDate >= monthStart) {
+      // 今月発行
+      currentMonthProjectIds.add(inv.projectId);
+    } else {
+      // 今月より前に発行 → 未入金請求案件
+      priorOutstandingInvoiceTotal += total;
+      priorOutstandingProjectIds.add(inv.projectId);
+    }
   }
   const billedProjectsCount = outstandingProjectIds.size;
+  const currentMonthBilledProjectsCount = currentMonthProjectIds.size;
+  const priorOutstandingProjectsCount = priorOutstandingProjectIds.size;
 
   // Monthly invoice totals grouped by the month of dueDate (支払期限).
   // Uses computeTotals over invoice line items so the figure exactly matches
@@ -196,6 +212,9 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       currentMonth,
       unpaidInvoiceTotal,
       billedProjectsCount,
+      currentMonthBilledProjectsCount,
+      priorOutstandingProjectsCount,
+      priorOutstandingInvoiceTotal,
       invoicedTotal,
       paidInvoiceTotal,
       statusBreakdown,
