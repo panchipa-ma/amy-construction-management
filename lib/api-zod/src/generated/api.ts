@@ -40,6 +40,9 @@ export const GetDashboardSummaryResponse = zod.object({
     .describe(
       "今月の請求中案件 (currentMonth に発行された未入金請求書を持つ distinct project 数)",
     ),
+  currentMonthInvoiceTotal: zod
+    .number()
+    .describe("今月発行された未入金請求書の税込合計"),
   priorOutstandingProjectsCount: zod
     .number()
     .describe(

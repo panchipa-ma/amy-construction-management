@@ -75,6 +75,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   let unpaidInvoiceTotal = 0;
+  let currentMonthInvoiceTotal = 0;
   let priorOutstandingInvoiceTotal = 0;
   const outstandingProjectIds = new Set<string>();
   const currentMonthProjectIds = new Set<string>();
@@ -91,6 +92,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
     outstandingProjectIds.add(inv.projectId);
     if (issueDate >= monthStart) {
       // 今月発行
+      currentMonthInvoiceTotal += total;
       currentMonthProjectIds.add(inv.projectId);
     } else {
       // 今月より前に発行 → 未入金請求案件
@@ -213,6 +215,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       unpaidInvoiceTotal,
       billedProjectsCount,
       currentMonthBilledProjectsCount,
+      currentMonthInvoiceTotal,
       priorOutstandingProjectsCount,
       priorOutstandingInvoiceTotal,
       invoicedTotal,

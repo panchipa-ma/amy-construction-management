@@ -140,7 +140,7 @@ function InternalDashboard() {
         <KpiCard
           icon="alert-circle"
           label="未入金請求案件"
-          value={String(d.priorOutstandingProjectsCount)}
+          value={String(d.billedProjectsCount)}
           onPress={() => router.push("/(tabs)/invoices?outstanding=1")}
         />
       </View>
@@ -150,11 +150,22 @@ function InternalDashboard() {
       >
         <Card>
           <SectionTitle>請求中案件 合計</SectionTitle>
-          <Row label="請求金額" value={yen(d.unpaidInvoiceTotal)} />
           <Row
-            label="未入金 合計"
+            label={`今月 (${monthLabel(d.currentMonth)}) 請求金額`}
+            value={yen(d.currentMonthInvoiceTotal)}
+          />
+          <Row
+            label="未入金 (該当月以前)"
             value={
               <Body style={{ color: c.destructive, fontWeight: "700" }}>
+                {yen(d.priorOutstandingInvoiceTotal)}
+              </Body>
+            }
+          />
+          <Row
+            label="合計"
+            value={
+              <Body style={{ color: c.foreground, fontWeight: "700" }}>
                 {yen(d.unpaidInvoiceTotal)}
               </Body>
             }
