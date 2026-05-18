@@ -491,19 +491,21 @@ export default function DashboardPage() {
                   className="py-3 flex items-start justify-between gap-4"
                 >
                   <div className="min-w-0">
-                    <div className="text-sm font-medium">{a.title}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {a.projectName && (
-                        <Link
-                          href={`/projects/${a.projectId}`}
-                          className="hover:underline"
-                        >
-                          {a.projectName}
-                        </Link>
-                      )}
-                      {a.subtitle && <span> · {a.subtitle}</span>}
-                      {a.actorName && <span> · {a.actorName}</span>}
-                    </div>
+                    {a.projectId ? (
+                      <Link
+                        href={`/projects/${a.projectId}`}
+                        className="text-sm font-medium hover:underline"
+                      >
+                        {a.title}
+                      </Link>
+                    ) : (
+                      <div className="text-sm font-medium">{a.title}</div>
+                    )}
+                    {a.actorName && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {a.actorName}
+                      </div>
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground whitespace-nowrap">
                     {formatDate(a.timestamp)}

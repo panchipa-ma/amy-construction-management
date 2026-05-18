@@ -8,6 +8,8 @@ import {
   quotesTable,
   scheduleEntriesTable,
   progressLogsTable,
+  vendorInvoicesTable,
+  vendorQuotesTable,
   appUsersTable,
 } from "@workspace/db";
 import { inArray } from "drizzle-orm";
@@ -231,81 +233,117 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
 });
 
 router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
-  type Activity = {
-    id: string;
-    kind:
-      | "project"
-      | "cost"
-      | "quote"
-      | "invoice"
-      | "schedule"
-      | "progress";
-    title: string;
-    subtitle: string | null;
-    projectId: string | null;
-    projectName: string | null;
-    actorName: string | null;
-    timestamp: string;
+  // 案件ベースの集計: 案件本体 + 子レコード (原価/見積/請求/予定/進捗/職人請求/職人見積)
+  // すべてを横断して各案件の最終更新 (createdAt) と最終アクター (createdBy) を求め、
+  // 1 案件 1 行にまとめる。詳細 (金額や番号) は載せず、「だれがどの案件を触ったか」だけを示す。
+  const [
+    projects,
+    costs,
+    quotes,
+    invs,
+    schedules,
+    logs,
+    vendorInvs,
+    vendorQuotes,
+  ] = await Promise.all([
+    db.select().from(projectsTable),
+    db
+      .select({
+        projectId: costEntriesTable.projectId,
+        createdAt: costEntriesTable.createdAt,
+        createdBy: costEntriesTable.createdBy,
+      })
+      .from(costEntriesTable),
+    db
+      .select({
+        projectId: quotesTable.projectId,
+        createdAt: quotesTable.createdAt,
+        createdBy: quotesTable.createdBy,
+      })
+      .from(quotesTable),
+    db
+      .select({
+        projectId: invoicesTable.projectId,
+        createdAt: invoicesTable.createdAt,
+        createdBy: invoicesTable.createdBy,
+      })
+      .from(invoicesTable),
+    db
+      .select({
+        projectId: scheduleEntriesTable.projectId,
+        createdAt: scheduleEntriesTable.createdAt,
+        createdBy: scheduleEntriesTable.createdBy,
+      })
+      .from(scheduleEntriesTable),
+    db
+      .select({
+        projectId: progressLogsTable.projectId,
+        createdAt: progressLogsTable.createdAt,
+        createdBy: progressLogsTable.createdBy,
+      })
+      .from(progressLogsTable),
+    db
+      .select({
+        projectId: vendorInvoicesTable.projectId,
+        createdAt: vendorInvoicesTable.createdAt,
+        createdBy: vendorInvoicesTable.createdBy,
+      })
+      .from(vendorInvoicesTable),
+    db
+      .select({
+        projectId: vendorQuotesTable.projectId,
+        createdAt: vendorQuotesTable.createdAt,
+        createdBy: vendorQuotesTable.createdBy,
+      })
+      .from(vendorQuotesTable),
+  ]);
+
+  // 案件ごとの集計 bucket
+  type Bucket = {
+    projectId: string;
+    projectName: string;
+    projectCreatedAt: Date;
+    latestAt: Date;
+    latestBy: string | null;
+    touched: boolean; // 子レコードによる更新があったか
   };
+  const buckets = new Map<string, Bucket>();
+  for (const p of projects) {
+    buckets.set(p.id, {
+      projectId: p.id,
+      projectName: p.name,
+      projectCreatedAt: p.createdAt,
+      latestAt: p.createdAt,
+      latestBy: p.createdBy ?? null,
+      touched: false,
+    });
+  }
 
-  const projects = await db
-    .select()
-    .from(projectsTable)
-    .orderBy(sql`${projectsTable.createdAt} desc`)
-    .limit(20);
-  const projectMap = new Map(projects.map((p) => [p.id, p.name]));
-
-  const ensureProjectName = async (id: string) => {
-    if (projectMap.has(id)) return projectMap.get(id)!;
-    const [p] = await db
-      .select({ name: projectsTable.name })
-      .from(projectsTable)
-      .where(eq(projectsTable.id, id));
-    const name = p?.name ?? "";
-    projectMap.set(id, name);
-    return name;
+  const merge = (
+    projectId: string | null | undefined,
+    createdAt: Date | null | undefined,
+    createdBy: string | null | undefined,
+  ) => {
+    if (!projectId || !createdAt) return;
+    const b = buckets.get(projectId);
+    if (!b) return; // 案件が削除済 → スキップ
+    if (createdAt > b.latestAt) {
+      b.latestAt = createdAt;
+      b.latestBy = createdBy ?? null;
+    }
+    b.touched = true;
   };
+  for (const r of costs) merge(r.projectId, r.createdAt, r.createdBy);
+  for (const r of quotes) merge(r.projectId, r.createdAt, r.createdBy);
+  for (const r of invs) merge(r.projectId, r.createdAt, r.createdBy);
+  for (const r of schedules) merge(r.projectId, r.createdAt, r.createdBy);
+  for (const r of logs) merge(r.projectId, r.createdAt, r.createdBy);
+  for (const r of vendorInvs) merge(r.projectId, r.createdAt, r.createdBy);
+  for (const r of vendorQuotes) merge(r.projectId, r.createdAt, r.createdBy);
 
-  const costs = await db
-    .select()
-    .from(costEntriesTable)
-    .orderBy(sql`${costEntriesTable.createdAt} desc`)
-    .limit(10);
-  const quotes = await db
-    .select()
-    .from(quotesTable)
-    .orderBy(sql`${quotesTable.createdAt} desc`)
-    .limit(5);
-  const invs = await db
-    .select()
-    .from(invoicesTable)
-    .orderBy(sql`${invoicesTable.createdAt} desc`)
-    .limit(5);
-  const schedules = await db
-    .select()
-    .from(scheduleEntriesTable)
-    .orderBy(sql`${scheduleEntriesTable.createdAt} desc`)
-    .limit(5);
-  const logs = await db
-    .select()
-    .from(progressLogsTable)
-    .orderBy(sql`${progressLogsTable.createdAt} desc`)
-    .limit(5);
-
-  // Collect every distinct Clerk userId that authored anything we'll show,
-  // then resolve them to display names in a single query. Pre-Clerk rows
-  // (createdBy = NULL) get actorName = null and the UI hides the byline.
+  // アクター名一括解決
   const actorIds = new Set<string>();
-  const collect = (id: string | null | undefined) => {
-    if (id) actorIds.add(id);
-  };
-  projects.forEach((p) => collect(p.createdBy));
-  costs.forEach((c) => collect(c.createdBy));
-  quotes.forEach((q) => collect(q.createdBy));
-  invs.forEach((i) => collect(i.createdBy));
-  schedules.forEach((s) => collect(s.createdBy));
-  logs.forEach((l) => collect(l.createdBy));
-
+  for (const b of buckets.values()) if (b.latestBy) actorIds.add(b.latestBy);
   const actorMap = new Map<string, string>();
   if (actorIds.size > 0) {
     const rows = await db
@@ -321,92 +359,27 @@ router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
       if (name) actorMap.set(r.clerkUserId, name);
     }
   }
-  const actorOf = (id: string | null | undefined): string | null =>
-    id ? actorMap.get(id) ?? null : null;
 
-  const items: Activity[] = projects.map((p) => ({
-    id: `project-${p.id}`,
-    kind: "project",
-    title: `案件「${p.name}」を登録`,
-    subtitle: null,
-    projectId: p.id,
-    projectName: p.name,
-    actorName: actorOf(p.createdBy),
-    timestamp: isoDateTime(p.createdAt),
-  }));
-
-  for (const c of costs) {
-    const projectName = await ensureProjectName(c.projectId);
-    items.push({
-      id: `cost-${c.id}`,
-      kind: "cost",
-      title: `原価「${c.description}」を記録`,
-      subtitle: `実績 ¥${n(c.actualAmount).toLocaleString()}`,
-      projectId: c.projectId,
-      projectName,
-      actorName: actorOf(c.createdBy),
-      timestamp: isoDateTime(c.createdAt),
+  // 1 案件 1 行に整形。最新が案件作成時 (touched=false かつ latestAt===createdAt) なら「登録」、
+  // それ以外は「更新」。
+  const items = Array.from(buckets.values())
+    .sort((a, b) => (a.latestAt < b.latestAt ? 1 : -1))
+    .slice(0, 25)
+    .map((b) => {
+      const verb = b.touched ? "更新" : "登録";
+      return {
+        id: `project-${b.projectId}`,
+        kind: "project" as const,
+        title: `案件「${b.projectName}」を${verb}`,
+        subtitle: null,
+        projectId: b.projectId,
+        projectName: b.projectName,
+        actorName: b.latestBy ? actorMap.get(b.latestBy) ?? null : null,
+        timestamp: isoDateTime(b.latestAt),
+      };
     });
-  }
 
-  for (const q of quotes) {
-    const projectName = await ensureProjectName(q.projectId);
-    items.push({
-      id: `quote-${q.id}`,
-      kind: "quote",
-      title: `見積書 ${q.quoteNumber} を作成`,
-      subtitle: null,
-      projectId: q.projectId,
-      projectName,
-      actorName: actorOf(q.createdBy),
-      timestamp: isoDateTime(q.createdAt),
-    });
-  }
-
-  for (const inv of invs) {
-    const projectName = await ensureProjectName(inv.projectId);
-    items.push({
-      id: `invoice-${inv.id}`,
-      kind: "invoice",
-      title: `請求書 ${inv.invoiceNumber} を作成`,
-      subtitle: inv.paid ? "入金済" : "未入金",
-      projectId: inv.projectId,
-      projectName,
-      actorName: actorOf(inv.createdBy),
-      timestamp: isoDateTime(inv.createdAt),
-    });
-  }
-
-  for (const s of schedules) {
-    const projectName = await ensureProjectName(s.projectId);
-    items.push({
-      id: `schedule-${s.id}`,
-      kind: "schedule",
-      title: `予定「${s.task}」を登録`,
-      subtitle: null,
-      projectId: s.projectId,
-      projectName,
-      actorName: actorOf(s.createdBy),
-      timestamp: isoDateTime(s.createdAt),
-    });
-  }
-
-  for (const l of logs) {
-    const projectName = await ensureProjectName(l.projectId);
-    items.push({
-      id: `progress-${l.id}`,
-      kind: "progress",
-      title: `現場記録「${l.title}」を追加`,
-      subtitle: null,
-      projectId: l.projectId,
-      projectName,
-      actorName: actorOf(l.createdBy),
-      timestamp: isoDateTime(l.createdAt),
-    });
-  }
-
-  items.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
-  res.json(GetRecentActivityResponse.parse(items.slice(0, 25)));
+  res.json(GetRecentActivityResponse.parse(items));
 });
 
 router.get("/dashboard/cost-pipeline", async (_req, res): Promise<void> => {
