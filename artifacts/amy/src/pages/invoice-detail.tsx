@@ -1,5 +1,5 @@
 import { useRoute, Link, useLocation } from "wouter";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetInvoice,
@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Trash2, Printer } from "lucide-react";
+import { ArrowLeft, Trash2, Printer, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -88,10 +88,55 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const paperRef = useRef<HTMLDivElement>(null);
+  const [pdfSaving, setPdfSaving] = useState(false);
+
   const handlePrint = () => {
-    // 共有テンプレート (`@workspace/print-html`) を `?autoprint=1` で開いて
-    // 印刷ダイアログを起動。モバイル版と完全に同一の出力を保証する。
-    window.open(`/api/print/invoice/${id}?autoprint=1`, "_blank");
+    // ローカル DOM (`.quote-paper`) を `@media print` CSS で印刷。
+    // iframe / cookie 制約を受けないので確実に動く。
+    window.print();
+  };
+
+  const handleSavePdf = async () => {
+    if (!paperRef.current || !inv) return;
+    setPdfSaving(true);
+    try {
+      const [{ default: jsPDF }, html2canvas] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas-pro").then((m) => m.default),
+      ]);
+      const canvas = await html2canvas(paperRef.current, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+      });
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      let y = 0;
+      let remaining = imgH;
+      while (remaining > 0) {
+        pdf.addImage(
+          canvas.toDataURL("image/jpeg", 0.95),
+          "JPEG",
+          0,
+          y,
+          imgW,
+          imgH,
+        );
+        remaining -= pageH;
+        if (remaining > 0) {
+          pdf.addPage();
+          y -= pageH;
+        }
+      }
+      pdf.save(`請求書_${inv.invoiceNumber}.pdf`);
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+    } finally {
+      setPdfSaving(false);
+    }
   };
 
   if (isLoading || !inv) {
@@ -134,6 +179,16 @@ export default function InvoiceDetailPage() {
           <Button
             variant="outline"
             size="sm"
+            onClick={handleSavePdf}
+            disabled={pdfSaving}
+            className="gap-2"
+          >
+            <Download className="w-4 h-4" />
+            {pdfSaving ? "保存中…" : "PDF保存"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setAskDelete(true)}
             className="gap-2 text-destructive hover:text-destructive"
           >
@@ -143,7 +198,7 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
-      <div className="quote-paper bg-white border border-border shadow-sm w-[210mm] min-h-[297mm] mx-auto px-[12mm] py-[10mm] print:min-h-0 print:shadow-none print:border-none">
+      <div ref={paperRef} className="quote-paper bg-white border border-border shadow-sm w-[210mm] min-h-[297mm] mx-auto px-[12mm] py-[10mm] print:min-h-0 print:shadow-none print:border-none">
         <h1 className="text-center text-2xl font-bold tracking-[0.5em] mb-6">
           請　求　書
         </h1>

@@ -5,7 +5,6 @@ import {
   useUpdateQuote,
   useDeleteQuote,
   useConvertQuoteToInvoice,
-  useImportQuoteToLedger,
   useGetProject,
   useUpdateProject,
   getGetQuoteQueryKey,
@@ -13,8 +12,6 @@ import {
   getListInvoicesQueryKey,
   getListProjectsQueryKey,
   getGetProjectQueryKey,
-  getGetProjectLedgerQueryKey,
-  CostCategory,
   ProjectStatus,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -30,14 +27,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -50,15 +39,15 @@ import {
   ArrowLeft,
   Trash2,
   FileText,
-  BookOpen,
   Printer,
+  Download,
   Pencil,
   Save,
   X,
   Plus,
   Copy,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, endOfNextMonthISO } from "@/lib/format";
@@ -107,23 +96,18 @@ export default function QuoteDetailPage() {
   });
   const deleteMut = useDeleteQuote();
   const convertMut = useConvertQuoteToInvoice();
-  const importMut = useImportQuoteToLedger();
   const updateMut = useUpdateQuote();
   const updateProjectMut = useUpdateProject();
   const [askDelete, setAskDelete] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
   const [convertForm, setConvertForm] = useState({
     invoiceNumber: "",
     issueDate: today,
     dueDate: endOfNextMonthISO(today),
   });
-  const [importForm, setImportForm] = useState({
-    category: CostCategory.material as CostCategory,
-    entryDate: today,
-    replaceExisting: false,
-  });
+  const paperRef = useRef<HTMLDivElement>(null);
+  const [pdfSaving, setPdfSaving] = useState(false);
 
   const [editing, setEditing] = useState(false);
   const [editSubject, setEditSubject] = useState("");
@@ -247,31 +231,47 @@ export default function QuoteDetailPage() {
     }
   };
 
-  const handleImport = async () => {
-    if (!quote) return;
+  const handleSavePdf = async () => {
+    if (!paperRef.current || !quote) return;
+    setPdfSaving(true);
     try {
-      await importMut.mutateAsync({
-        id,
-        data: {
-          category: importForm.category,
-          entryDate: importForm.entryDate,
-          replaceExisting: importForm.replaceExisting,
-        },
+      const [{ default: jsPDF }, html2canvas] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas-pro").then((m) => m.default),
+      ]);
+      const canvas = await html2canvas(paperRef.current, {
+        scale: 2,
+        backgroundColor: "#ffffff",
       });
-      await queryClient.invalidateQueries({
-        queryKey: getGetProjectLedgerQueryKey(quote.projectId),
-      });
-      await queryClient.invalidateQueries({
-        queryKey: getGetProjectQueryKey(quote.projectId),
-      });
-      await invalidateDashboard(queryClient);
-      toast({ title: "施工台帳に取込みました" });
-      setImportOpen(false);
-      setLocation(`/projects/${quote.projectId}`);
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgH = (canvas.height * pageW) / canvas.width;
+      let y = 0;
+      let remaining = imgH;
+      while (remaining > 0) {
+        pdf.addImage(
+          canvas.toDataURL("image/jpeg", 0.95),
+          "JPEG",
+          0,
+          y,
+          pageW,
+          imgH,
+        );
+        remaining -= pageH;
+        if (remaining > 0) {
+          pdf.addPage();
+          y -= pageH;
+        }
+      }
+      pdf.save(`見積書_${quote.quoteNumber}.pdf`);
     } catch (err) {
       toast({ title: apiErrorMessage(err), variant: "destructive" });
+    } finally {
+      setPdfSaving(false);
     }
   };
+
 
   const handleDelete = async () => {
     try {
@@ -346,13 +346,21 @@ export default function QuoteDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  window.open(`/api/print/quote/${id}?autoprint=1`, "_blank")
-                }
+                onClick={() => window.print()}
                 className="gap-2"
               >
                 <Printer className="w-4 h-4" />
                 印刷
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSavePdf}
+                disabled={pdfSaving}
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                {pdfSaving ? "保存中…" : "PDF保存"}
               </Button>
               <Button
                 variant="outline"
@@ -383,15 +391,6 @@ export default function QuoteDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setImportOpen(true)}
-                className="gap-2"
-              >
-                <BookOpen className="w-4 h-4" />
-                台帳に取込
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
                 onClick={() => setAskDelete(true)}
                 className="gap-2 text-destructive hover:text-destructive"
               >
@@ -403,7 +402,7 @@ export default function QuoteDetailPage() {
         </div>
       </div>
 
-      <div className="quote-paper w-[210mm] min-h-[297mm] mx-auto px-[10mm] py-[6mm] text-[12px] text-foreground print:min-h-0 print:border-0 print:shadow-none">
+      <div ref={paperRef} className="quote-paper w-[210mm] min-h-[297mm] mx-auto px-[10mm] py-[6mm] text-[12px] text-foreground print:min-h-0 print:border-0 print:shadow-none">
         <div className="text-center mb-2 -mt-1">
           <h1 className="quote-title inline-block text-[24px] font-semibold text-foreground tracking-[0.5em] pl-[0.5em]">
             御&nbsp;&nbsp;見&nbsp;&nbsp;積&nbsp;&nbsp;書
@@ -853,75 +852,6 @@ export default function QuoteDetailPage() {
             </Button>
             <Button onClick={handleConvert} disabled={convertMut.isPending}>
               請求書を作成
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={importOpen} onOpenChange={setImportOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>施工台帳に取込</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              見積明細の各行を予算原価として施工台帳 (案件「{subjectName}」) に登録します。
-            </p>
-            <div>
-              <Label>原価カテゴリ</Label>
-              <Select
-                value={importForm.category}
-                onValueChange={(v) =>
-                  setImportForm({ ...importForm, category: v as CostCategory })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={CostCategory.material}>材料費</SelectItem>
-                  <SelectItem value={CostCategory.subcontract}>
-                    外注費
-                  </SelectItem>
-                  <SelectItem value={CostCategory.labor}>労務費</SelectItem>
-                  <SelectItem value={CostCategory.expense}>経費</SelectItem>
-                  <SelectItem value={CostCategory.other}>その他</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="importDate">計上日</Label>
-              <Input
-                id="importDate"
-                type="date"
-                value={importForm.entryDate}
-                onChange={(e) =>
-                  setImportForm({ ...importForm, entryDate: e.target.value })
-                }
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="replaceExisting"
-                checked={importForm.replaceExisting}
-                onCheckedChange={(c) =>
-                  setImportForm({
-                    ...importForm,
-                    replaceExisting: c === true,
-                  })
-                }
-              />
-              <Label htmlFor="replaceExisting" className="text-sm">
-                既存の計画原価を上書きする
-              </Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setImportOpen(false)}>
-              キャンセル
-            </Button>
-            <Button onClick={handleImport} disabled={importMut.isPending}>
-              台帳に取込
             </Button>
           </DialogFooter>
         </DialogContent>

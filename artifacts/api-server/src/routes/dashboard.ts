@@ -285,14 +285,14 @@ router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
     db
       .select({
         projectId: vendorInvoicesTable.projectId,
-        createdAt: vendorInvoicesTable.createdAt,
+        createdAt: vendorInvoicesTable.uploadedAt,
         createdBy: vendorInvoicesTable.createdBy,
       })
       .from(vendorInvoicesTable),
     db
       .select({
         projectId: vendorQuotesTable.projectId,
-        createdAt: vendorQuotesTable.createdAt,
+        createdAt: vendorQuotesTable.uploadedAt,
         createdBy: vendorQuotesTable.createdBy,
       })
       .from(vendorQuotesTable),

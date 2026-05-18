@@ -1,7 +1,13 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, invoicesTable, projectsTable } from "@workspace/db";
+import {
+  costEntriesTable,
+  db,
+  invoicesTable,
+  projectsTable,
+} from "@workspace/db";
 import type { LineItemJson } from "@workspace/db";
+import { n } from "../lib/serializers";
 import {
   CreateInvoiceBody,
   UpdateInvoiceParams,
@@ -51,6 +57,34 @@ async function serialize(inv: typeof invoicesTable.$inferSelect) {
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+// 請求書 → 施工台帳 (実績原価) 自動取込。
+// 請求書の作成・更新ごとに sourceInvoiceId で紐付く既存エントリを削除して再作成。
+// 請求書削除時は FK cascade で消える。category default は subcontract、台帳側で手動編集可。
+async function syncCostEntriesFromInvoice(
+  inv: typeof invoicesTable.$inferSelect,
+): Promise<void> {
+  const items = (inv.items ?? []) as LineItemJson[];
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(costEntriesTable)
+      .where(eq(costEntriesTable.sourceInvoiceId, inv.id));
+    if (items.length === 0) return;
+    await tx.insert(costEntriesTable).values(
+      items.map((it) => ({
+        projectId: inv.projectId,
+        category: "subcontract",
+        description: it.description,
+        vendor: null,
+        plannedAmount: "0",
+        actualAmount: String(n(it.quantity) * n(it.unitPrice)),
+        entryDate: inv.issueDate,
+        notes: `請求 ${inv.invoiceNumber} より自動取込`,
+        sourceInvoiceId: inv.id,
+      })),
+    );
+  });
 }
 
 router.get("/invoices", async (req, res): Promise<void> => {
@@ -104,6 +138,7 @@ router.post("/invoices", async (req, res): Promise<void> => {
       createdBy: me.clerkUserId,
     })
     .returning();
+  await syncCostEntriesFromInvoice(row);
   res.json(CreateInvoiceResponse.parse(await serialize(row)));
 });
 
@@ -193,6 +228,7 @@ router.patch("/invoices/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Invoice not found" });
     return;
   }
+  await syncCostEntriesFromInvoice(row);
   res.json(UpdateInvoiceResponse.parse(await serialize(row)));
 });
 
