@@ -281,51 +281,10 @@
     break-inside: avoid;
   }
 
-  /* ===== 見積書・請求書 印刷統一スタイル =====
-     白黒印刷でも違和感が出ないよう、印刷時は色・線の太さを完全に統一する:
-     - すべての線: 1px solid #000 (太さも色もバラつかせない)
-     - すべての文字: #000 (薄い muted-foreground / 色付き文字を撲滅)
-     - 強調背景 (bg-primary / bg-muted など): すべて薄いグレー #f0f0f0
-       (白黒印刷で「ベタ塗りなのに白」という違和感を防ぐ)
-  */
-  .quote-paper,
-  .quote-paper * {
-    color: #000 !important;
-  }
-  .quote-paper [class*="border"] {
-    border-color: #000 !important;
-    border-width: 1px !important;
-    border-style: solid !important;
-  }
-  /* border が指定されていない辺は引かない (Tailwind の border-t / border-r / border-b / border-l 用) */
-  .quote-paper .border-t-0 { border-top-width: 0 !important; }
-  .quote-paper .border-r-0 { border-right-width: 0 !important; }
-  .quote-paper .border-b-0 { border-bottom-width: 0 !important; }
-  .quote-paper .border-l-0 { border-left-width: 0 !important; }
-  .quote-paper .border-0 { border-width: 0 !important; }
-  /* 単辺だけ指定のクラス (border-t / border-b / border-l / border-r / border-y / border-x) の処理:
-     Tailwind の単辺クラスは指定辺以外を 0 にする必要があるが、上の "[class*=\"border\"]" は
-     全辺 1px にしてしまうため、単辺クラス用の打ち消しを追加。 */
-  .quote-paper [class~="border-t"]:not([class~="border"]) { border-right-width: 0 !important; border-bottom-width: 0 !important; border-left-width: 0 !important; }
-  .quote-paper [class~="border-r"]:not([class~="border"]) { border-top-width: 0 !important; border-bottom-width: 0 !important; border-left-width: 0 !important; }
-  .quote-paper [class~="border-b"]:not([class~="border"]) { border-top-width: 0 !important; border-right-width: 0 !important; border-left-width: 0 !important; }
-  .quote-paper [class~="border-l"]:not([class~="border"]) { border-top-width: 0 !important; border-right-width: 0 !important; border-bottom-width: 0 !important; }
-  .quote-paper [class~="border-y"]:not([class~="border"]) { border-right-width: 0 !important; border-left-width: 0 !important; }
-  .quote-paper [class~="border-x"]:not([class~="border"]) { border-top-width: 0 !important; border-bottom-width: 0 !important; }
-  /* カラフルな背景・badge を撲滅 → 統一グレー */
-  .quote-paper [class*="bg-primary"],
-  .quote-paper [class*="bg-muted"],
-  .quote-paper [class*="bg-emerald"],
-  .quote-paper [class*="bg-amber"],
-  .quote-paper [class*="bg-blue"],
-  .quote-paper [class*="bg-rose"],
-  .quote-paper [class*="bg-red"] {
-    background: #f0f0f0 !important;
-  }
-  .quote-paper .bg-white,
-  .quote-paper [class*="bg-background"] {
-    background: #fff !important;
-  }
+  /* ===== 見積書・請求書 印刷 WYSIWYG =====
+     編集画面のデザイン (navy + 細線) をそのまま印刷する。
+     `-webkit-print-color-adjust: exact` で背景色も忠実に再現。
+     枠線・色の上書きは行わない。 */
 
   /* Schedule (工程表) print layout: landscape, full width */
   .schedule-print-root {
