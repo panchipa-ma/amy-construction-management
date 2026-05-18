@@ -8,6 +8,33 @@ type BaseProps = {
   disabled?: boolean;
 };
 
+// Enter キーで同じ table 内の次の入力フィールドへフォーカス移動する。
+// blur されると onBlur(commit) が走るので、保存は自動で行われる。
+export function focusNextEditableInput(
+  current: HTMLInputElement | HTMLTextAreaElement,
+): boolean {
+  const root: ParentNode = current.closest("table") ?? document;
+  const all = Array.from(
+    root.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+      'input:not([disabled]):not([type="hidden"]), textarea:not([disabled])',
+    ),
+  ).filter((el) => !el.readOnly && el.offsetParent !== null);
+  const idx = all.indexOf(current);
+  if (idx >= 0 && idx + 1 < all.length) {
+    const next = all[idx + 1];
+    next.focus();
+    if (next instanceof HTMLInputElement) {
+      try {
+        next.select();
+      } catch {
+        /* date/number inputs don't support select() in all browsers */
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
 export function EditableText({
   value,
   onSave,
@@ -75,7 +102,8 @@ export function EditableText({
       onKeyDown={(e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          (e.currentTarget as HTMLInputElement).blur();
+          const el = e.currentTarget as HTMLInputElement;
+          if (!focusNextEditableInput(el)) el.blur();
         }
         if (e.key === "Escape") {
           cancelRef.current = true;
@@ -121,11 +149,13 @@ export function EditableNumber({
       step="1"
       value={v}
       onChange={(e) => setV(e.target.value)}
+      onFocus={(e) => e.currentTarget.select()}
       onBlur={commit}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          (e.currentTarget as HTMLInputElement).blur();
+          const el = e.currentTarget as HTMLInputElement;
+          if (!focusNextEditableInput(el)) el.blur();
         }
         if (e.key === "Escape") {
           cancelRef.current = true;
@@ -191,7 +221,8 @@ export function EditableDate({
       onKeyDown={(e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          (e.currentTarget as HTMLInputElement).blur();
+          const el = e.currentTarget as HTMLInputElement;
+          if (!focusNextEditableInput(el)) el.blur();
         }
         if (e.key === "Escape") {
           cancelRef.current = true;

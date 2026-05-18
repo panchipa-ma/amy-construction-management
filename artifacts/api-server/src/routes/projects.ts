@@ -34,7 +34,8 @@ async function aggregateCosts(projectId: string) {
   const entries = await db
     .select()
     .from(costEntriesTable)
-    .where(eq(costEntriesTable.projectId, projectId));
+    .where(eq(costEntriesTable.projectId, projectId))
+    .orderBy(sql`${costEntriesTable.createdAt} asc, ${costEntriesTable.id} asc`);
   const planned = entries.reduce((s, e) => s + n(e.plannedAmount), 0);
   const actual = entries.reduce((s, e) => s + n(e.actualAmount), 0);
   return { entries, planned, actual };

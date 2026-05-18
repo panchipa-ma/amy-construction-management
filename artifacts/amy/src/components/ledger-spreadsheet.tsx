@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -8,11 +8,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate } from "@/lib/format";
 import {
   EditableText,
   EditableNumber,
   EditableDate,
+  focusNextEditableInput,
 } from "@/components/editable-cell";
 import {
   PROJECT_STATUS_OPTIONS,
@@ -894,11 +896,6 @@ function CostEntryRow({
     );
   }
 
-  const switchCategory = (target: Cat) => {
-    if (target === k) return;
-    onUpdate?.(entry.id, { category: target });
-  };
-
   return (
     <tr className="hover:bg-muted/30 group" data-testid={`row-cost-entry-${entry.id}`}>
       <td className="text-center text-muted-foreground">{index + 1}</td>
@@ -932,28 +929,27 @@ function CostEntryRow({
       {CAT_KEYS.map((key) => {
         const isActive = key === k;
         return (
-          <td
-            key={key}
-            className={`text-right p-0 ${!isActive ? "cursor-pointer" : ""}`}
-            onClick={!isActive ? () => switchCategory(key) : undefined}
-            title={!isActive ? `${CAT_LABEL[key]}に変更` : undefined}
-          >
-            {isActive ? (
-              <EditableNumber
-                value={amt}
-                onSave={(v) =>
+          <td key={key} className="text-right p-0">
+            <CategoryAmountCell
+              isActive={isActive}
+              category={key}
+              amount={isActive ? amt : 0}
+              onSave={(v) => {
+                if (isActive) {
                   onUpdate?.(entry.id, {
                     actualAmount: v,
                     plannedAmount: v,
-                  })
+                  });
+                } else if (v > 0) {
+                  // 別の費目に金額を入力 → その費目に切替 + 金額更新
+                  onUpdate?.(entry.id, {
+                    category: key,
+                    actualAmount: v,
+                    plannedAmount: v,
+                  });
                 }
-                inputClassName="px-2 py-1.5"
-              />
-            ) : (
-              <span className="block px-2 py-1.5 text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/40">
-                ・
-              </span>
-            )}
+              }}
+            />
           </td>
         );
       })}
@@ -972,6 +968,77 @@ function CostEntryRow({
         </button>
       </td>
     </tr>
+  );
+}
+
+// 原価明細の費目セル: 常時 input。
+// 別費目セルに金額を入れた場合は、保存ロジック側で category を切り替える。
+function CategoryAmountCell({
+  isActive,
+  category,
+  amount,
+  onSave,
+}: {
+  isActive: boolean;
+  category: Cat;
+  amount: number;
+  onSave: (next: number) => void;
+}) {
+  const display = isActive && amount !== 0 ? String(amount) : "";
+  const [v, setV] = useState(display);
+  const lastSavedRef = useRef(amount);
+  const cancelRef = useRef(false);
+  useEffect(() => {
+    lastSavedRef.current = amount;
+    setV(isActive && amount !== 0 ? String(amount) : "");
+  }, [amount, isActive]);
+
+  const commit = () => {
+    if (cancelRef.current) {
+      cancelRef.current = false;
+      setV(isActive && lastSavedRef.current !== 0 ? String(lastSavedRef.current) : "");
+      return;
+    }
+    const n = v === "" ? 0 : Number(v);
+    if (!Number.isFinite(n)) {
+      setV(isActive && lastSavedRef.current !== 0 ? String(lastSavedRef.current) : "");
+      return;
+    }
+    if (isActive) {
+      if (n !== lastSavedRef.current) onSave(n);
+    } else {
+      if (n > 0) onSave(n);
+      else setV("");
+    }
+  };
+
+  return (
+    <input
+      type="number"
+      inputMode="numeric"
+      step="1"
+      value={v}
+      onChange={(e) => setV(e.target.value)}
+      onFocus={(e) => e.currentTarget.select()}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const el = e.currentTarget;
+          if (!focusNextEditableInput(el)) el.blur();
+        }
+        if (e.key === "Escape") {
+          cancelRef.current = true;
+          e.currentTarget.blur();
+        }
+      }}
+      aria-label={CAT_LABEL[category]}
+      className={cn(
+        "w-full bg-transparent border-0 outline-none focus:bg-background focus:ring-1 focus:ring-ring rounded-sm px-2 py-1.5 text-right tabular-nums",
+        "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+        !isActive && "text-muted-foreground/40 hover:text-muted-foreground",
+      )}
+    />
   );
 }
 
