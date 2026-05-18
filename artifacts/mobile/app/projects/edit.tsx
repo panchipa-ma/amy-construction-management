@@ -165,11 +165,11 @@ function ProjectEdit() {
       endDate: form.endDate || null,
       contractAmount: Number(form.contractAmount) || 0,
       salesCommissionRate:
-        form.salesCommissionRate === "" ? null : Number(form.salesCommissionRate),
+        form.salesCommissionRate === "" ? 0 : Number(form.salesCommissionRate),
       standardProfitRate:
-        form.standardProfitRate === "" ? null : Number(form.standardProfitRate),
+        form.standardProfitRate === "" ? 0 : Number(form.standardProfitRate),
       supervisorCommissionRate:
-        form.supervisorCommissionRate === "" ? null : Number(form.supervisorCommissionRate),
+        form.supervisorCommissionRate === "" ? 0 : Number(form.supervisorCommissionRate),
       otherSalesBonusRecipient: form.otherSalesBonusRecipient || null,
       otherSalesBonusRate:
         form.otherSalesBonusRate === "" ? null : Number(form.otherSalesBonusRate),
