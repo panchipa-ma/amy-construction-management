@@ -83,10 +83,18 @@ export default function ProjectNewPage() {
           startDate: form.startDate || null,
           endDate: form.endDate || null,
           contractAmount: Number(form.contractAmount) || 0,
-          standardProfitRate: Number(form.standardProfitRate) || 20,
-          salesCommissionRate: Number(form.salesCommissionRate) || 5,
+          standardProfitRate:
+            form.standardProfitRate === ""
+              ? 20
+              : Number(form.standardProfitRate),
+          salesCommissionRate:
+            form.salesCommissionRate === ""
+              ? 5
+              : Number(form.salesCommissionRate),
           supervisorCommissionRate:
-            Number(form.supervisorCommissionRate) || 30,
+            form.supervisorCommissionRate === ""
+              ? 30
+              : Number(form.supervisorCommissionRate),
           otherSalesBonusRecipient: form.otherSalesBonusRecipient || null,
           otherSalesBonusRate:
             form.otherSalesBonusRate === ""

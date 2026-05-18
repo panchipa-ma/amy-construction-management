@@ -93,9 +93,16 @@ function CustomerEdit() {
       email: form.email || null,
       address: form.address || null,
       notes: form.notes || null,
-      defaultProfitRate: Number(form.defaultProfitRate) || 20,
-      defaultSalesCommissionRate: Number(form.defaultSalesCommissionRate) || 5,
-      defaultSupervisorCommissionRate: Number(form.defaultSupervisorCommissionRate) || 30,
+      defaultProfitRate:
+        form.defaultProfitRate === "" ? 20 : Number(form.defaultProfitRate),
+      defaultSalesCommissionRate:
+        form.defaultSalesCommissionRate === ""
+          ? 5
+          : Number(form.defaultSalesCommissionRate),
+      defaultSupervisorCommissionRate:
+        form.defaultSupervisorCommissionRate === ""
+          ? 30
+          : Number(form.defaultSupervisorCommissionRate),
       defaultSalesRep: form.defaultSalesRep || null,
       defaultOtherSalesBonusRecipient: form.defaultOtherSalesBonusRecipient || null,
       defaultOtherSalesBonusRate:

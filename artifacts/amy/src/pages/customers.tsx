@@ -124,11 +124,18 @@ export default function CustomersPage() {
       email: form.email || null,
       address: form.address || null,
       notes: form.notes || null,
-      defaultProfitRate: Number(form.defaultProfitRate) || 20,
+      defaultProfitRate:
+        form.defaultProfitRate === ""
+          ? 20
+          : Number(form.defaultProfitRate),
       defaultSalesCommissionRate:
-        Number(form.defaultSalesCommissionRate) || 5,
+        form.defaultSalesCommissionRate === ""
+          ? 5
+          : Number(form.defaultSalesCommissionRate),
       defaultSupervisorCommissionRate:
-        Number(form.defaultSupervisorCommissionRate) || 30,
+        form.defaultSupervisorCommissionRate === ""
+          ? 30
+          : Number(form.defaultSupervisorCommissionRate),
       defaultSalesRep: form.defaultSalesRep || null,
       defaultOtherSalesBonusRecipient:
         form.defaultOtherSalesBonusRecipient || null,
