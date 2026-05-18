@@ -28,7 +28,15 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { COMPANY_INFO, BANK_INFO } from "@/lib/company-info";
 
-const ITEM_ROWS = 15;
+const ITEM_ROWS = 32;
+
+function formatJpDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const era = d.getFullYear() >= 2019 ? `R${d.getFullYear() - 2018}` : `${d.getFullYear()}`;
+  return `${era}.${d.getMonth() + 1}.${d.getDate()}`;
+}
 
 export default function InvoiceDetailPage() {
   const [, params] = useRoute("/invoices/:id");
@@ -198,158 +206,255 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
-      <div ref={paperRef} className="quote-paper bg-white border border-border shadow-sm w-[210mm] min-h-[297mm] mx-auto px-[12mm] py-[10mm] print:min-h-0 print:shadow-none print:border-none">
-        <h1 className="text-center text-2xl font-bold tracking-[0.5em] mb-6">
-          請　求　書
-        </h1>
+      <div ref={paperRef} className="quote-paper w-[210mm] min-h-[297mm] mx-auto px-[10mm] py-[6mm] text-[12px] text-foreground print:min-h-0 print:border-0 print:shadow-none">
+        <div className="text-center mb-2 -mt-1">
+          <h1 className="quote-title inline-block text-[24px] font-semibold text-foreground tracking-[0.5em] pl-[0.5em]">
+            請&nbsp;&nbsp;求&nbsp;&nbsp;書
+          </h1>
+        </div>
 
-        <div className="grid grid-cols-[1fr_auto] gap-6 mb-4">
-          <div className="space-y-3">
-            <div className="flex items-end gap-1">
-              <span className="text-lg font-bold border-b border-foreground pb-0.5 min-w-[200px]">
+        <div className="grid grid-cols-[1.5fr_1fr] gap-6 mb-2">
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-end gap-2 border-b-2 border-foreground pb-0.5">
+              <span className="quote-customer text-[18px] flex-1 truncate">
                 {inv.customerName || inv.projectName || "—"}
               </span>
-              <span className="text-base font-medium pb-0.5 ml-2">御中</span>
+              <span className="quote-customer text-[14px] pb-0.5 shrink-0">御中</span>
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">ご担当：</span>
-              <span>{inv.contactName || ""}</span>
-              {inv.contactName && <span>様</span>}
+            <div className="flex items-center gap-2 text-[11px]">
+              <span className="text-muted-foreground w-12 shrink-0">ご担当</span>
+              <span className="flex-1 min-w-0 border-b border-border truncate">
+                {inv.contactName || "\u00A0"}
+              </span>
+              {inv.contactName && <span className="text-xs shrink-0">様</span>}
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">件名：</span>
-              <span className="font-medium">{inv.subject || ""}</span>
-            </div>
-            <p className="text-sm mt-3">下記の通り、ご請求申し上げます。</p>
           </div>
-
-          <div className="text-right space-y-1 text-sm">
-            <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-right">
-              <span className="text-muted-foreground">請求No.</span>
-              <span className="tabular-nums">{inv.invoiceNumber}</span>
-              <span className="text-muted-foreground">請求日</span>
-              <span>{formatDate(inv.issueDate)}</span>
+          <div className="text-[11px] border border-foreground self-start">
+            <div className="grid grid-cols-[70px_1fr] border-b border-foreground">
+              <div className="px-2 py-0.5 bg-muted/50 border-r border-foreground">
+                請求No.
+              </div>
+              <div className="px-2 py-0.5 text-right tabular-nums truncate">
+                {inv.invoiceNumber}
+              </div>
             </div>
-            <div className="mt-3 pt-3 border-t text-left">
-              <div className="font-bold">{COMPANY_INFO.name}</div>
-              <div className="text-xs text-muted-foreground">
-                {COMPANY_INFO.postalCode}
+            <div className="grid grid-cols-[70px_1fr] border-b border-foreground">
+              <div className="px-2 py-0.5 bg-muted/50 border-r border-foreground">
+                請求日
               </div>
-              <div className="text-xs">{COMPANY_INFO.address}</div>
-              <div className="text-xs text-muted-foreground">
-                登録番号：{COMPANY_INFO.registrationNumber}
+              <div className="px-2 py-0.5 text-right tabular-nums">
+                {formatJpDate(inv.issueDate)}
               </div>
-              <div className="text-xs mt-1">
-                TEL：{COMPANY_INFO.tel}
+            </div>
+            <div className="grid grid-cols-[70px_1fr]">
+              <div className="px-2 py-0.5 bg-muted/50 border-r border-foreground">
+                お支払期限
               </div>
-              <div className="text-xs">
-                FAX：{COMPANY_INFO.fax}
-              </div>
-              <div className="text-xs">
-                E-Mail：{COMPANY_INFO.email}
-              </div>
-              <div className="text-xs mt-1">
-                担当：{COMPANY_INFO.contact}
+              <div className="px-2 py-0.5 text-right tabular-nums">
+                {inv.dueDate ? formatJpDate(inv.dueDate) : "月末日"}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 border-b border-foreground py-2 mb-4">
-          <div className="flex items-center gap-3">
-            <span className="font-bold text-sm">合計金額</span>
-            <span className="text-xl font-bold tabular-nums">
-              {formatCurrency(inv.total)}
+        <div className="grid grid-cols-[1.5fr_1fr] gap-6 mb-2">
+          <div className="space-y-1 min-w-0">
+            <div className="border-l-4 border-primary pl-2 py-0">
+              <div className="text-[9px] tracking-[0.3em] text-muted-foreground">
+                件名
+              </div>
+              <div className="text-[13px] font-semibold leading-tight">
+                {inv.subject || inv.projectName || "—"}
+              </div>
+            </div>
+            <p className="text-[10px] leading-tight text-muted-foreground">
+              下記の通り、ご請求申し上げます。
+            </p>
+          </div>
+          <div className="bg-muted/30 border border-border px-3 py-1 text-[10px] leading-[1.4] min-w-0">
+            <div className="quote-customer text-[12px]">
+              {COMPANY_INFO.name}
+            </div>
+            <div className="text-muted-foreground truncate">
+              {COMPANY_INFO.postalCode} {COMPANY_INFO.address}
+            </div>
+            <div className="truncate">
+              <span className="text-muted-foreground mr-1">登録番号</span>
+              {COMPANY_INFO.registrationNumber}
+            </div>
+            <div className="flex flex-wrap gap-x-2">
+              <span>
+                <span className="text-muted-foreground mr-1">TEL</span>
+                {COMPANY_INFO.tel}
+              </span>
+              <span>
+                <span className="text-muted-foreground mr-1">FAX</span>
+                {COMPANY_INFO.fax}
+              </span>
+            </div>
+            <div className="truncate">
+              <span className="text-muted-foreground mr-1">E</span>
+              {COMPANY_INFO.email}
+            </div>
+            <div className="truncate">
+              <span className="text-muted-foreground mr-1">担当</span>
+              {COMPANY_INFO.contact}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-stretch border-2 border-primary mb-1.5 bg-primary/[0.02]">
+          <div className="w-28 px-3 py-1 bg-primary text-primary-foreground font-semibold border-r-2 border-primary flex items-center justify-center text-[11px] tracking-[0.2em]">
+            合 計 金 額
+          </div>
+          <div className="flex-1 px-4 py-1 flex items-baseline justify-end gap-1.5">
+            <span className="text-muted-foreground text-[11px]">¥</span>
+            <span className="text-[20px] font-bold tabular-nums leading-none">
+              {inv.total.toLocaleString()}
             </span>
-            <span className="text-xs text-muted-foreground">（税込）</span>
-          </div>
-          <div className="ml-auto flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">お支払期限：</span>
-            <span className="font-medium">{inv.dueDate ? formatDate(inv.dueDate) : "月末日"}</span>
+            <span className="text-[10px] text-muted-foreground">
+              （税込）
+            </span>
           </div>
         </div>
 
-        <table className="w-full border-collapse text-sm mb-4 table-fixed">
-          <thead>
-            <tr className="bg-[hsl(220,15%,92%)] text-foreground">
-              <th className="border border-border px-2 py-1.5 w-10 text-center font-medium">No.</th>
-              <th className="border border-border px-2 py-1.5 text-left font-medium">摘要</th>
-              <th className="border border-border px-2 py-1.5 w-16 text-center font-medium">数量</th>
-              <th className="border border-border px-2 py-1.5 w-24 text-right font-medium">単価</th>
-              <th className="border border-border px-2 py-1.5 w-28 text-right font-medium">金額</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((item, i) => {
-              const hasContent = item.description?.trim();
-              const amount = hasContent ? item.quantity * item.unitPrice : 0;
-              return (
-                <tr key={i} className={i % 2 === 0 ? "bg-blue-50/40" : ""}>
-                  <td className="border border-border px-2 py-1 text-center text-muted-foreground">
-                    {i + 1}
-                  </td>
-                  <td className="border border-border px-2 py-1">
-                    {hasContent ? item.description : ""}
-                  </td>
-                  <td className="border border-border px-2 py-1 text-center tabular-nums">
-                    {hasContent ? item.quantity : ""}
-                  </td>
-                  <td className="border border-border px-2 py-1 text-right tabular-nums">
-                    {hasContent ? formatCurrency(item.unitPrice) : ""}
-                  </td>
-                  <td className="border border-border px-2 py-1 text-right tabular-nums">
-                    {hasContent ? formatCurrency(amount) : ""}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="border-2 border-foreground mb-1">
+          <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] bg-primary text-primary-foreground text-[10px] font-semibold tracking-wider">
+            <div className="px-1 py-0.5 text-center border-r border-primary-foreground/20">
+              No.
+            </div>
+            <div className="px-2 py-0.5 border-r border-primary-foreground/20">
+              工事項目・摘要
+            </div>
+            <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-center">
+              単位
+            </div>
+            <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-right">
+              数量
+            </div>
+            <div className="px-1.5 py-0.5 border-r border-primary-foreground/20 text-right">
+              単価
+            </div>
+            <div className="px-1.5 py-0.5 text-right border-r border-primary-foreground/20">
+              金額
+            </div>
+            <div className="px-2 py-0.5">備考</div>
+          </div>
+          {rows.map((item, i) => {
+            const hasContent = !!item.description?.trim();
+            const amount = hasContent ? item.quantity * item.unitPrice : 0;
+            return (
+              <div
+                key={i}
+                className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[11px] min-h-[18px]"
+              >
+                <div className="px-1 py-0.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px]">
+                  {hasContent ? i + 1 : ""}
+                </div>
+                <div className="px-2 py-0.5 border-r border-foreground/30 whitespace-pre-wrap leading-tight">
+                  {hasContent ? item.description : ""}
+                </div>
+                <div className="px-1 py-0.5 text-center border-r border-foreground/30 text-[10px]">
+                  {hasContent ? (item.unit ?? "") : ""}
+                </div>
+                <div className="px-1 py-0.5 text-right tabular-nums border-r border-foreground/30">
+                  {hasContent ? item.quantity : ""}
+                </div>
+                <div className="px-1.5 py-0.5 text-right tabular-nums border-r border-foreground/30">
+                  {hasContent ? formatCurrency(item.unitPrice) : ""}
+                </div>
+                <div className="px-1.5 py-0.5 text-right tabular-nums font-medium border-r border-foreground/30">
+                  {hasContent ? formatCurrency(amount) : ""}
+                </div>
+                <div className="px-2 py-0.5 whitespace-pre-wrap leading-tight text-[10.5px] text-muted-foreground">
+                  {hasContent ? (item.notes ?? "") : ""}
+                </div>
+              </div>
+            );
+          })}
+          <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] border-t-2 border-foreground text-[10px] bg-muted/30">
+            <div className="col-span-4"></div>
+            <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right font-semibold">
+              小計
+            </div>
+            <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right tabular-nums">
+              {formatCurrency(inv.subtotal)}
+            </div>
+            <div className="border-l border-foreground/30"></div>
+          </div>
+          <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[10px] bg-muted/30">
+            <div className="col-span-4"></div>
+            <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right font-semibold">
+              消費税
+            </div>
+            <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right tabular-nums">
+              {formatCurrency(inv.tax)}
+            </div>
+            <div className="border-l border-foreground/30"></div>
+          </div>
+          <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[11px] bg-primary text-primary-foreground">
+            <div className="col-span-4"></div>
+            <div className="px-1.5 py-1 border-l border-primary-foreground/20 text-right font-bold">
+              合計
+            </div>
+            <div className="px-1.5 py-1 border-l border-primary-foreground/20 text-right tabular-nums font-bold">
+              {formatCurrency(inv.total)}
+            </div>
+            <div className="border-l border-primary-foreground/20"></div>
+          </div>
+        </div>
 
-        <div className="grid grid-cols-[1fr_auto] gap-6">
-          <div className="text-sm space-y-1">
-            <div className="font-medium text-muted-foreground mb-1">お振込先</div>
-            <div className="pl-2 space-y-0.5">
-              <div>{BANK_INFO.bankName}　{BANK_INFO.branchName}</div>
-              <div>{BANK_INFO.accountType}</div>
-              <div>店番号：{BANK_INFO.branchCode}</div>
-              <div>口座番号：{BANK_INFO.accountNumber}</div>
-              <div>{BANK_INFO.accountHolder}</div>
+        <div className="grid grid-cols-2 gap-3 mb-1">
+          <div className="space-y-0.5">
+            <div className="text-[9px] tracking-[0.3em] text-muted-foreground">
+              お振込先
+            </div>
+            <div className="border border-foreground/40 divide-y divide-foreground/30 text-[10px]">
+              <div className="grid grid-cols-[64px_1fr]">
+                <div className="px-2 py-0.5 bg-muted/40 border-r border-foreground/30">
+                  銀行
+                </div>
+                <div className="px-2 py-0.5">
+                  {BANK_INFO.bankName}　{BANK_INFO.branchName}
+                </div>
+              </div>
+              <div className="grid grid-cols-[64px_1fr]">
+                <div className="px-2 py-0.5 bg-muted/40 border-r border-foreground/30">
+                  種別
+                </div>
+                <div className="px-2 py-0.5">
+                  {BANK_INFO.accountType}　店番号 {BANK_INFO.branchCode}
+                </div>
+              </div>
+              <div className="grid grid-cols-[64px_1fr]">
+                <div className="px-2 py-0.5 bg-muted/40 border-r border-foreground/30">
+                  口座番号
+                </div>
+                <div className="px-2 py-0.5 tabular-nums">
+                  {BANK_INFO.accountNumber}
+                </div>
+              </div>
+              <div className="grid grid-cols-[64px_1fr]">
+                <div className="px-2 py-0.5 bg-muted/40 border-r border-foreground/30">
+                  名義
+                </div>
+                <div className="px-2 py-0.5">{BANK_INFO.accountHolder}</div>
+              </div>
             </div>
           </div>
-
-          <div>
-            <table className="border-collapse text-sm table-fixed">
-              <tbody>
-                <tr className="bg-[hsl(220,15%,92%)] text-foreground">
-                  <td className="border border-border px-3 py-1.5 font-medium text-center w-24">小計</td>
-                  <td className="border border-border px-3 py-1.5 text-right tabular-nums bg-white text-foreground w-28">
-                    {formatCurrency(inv.subtotal)}
-                  </td>
-                </tr>
-                <tr className="bg-[hsl(220,15%,92%)] text-foreground">
-                  <td className="border border-border px-3 py-1.5 font-medium text-center w-24">消費税(10%)</td>
-                  <td className="border border-border px-3 py-1.5 text-right tabular-nums bg-white text-foreground w-28">
-                    {formatCurrency(inv.tax)}
-                  </td>
-                </tr>
-                <tr className="bg-[hsl(220,15%,92%)] text-foreground">
-                  <td className="border border-border px-3 py-1.5 font-bold text-center w-24">合計</td>
-                  <td className="border border-border px-3 py-1.5 text-right tabular-nums font-bold bg-white text-foreground w-28">
-                    {formatCurrency(inv.total)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="space-y-0.5">
+            <div className="text-[9px] tracking-[0.3em] text-muted-foreground">
+              備考
+            </div>
+            <div className="w-full border border-foreground/40 px-2 py-0.5 text-[10px] leading-tight whitespace-pre-wrap min-h-[60px]">
+              {inv.notes ?? ""}
+            </div>
           </div>
         </div>
 
-        {inv.notes && (
-          <div className="mt-4 border-t pt-3">
-            <div className="inline-block bg-muted px-3 py-1 text-sm font-medium mb-1">備考</div>
-            <p className="text-sm whitespace-pre-wrap pl-1">{inv.notes}</p>
-          </div>
-        )}
+        <div className="mt-2 pt-1 border-t border-border text-center text-[9px] text-muted-foreground tracking-widest">
+          {COMPANY_INFO.name}　|　{COMPANY_INFO.tel}
+        </div>
       </div>
 
       <AlertDialog open={askDelete} onOpenChange={setAskDelete}>
