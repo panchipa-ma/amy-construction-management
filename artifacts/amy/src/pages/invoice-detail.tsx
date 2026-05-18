@@ -28,7 +28,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { COMPANY_INFO, BANK_INFO } from "@/lib/company-info";
 
-const ITEM_ROWS = 32;
+const ITEM_ROWS = 8;
 
 function formatJpDate(iso: string | null | undefined): string {
   if (!iso) return "";
