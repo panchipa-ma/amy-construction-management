@@ -255,7 +255,7 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 border-y-2 border-foreground py-2 mb-4">
+        <div className="flex items-center gap-4 border-b border-foreground py-2 mb-4">
           <div className="flex items-center gap-3">
             <span className="font-bold text-sm">合計金額</span>
             <span className="text-xl font-bold tabular-nums">
