@@ -907,9 +907,10 @@ export default function VendorInvoiceNewPage() {
           </div>
         </div>
 
-        {/* Line items table — 5 cols (No / 摘要 / 数量 / 単価 / 金額) */}
+        {/* Line items table — 5 cols (No / 摘要 / 数量 / 単価 / 金額)
+            + 小計/消費税/合計 を末尾に統合 (金額列に揃える) */}
         {(() => {
-          const MIN_ROWS = 17;
+          const MIN_ROWS = 8;
           const padded = items.length >= MIN_ROWS
             ? items
             : [
@@ -933,6 +934,25 @@ export default function VendorInvoiceNewPage() {
             fontVariantNumeric: "tabular-nums" as const,
             fontSize: "12px",
             height: "22px",
+          };
+          const totalLabelBase = {
+            background: "#204180",
+            color: "#ffffff",
+            border: "1px solid #204180",
+            padding: "5px 12px",
+            textAlign: "center" as const,
+            fontWeight: 500,
+            fontSize: "12px",
+          };
+          const totalValueBase = {
+            background: "#ffffff",
+            color: "#0f172a",
+            border: "1px solid #204180",
+            padding: "5px 12px",
+            textAlign: "right" as const,
+            fontWeight: 500,
+            fontVariantNumeric: "tabular-nums" as const,
+            fontSize: "12px",
           };
           return (
             <table
@@ -963,7 +983,6 @@ export default function VendorInvoiceNewPage() {
                 {padded.map((it, i) => {
                   const has = it.description.trim();
                   const amt = (it.quantity || 0) * (it.unitPrice || 0);
-                  // Zebra striping — bg-blue-50/40 equivalent on even rows
                   const rowBg = i % 2 === 0 ? "rgba(239, 246, 255, 0.4)" : "transparent";
                   return (
                     <tr key={i} data-pdf-row="true" style={{ background: rowBg }}>
@@ -985,16 +1004,32 @@ export default function VendorInvoiceNewPage() {
                     </tr>
                   );
                 })}
+                {/* 小計 — label spans 数量+単価, value in 金額 */}
+                <tr data-pdf-row="true">
+                  <td colSpan={2} style={{ border: "none" }}></td>
+                  <td colSpan={2} style={totalLabelBase}>小計</td>
+                  <td style={totalValueBase}>{formatCurrency(subtotal)}</td>
+                </tr>
+                <tr data-pdf-row="true">
+                  <td colSpan={2} style={{ border: "none" }}></td>
+                  <td colSpan={2} style={totalLabelBase}>消費税(10%)</td>
+                  <td style={totalValueBase}>{formatCurrency(tax)}</td>
+                </tr>
+                <tr data-pdf-row="true">
+                  <td colSpan={2} style={{ border: "none" }}></td>
+                  <td colSpan={2} style={{ ...totalLabelBase, fontWeight: 700 }}>合計</td>
+                  <td style={{ ...totalValueBase, fontWeight: 700 }}>{formatCurrency(total)}</td>
+                </tr>
               </tbody>
             </table>
           );
         })()}
 
-        {/* Bottom: bank info (left) + totals box (right, w-256) */}
+        {/* Bottom: bank info (left) + notes (right) */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 256px",
+            gridTemplateColumns: "1fr 1fr",
             gap: "24px",
             alignItems: "start",
           }}
@@ -1014,106 +1049,22 @@ export default function VendorInvoiceNewPage() {
               {defaults.accountNumber && <div>口座番号：{defaults.accountNumber}</div>}
               {defaults.accountHolder && <div>{defaults.accountHolder}</div>}
             </div>
-            {notes && (
-              <div style={{ marginTop: "12px", paddingTop: "8px", borderTop: "1px solid #e2e8f0" }}>
-                <div style={{ marginBottom: "2px" }}>備考</div>
-                <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{notes}</p>
-              </div>
-            )}
+          </div>
+          <div style={{ fontSize: "13px" }}>
+            <div style={{ fontWeight: 500, marginBottom: "4px" }}>備考</div>
+            <div
+              style={{
+                border: "1px solid #cbd5e1",
+                padding: "6px 8px",
+                minHeight: "60px",
+                whiteSpace: "pre-wrap",
+                fontSize: "12px",
+              }}
+            >
+              {notes || ""}
+            </div>
           </div>
 
-          {/* Totals — navy label + white-bg value (matches invoice-detail) */}
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: "13px",
-            }}
-          >
-            <tbody>
-              <tr>
-                <td
-                  style={{
-                    background: "#204180",
-                    color: "#ffffff",
-                    padding: "5px 12px",
-                    textAlign: "center",
-                    fontWeight: 500,
-                    border: "1px solid #204180",
-                  }}
-                >
-                  小計
-                </td>
-                <td
-                  style={{
-                    background: "#ffffff",
-                    color: "#0f172a",
-                    border: "1px solid #204180",
-                    padding: "5px 12px",
-                    textAlign: "right",
-                    fontWeight: 500,
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {formatCurrency(subtotal)}
-                </td>
-              </tr>
-              <tr>
-                <td
-                  style={{
-                    background: "#204180",
-                    color: "#ffffff",
-                    padding: "5px 12px",
-                    textAlign: "center",
-                    fontWeight: 500,
-                    border: "1px solid #204180",
-                  }}
-                >
-                  消費税(10%)
-                </td>
-                <td
-                  style={{
-                    background: "#ffffff",
-                    color: "#0f172a",
-                    border: "1px solid #204180",
-                    padding: "5px 12px",
-                    textAlign: "right",
-                    fontWeight: 500,
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {formatCurrency(tax)}
-                </td>
-              </tr>
-              <tr>
-                <td
-                  style={{
-                    background: "#204180",
-                    color: "#ffffff",
-                    padding: "5px 12px",
-                    textAlign: "center",
-                    fontWeight: 700,
-                    border: "1px solid #204180",
-                  }}
-                >
-                  合計
-                </td>
-                <td
-                  style={{
-                    background: "#ffffff",
-                    color: "#0f172a",
-                    border: "1px solid #204180",
-                    padding: "5px 12px",
-                    textAlign: "right",
-                    fontWeight: 700,
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {formatCurrency(total)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
         </div>
       </div>
       </div>
