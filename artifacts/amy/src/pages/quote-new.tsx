@@ -262,6 +262,80 @@ export default function QuoteNewPage() {
 
   const addRow = () =>
     setRows((prev) => [...prev, seedItemFromPrevious(findLastNonEmpty(prev))]);
+
+  // Excel-like fill handle (ドラッグして下にコピー)
+  const [fillDrag, setFillDrag] = useState<{ src: number; target: number } | null>(null);
+  const fillCleanupRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => {
+    fillCleanupRef.current?.();
+    fillCleanupRef.current = null;
+  }, []);
+  const startFillDrag = (srcIdx: number) => (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fillCleanupRef.current?.();
+    setFillDrag({ src: srcIdx, target: srcIdx });
+    const onMove = (ev: PointerEvent) => {
+      const el = document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null;
+      const rowEl = el?.closest("[data-row]") as HTMLElement | null;
+      if (rowEl && rowEl.dataset.row !== undefined) {
+        const idx = Number(rowEl.dataset.row);
+        if (!Number.isNaN(idx)) {
+          setFillDrag((curr) => (curr ? { ...curr, target: Math.max(curr.src, idx) } : curr));
+        }
+      }
+    };
+    const cleanup = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("blur", onCancel);
+      fillCleanupRef.current = null;
+    };
+    const onUp = () => {
+      cleanup();
+      setFillDrag((curr) => {
+        if (curr && curr.target > curr.src) {
+          applyFillDown(curr.src, curr.target);
+        }
+        return null;
+      });
+    };
+    const onCancel = () => {
+      cleanup();
+      setFillDrag(null);
+    };
+    fillCleanupRef.current = cleanup;
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onCancel);
+    window.addEventListener("blur", onCancel);
+  };
+
+  const applyFillDown = (srcIdx: number, targetIdx: number) => {
+    setRows((prev) => {
+      const src = prev[srcIdx];
+      if (!src) return prev;
+      const next = [...prev];
+      for (let i = srcIdx + 1; i <= targetIdx; i++) {
+        if (i >= next.length) next.push(emptyItem());
+        next[i] = {
+          description: src.description ?? "",
+          unit: src.unit ?? "",
+          quantity: src.quantity || 0,
+          unitPrice: src.unitPrice || 0,
+          notes: next[i]?.notes ?? "",
+        };
+      }
+      // Ensure trailing empty row for further input
+      const last = next[next.length - 1];
+      if (last && (last.description || last.unit || last.quantity || last.unitPrice)) {
+        next.push(emptyItem());
+      }
+      return next;
+    });
+  };
+
   const clearRow = (i: number) => {
     const next = [...rows];
     next[i] = emptyItem();
@@ -624,10 +698,14 @@ export default function QuoteNewPage() {
               !row.unit &&
               !row.quantity &&
               !row.unitPrice;
+            const hasData = !!(row.description || row.unit || row.quantity || row.unitPrice);
+            const inFillRange =
+              !!fillDrag && i > fillDrag.src && i <= fillDrag.target;
             return (
               <div
                 key={i}
-                className={`grid ${colTemplate} border-t border-foreground/30 text-[11px] hover:bg-accent/5 items-stretch`}
+                data-row={i}
+                className={`group relative grid ${colTemplate} border-t border-foreground/30 text-[11px] hover:bg-accent/5 items-stretch ${inFillRange ? "bg-primary/10" : ""}`}
               >
                 <div className="px-1 py-0.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px] flex items-start justify-center min-h-[18px]">
                   {i + 1}
@@ -709,6 +787,14 @@ export default function QuoteNewPage() {
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
+                {hasData && (
+                  <div
+                    onPointerDown={startFillDrag(i)}
+                    className="absolute -bottom-[3px] -right-[3px] w-2 h-2 bg-primary border border-background cursor-crosshair opacity-0 group-hover:opacity-100 hover:opacity-100 z-10 print:hidden"
+                    title="ドラッグして下にコピー (フィルハンドル)"
+                    aria-label="フィルハンドル"
+                  />
+                )}
               </div>
             );
           })}

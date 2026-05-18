@@ -213,6 +213,73 @@ export default function VendorQuoteNewPage() {
   const updateRow = (i: number, patch: Partial<LineRow>) =>
     setItems((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
 
+  // Excel-like fill handle (ドラッグして下にコピー)
+  const [fillDrag, setFillDrag] = useState<{ src: number; target: number } | null>(null);
+  const fillCleanupRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => {
+    fillCleanupRef.current?.();
+    fillCleanupRef.current = null;
+  }, []);
+  const startFillDrag = (srcIdx: number) => (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fillCleanupRef.current?.();
+    setFillDrag({ src: srcIdx, target: srcIdx });
+    const onMove = (ev: PointerEvent) => {
+      const el = document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null;
+      const rowEl = el?.closest("[data-row]") as HTMLElement | null;
+      if (rowEl && rowEl.dataset.row !== undefined) {
+        const idx = Number(rowEl.dataset.row);
+        if (!Number.isNaN(idx)) {
+          setFillDrag((curr) => (curr ? { ...curr, target: Math.max(curr.src, idx) } : curr));
+        }
+      }
+    };
+    const cleanup = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("blur", onCancel);
+      fillCleanupRef.current = null;
+    };
+    const onUp = () => {
+      cleanup();
+      setFillDrag((curr) => {
+        if (curr && curr.target > curr.src) {
+          applyFillDown(curr.src, curr.target);
+        }
+        return null;
+      });
+    };
+    const onCancel = () => {
+      cleanup();
+      setFillDrag(null);
+    };
+    fillCleanupRef.current = cleanup;
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onCancel);
+    window.addEventListener("blur", onCancel);
+  };
+  const applyFillDown = (srcIdx: number, targetIdx: number) => {
+    setItems((prev) => {
+      const src = prev[srcIdx];
+      if (!src) return prev;
+      const next = [...prev];
+      for (let i = srcIdx + 1; i <= targetIdx; i++) {
+        while (next.length <= i) next.push(emptyRow());
+        next[i] = {
+          description: src.description ?? "",
+          unit: src.unit ?? "",
+          quantity: src.quantity || 0,
+          unitPrice: src.unitPrice || 0,
+          notes: next[i]?.notes ?? "",
+        };
+      }
+      return next;
+    });
+  };
+
   // 複数行ペースト (PDF/Excel から TSV や改行区切りで貼り付け)。
   const handleMultiPaste = (
     e: React.ClipboardEvent,
@@ -755,6 +822,9 @@ export default function VendorQuoteNewPage() {
                   const r: LineRow = row || emptyRow();
                   const amt = (r.quantity || 0) * (r.unitPrice || 0);
                   const isFirstEmpty = exists ? i === firstEmptyIdx : i === items.length;
+                  const hasData = !!(r.description || r.unit || r.quantity || r.unitPrice);
+                  const inFillRange =
+                    !!fillDrag && i > fillDrag.src && i <= fillDrag.target;
                   const ensureRow = () => {
                     if (!exists) {
                       setItems((rs) => {
@@ -767,7 +837,7 @@ export default function VendorQuoteNewPage() {
                     }
                   };
                   return (
-                  <div key={i} data-pdf-row="true" style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, fontSize: "11px", minHeight: "18px", position: "relative" }}>
+                  <div key={i} data-pdf-row="true" data-row={i} style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, fontSize: "11px", minHeight: "18px", position: "relative", background: inFillRange ? "rgba(31,58,102,0.08)" : undefined }}>
                     <div style={{ padding: "2px 2px", textAlign: "center", color: "#64748b", borderRight: rowBorder, fontVariantNumeric: "tabular-nums", fontSize: "10px" }}>{exists ? i + 1 : ""}</div>
                     <div style={{ padding: "1px 6px", borderRight: rowBorder }}>
                       <input
@@ -886,6 +956,26 @@ export default function VendorQuoteNewPage() {
                       >
                         ×
                       </button>
+                    )}
+                    {hasData && (
+                      <div
+                        data-pdf-hide="true"
+                        onPointerDown={startFillDrag(i)}
+                        title="ドラッグして下にコピー (フィルハンドル)"
+                        aria-label="フィルハンドル"
+                        className="vq-fill-handle"
+                        style={{
+                          position: "absolute",
+                          bottom: "-3px",
+                          right: "-3px",
+                          width: "8px",
+                          height: "8px",
+                          background: "#1f3a66",
+                          border: "1px solid #fff",
+                          cursor: "crosshair",
+                          zIndex: 10,
+                        }}
+                      />
                     )}
                   </div>
                 );
