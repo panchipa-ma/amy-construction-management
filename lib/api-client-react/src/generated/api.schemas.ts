@@ -206,6 +206,8 @@ export interface Project {
   /** 担当現場監督 */
   siteSupervisor?: string | null;
   notes?: string | null;
+  /** 施工台帳完了日時。現場監督歩合の発生月になる。 */
+  ledgerCompletedAt?: string | null;
   createdAt: string;
 }
 
@@ -247,6 +249,8 @@ export interface UpdateProjectBody {
   salesRep?: string | null;
   siteSupervisor?: string | null;
   notes?: string | null;
+  /** 施工台帳完了日時 (null で取り消し) */
+  ledgerCompletedAt?: string | null;
 }
 
 export interface ConvertQuoteToInvoiceBody {

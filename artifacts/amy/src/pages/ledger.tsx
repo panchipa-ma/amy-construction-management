@@ -52,7 +52,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { apiErrorMessage } from "@/lib/api-error";
-import { ExternalLink, Printer } from "lucide-react";
+import { CheckCircle2, ExternalLink, Printer, RotateCcw } from "lucide-react";
 
 export default function LedgerPage() {
   const queryClient = useQueryClient();
@@ -101,7 +101,51 @@ export default function LedgerPage() {
           </p>
         </div>
         {selectedProject && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {selectedProject.ledgerCompletedAt ? (
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={async () => {
+                  try {
+                    await updateProjectMut.mutateAsync({
+                      id: selectedProject.id,
+                      data: { ledgerCompletedAt: null },
+                    });
+                    await invalidateLedger();
+                    toast({ title: "完了を取り消しました" });
+                  } catch (err) {
+                    toast({ title: apiErrorMessage(err), variant: "destructive" });
+                  }
+                }}
+              >
+                <RotateCcw className="w-4 h-4" />
+                完了済を取り消す
+                <span className="text-xs text-muted-foreground ml-1">
+                  ({formatDate(selectedProject.ledgerCompletedAt)})
+                </span>
+              </Button>
+            ) : (
+              <Button
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                onClick={async () => {
+                  if (!confirm("施工台帳を完了にしますか?\n現場監督歩合がこの月で計上されます。")) return;
+                  try {
+                    await updateProjectMut.mutateAsync({
+                      id: selectedProject.id,
+                      data: { ledgerCompletedAt: new Date().toISOString() },
+                    });
+                    await invalidateLedger();
+                    toast({ title: "施工台帳を完了しました" });
+                  } catch (err) {
+                    toast({ title: apiErrorMessage(err), variant: "destructive" });
+                  }
+                }}
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                施工台帳を完了
+              </Button>
+            )}
             <Button
               variant="outline"
               className="gap-2"

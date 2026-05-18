@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, gte, lte, eq, inArray, isNotNull, or } from "drizzle-orm";
+import { and, gte, lte, inArray, isNotNull } from "drizzle-orm";
 import {
   db,
   invoicesTable,
@@ -50,29 +50,35 @@ router.get("/commissions", async (req, res): Promise<void> => {
   }
   const { start, end } = monthRange(month);
 
-  // 対象月に「送付済」または「入金済」になった請求書を取得。
-  // 営業歩合 + マネジメント報酬 → sentAt 月で発生。
-  // 現場監督歩合 → paidAt 月で発生。
-  // (案件のステータスは問わない — 請求書の状態のみがトリガー)
+  // 営業歩合 + マネジメント報酬 → 請求書 sentAt 月で per-invoice (請求金額依存)。
+  // 現場監督歩合 → 案件の ledgerCompletedAt が当月の案件で per-project 1 回計上
+  //                 (施工台帳依存。基準額は案件全体の規定超過粗利)。
   const monthInvoices = await db
     .select()
     .from(invoicesTable)
     .where(
-      or(
-        and(
-          isNotNull(invoicesTable.sentAt),
-          gte(invoicesTable.sentAt, start),
-          lte(invoicesTable.sentAt, end),
-        ),
-        and(
-          isNotNull(invoicesTable.paidAt),
-          gte(invoicesTable.paidAt, start),
-          lte(invoicesTable.paidAt, end),
-        ),
+      and(
+        isNotNull(invoicesTable.sentAt),
+        gte(invoicesTable.sentAt, start),
+        lte(invoicesTable.sentAt, end),
       ),
     );
 
-  if (monthInvoices.length === 0) {
+  // 当月 施工台帳完了の案件
+  const startTs = new Date(`${start}T00:00:00.000Z`);
+  const endTs = new Date(`${end}T23:59:59.999Z`);
+  const ledgerCompletedProjects = await db
+    .select()
+    .from(projectsTable)
+    .where(
+      and(
+        isNotNull(projectsTable.ledgerCompletedAt),
+        gte(projectsTable.ledgerCompletedAt, startTs),
+        lte(projectsTable.ledgerCompletedAt, endTs),
+      ),
+    );
+
+  if (monthInvoices.length === 0 && ledgerCompletedProjects.length === 0) {
     res.json(
       GetCommissionsResponse.parse({
         month,
@@ -90,21 +96,21 @@ router.get("/commissions", async (req, res): Promise<void> => {
     return;
   }
 
-  // 当月送付分のみで集計する活動指標 (画面上の「送付済請求件数 / 送付額合計」)。
-  const sentInvoices = monthInvoices.filter((i) => {
-    const d = isoDate(i.sentAt);
-    return d != null && d >= start && d <= end;
-  });
-  const paidInvoices = monthInvoices.filter((i) => {
-    const d = isoDate(i.paidAt);
-    return d != null && d >= start && d <= end;
-  });
+  const sentInvoices = monthInvoices;
 
-  const projectIds = [...new Set(monthInvoices.map((i) => i.projectId))];
-  const projects = await db
-    .select()
-    .from(projectsTable)
-    .where(inArray(projectsTable.id, projectIds));
+  const projectIds = [
+    ...new Set([
+      ...monthInvoices.map((i) => i.projectId),
+      ...ledgerCompletedProjects.map((p) => p.id),
+    ]),
+  ];
+  const projects =
+    projectIds.length > 0
+      ? await db
+          .select()
+          .from(projectsTable)
+          .where(inArray(projectsTable.id, projectIds))
+      : [];
   const projectMap = new Map(projects.map((p) => [p.id, p]));
 
   // 顧客 (規定利率フォールバック用)
@@ -118,18 +124,17 @@ router.get("/commissions", async (req, res): Promise<void> => {
       : [];
   const customerMap = new Map(customers.map((c) => [c.id, c]));
 
-  // 監督歩合用: paidAt が当月の請求書ごとに「規定超過粗利」を出すため、
-  // 案件の実原価合計 と 案件の請求書合計 (税込) を取得して請求額按分する。
-  const paidProjectIds = [...new Set(paidInvoices.map((i) => i.projectId))];
-  const allInvoicesForPaid =
-    paidProjectIds.length > 0
+  // 監督歩合用: 当月 施工台帳完了の案件について、案件全体の sales / actual を集計。
+  const completedProjectIds = ledgerCompletedProjects.map((p) => p.id);
+  const allInvoicesForCompleted =
+    completedProjectIds.length > 0
       ? await db
           .select()
           .from(invoicesTable)
-          .where(inArray(invoicesTable.projectId, paidProjectIds))
+          .where(inArray(invoicesTable.projectId, completedProjectIds))
       : [];
   const projectInvoicedTotal = new Map<string, number>();
-  for (const inv of allInvoicesForPaid) {
+  for (const inv of allInvoicesForCompleted) {
     const items = (inv.items ?? []) as LineItemJson[];
     const { total } = computeTotals(items);
     projectInvoicedTotal.set(
@@ -138,14 +143,14 @@ router.get("/commissions", async (req, res): Promise<void> => {
     );
   }
   const costEntries =
-    paidProjectIds.length > 0
+    completedProjectIds.length > 0
       ? await db
           .select({
             projectId: costEntriesTable.projectId,
             actualAmount: costEntriesTable.actualAmount,
           })
           .from(costEntriesTable)
-          .where(inArray(costEntriesTable.projectId, paidProjectIds))
+          .where(inArray(costEntriesTable.projectId, completedProjectIds))
       : [];
   const actualByProject = new Map<string, number>();
   for (const ce of costEntries) {
@@ -277,20 +282,15 @@ router.get("/commissions", async (req, res): Promise<void> => {
     }
   }
 
-  // 2) 現場監督歩合 — 当月入金済の請求書ごとに per-invoice で計上。
-  // 規定超過粗利 = invoice.total − invoice.total×営業率% − invoice.total×規定利益率% − 案件実原価×按分率
-  // 按分率 = invoice.total / 案件全請求書合計 (税込)
-  for (const inv of paidInvoices) {
-    const project = projectMap.get(inv.projectId);
-    if (!project) continue;
-    const items = (inv.items ?? []) as LineItemJson[];
-    const sales = computeTotals(items).total;
-    if (sales <= 0) continue;
-    const paidAt = isoDate(inv.paidAt)!;
-    const salesRep = project.salesRep?.trim() || null;
+  // 2) 現場監督歩合 — 当月 施工台帳完了の案件ごとに per-project 1 回計上 (施工台帳依存)。
+  // sales = 案件の全請求書合計 (税込)、actual = 案件の cost_entries actualAmount 合計
+  // 規定超過粗利 = max(0, sales − sales×営業率% − sales×規定利益率% − actual)  ※按分なし
+  for (const project of ledgerCompletedProjects) {
     const siteSupervisor = project.siteSupervisor?.trim() || null;
     if (!siteSupervisor) continue;
-
+    const salesRep = project.salesRep?.trim() || null;
+    const sales = projectInvoicedTotal.get(project.id) ?? 0;
+    const actual = actualByProject.get(project.id) ?? 0;
     const customer = customerMap.get(project.customerId);
     const standardRate =
       project.standardProfitRate != null
@@ -300,36 +300,32 @@ router.get("/commissions", async (req, res): Promise<void> => {
           : 20;
     const salesRate = n(project.salesCommissionRate);
     const supervisorRate = n(project.supervisorCommissionRate);
-    const projectInvTotal = projectInvoicedTotal.get(project.id) ?? sales;
-    const allocationRatio = projectInvTotal > 0 ? sales / projectInvTotal : 1;
-    const allocatedActual =
-      (actualByProject.get(project.id) ?? 0) * allocationRatio;
     const salesCom = sales * (salesRate / 100);
     const standardProfit = sales * (standardRate / 100);
     const excessProfit = Math.max(
       0,
-      sales - salesCom - standardProfit - allocatedActual,
+      sales - salesCom - standardProfit - actual,
     );
     const amount = Math.round((excessProfit * supervisorRate) / 100);
-    if (amount > 0) {
-      const p = getPerson(siteSupervisor);
-      p.supervisorCommission += amount;
-      p.lines.push({
-        invoiceId: inv.id,
-        invoiceNumber: inv.invoiceNumber,
-        projectId: project.id,
-        projectName: project.name,
-        salesRep,
-        siteSupervisor,
-        sentAt: paidAt,
-        invoiceTotal: sales,
-        kind: "supervisor",
-        amount,
-        rate: supervisorRate,
-        baseAmount: excessProfit,
-        note: `規定超過粗利 ¥${Math.round(excessProfit).toLocaleString()} × ${supervisorRate}% (入金月)`,
-      });
-    }
+    if (amount <= 0) continue;
+    const completedAt = isoDate(project.ledgerCompletedAt)!;
+    const p = getPerson(siteSupervisor);
+    p.supervisorCommission += amount;
+    p.lines.push({
+      invoiceId: project.id, // 案件 ID を流用 (フロントで project リンク)
+      invoiceNumber: project.code ?? project.name,
+      projectId: project.id,
+      projectName: project.name,
+      salesRep,
+      siteSupervisor,
+      sentAt: completedAt,
+      invoiceTotal: sales,
+      kind: "supervisor",
+      amount,
+      rate: supervisorRate,
+      baseAmount: excessProfit,
+      note: `規定超過粗利 ¥${Math.round(excessProfit).toLocaleString()} × ${supervisorRate}% (施工台帳完了月)`,
+    });
   }
 
   const peopleArr = [...people.values()]

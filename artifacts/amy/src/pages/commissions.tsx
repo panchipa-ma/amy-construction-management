@@ -97,8 +97,8 @@ export default function CommissionsPage() {
             月次歩合
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            請求書の <strong>送付月</strong> を基準に、営業歩合・現場監督歩合・マネジメント報酬
-            (亘ルールなど) を担当者ごとに自動集計します。
+            <strong>営業歩合・マネジメント報酬</strong>は請求書の<strong>送付月</strong>を基準に per-invoice、
+            <strong>現場監督歩合</strong>は<strong>施工台帳の完了月</strong>を基準に案件ごとに 1 回計上します。
           </p>
         </div>
       </div>
@@ -171,7 +171,7 @@ export default function CommissionsPage() {
                   label="現場監督歩合"
                   value={formatCurrency(totals?.supervisorCommission ?? 0)}
                   tone="emerald"
-                  hint="竣工案件のみ"
+                  hint="施工台帳完了月のみ"
                   selected={filter === "supervisor"}
                   onClick={() => setFilter("supervisor")}
                 />
@@ -213,9 +213,11 @@ export default function CommissionsPage() {
             </div>
           ) : people.length === 0 ? (
             <div className="py-12 text-center text-sm text-muted-foreground">
-              対象月に送付済となった請求書がありません。
+              対象月に該当する歩合がありません。
               <br />
-              請求書一覧から「送付済」にすると、その日付がこの集計の基準になります。
+              営業/マネジメント: 請求書一覧から「送付済」にした日付が基準です。
+              <br />
+              現場監督: 施工台帳画面の「施工台帳を完了」ボタンを押した日付が基準です。
             </div>
           ) : (
             <Table>
@@ -404,19 +406,21 @@ export default function CommissionsPage() {
           </p>
           <ul className="list-disc pl-5 space-y-0.5">
             <li>
-              <strong>営業歩合</strong> = 請求書(税込)合計 × 案件の営業歩合率。
-              担当営業に計上。
+              <strong>営業歩合</strong> = 請求書(税込) × 実効営業歩合率 (= 案件の営業歩合率 − Σマネジメント報酬率)。
+              請求書 1 通につき 1 行、担当営業に計上。
+            </li>
+            <li>
+              <strong>マネジメント報酬</strong> = 請求書(税込) × 案件のマネジメント報酬率。
+              請求書ごとに受取人 (例: 亘 2.5%) に計上。営業歩合から差し引いた分なので二重計上ではありません。
             </li>
             <li>
               <strong>現場監督歩合</strong> = 規定超過粗利 × 案件の監督歩合率。
-              <strong>竣工済案件のみ</strong>対象 (案件の最終請求書が当月送付の場合に1回計上)。
+              <strong>施工台帳が完了になった月</strong>に案件ごとに 1 回計上。
+              規定超過粗利 = max(0, 売上合計 − 売上×営業率 − 売上×規定利率 − 実績原価)。
             </li>
             <li>
-              <strong>マネジメント報酬</strong> = 自分以外の営業が獲得した売上(税込) × 職人マスタの「マネジメント報酬率」。
-              職人ページで設定 (例: 亘 2.5%)。監督歩合分は含みません。
-            </li>
-            <li>
-              送付月の判定は請求書の <strong>送付日</strong> です。請求一覧で「送付済」にした日付が記録され、後から個別に編集することもできます。
+              <strong>送付月</strong>: 請求一覧で「送付済」にした日付。
+              <strong>施工台帳完了月</strong>: 施工台帳画面の「施工台帳を完了」ボタンを押した日付。どちらも後から編集可能です。
             </li>
           </ul>
         </CardContent>

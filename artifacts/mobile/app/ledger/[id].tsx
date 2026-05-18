@@ -1,9 +1,14 @@
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "@clerk/expo";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   type CostEntry,
+  getGetProjectLedgerQueryKey,
+  getGetProjectQueryKey,
+  getListProjectsQueryKey,
   useGetProject,
   useGetProjectLedger,
+  useUpdateProject,
 } from "@workspace/api-client-react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -53,8 +58,10 @@ function LedgerDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getToken } = useAuth();
 
+  const qc = useQueryClient();
   const projQ = useGetProject(id);
   const ledgerQ = useGetProjectLedger(id);
+  const updateProjectMut = useUpdateProject();
 
   const [costOpen, setCostOpen] = useState(false);
   const [editingCost, setEditingCost] = useState<CostEntry | null>(null);
@@ -106,6 +113,37 @@ function LedgerDetail() {
     totalsByCat[k] += e.actualAmount;
   }
 
+  const toggleLedgerCompleted = async () => {
+    const isCompleted = !!p.ledgerCompletedAt;
+    const next = isCompleted ? null : new Date().toISOString();
+    const confirmMsg = isCompleted
+      ? "施工台帳の完了を取り消しますか?"
+      : "施工台帳を完了にしますか?\n現場監督歩合がこの月で計上されます。";
+    Alert.alert(
+      isCompleted ? "完了を取り消す" : "施工台帳を完了",
+      confirmMsg,
+      [
+        { text: "キャンセル", style: "cancel" },
+        {
+          text: "OK",
+          onPress: async () => {
+            try {
+              await updateProjectMut.mutateAsync({
+                id: p.id,
+                data: { ledgerCompletedAt: next },
+              });
+              await qc.invalidateQueries({ queryKey: getGetProjectQueryKey(p.id) });
+              await qc.invalidateQueries({ queryKey: getGetProjectLedgerQueryKey(p.id) });
+              await qc.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+            } catch (err) {
+              Alert.alert("失敗しました", String((err as Error).message ?? err));
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const printPdf = async () => {
     try {
       const safe = (p.name || "project").replace(/[\\/:*?"<>|]/g, "_");
@@ -144,7 +182,7 @@ function LedgerDetail() {
           </View>
         </View>
 
-        <View style={{ flexDirection: "row", gap: 8 }}>
+        <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
           <ActionButton
             icon="edit-2"
             label="案件を編集"
@@ -152,6 +190,16 @@ function LedgerDetail() {
           />
           <ActionButton icon="printer" label="PDF出力" onPress={printPdf} />
         </View>
+        <ActionButton
+          icon={p.ledgerCompletedAt ? "rotate-ccw" : "check-circle"}
+          label={
+            p.ledgerCompletedAt
+              ? `完了済を取り消す (${fmtDate(p.ledgerCompletedAt)})`
+              : "施工台帳を完了"
+          }
+          onPress={toggleLedgerCompleted}
+          tone={p.ledgerCompletedAt ? undefined : "success"}
+        />
 
         {/* 基本情報 */}
         <Card>
@@ -445,12 +493,17 @@ function ActionButton({
   icon,
   label,
   onPress,
+  tone,
 }: {
   icon: React.ComponentProps<typeof Feather>["name"];
   label: string;
   onPress: () => void;
+  tone?: "success";
 }) {
   const c = useColors();
+  const bg = tone === "success" ? c.success : c.card;
+  const fg = tone === "success" ? "#fff" : c.foreground;
+  const border = tone === "success" ? c.success : c.border;
   return (
     <Pressable
       onPress={onPress}
@@ -463,15 +516,15 @@ function ActionButton({
           alignItems: "center",
           justifyContent: "center",
           gap: 6,
-          backgroundColor: c.card,
+          backgroundColor: bg,
           borderWidth: 1,
-          borderColor: c.border,
+          borderColor: border,
         },
         pressed && { opacity: 0.7 },
       ]}
     >
-      <Feather name={icon} size={14} color={c.foreground} />
-      <Body style={{ fontWeight: "600" }}>{label}</Body>
+      <Feather name={icon} size={14} color={fg} />
+      <Body style={{ fontWeight: "600", color: fg }}>{label}</Body>
     </Pressable>
   );
 }

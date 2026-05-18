@@ -68,6 +68,7 @@ type Project = {
   otherSalesBonusRate?: number | null;
   salesRep?: string | null;
   siteSupervisor?: string | null;
+  ledgerCompletedAt?: string | null;
 };
 
 type CustomerOption = { id: string; name: string };
@@ -100,6 +101,7 @@ export type ProjectPatch = Partial<{
   salesRep: string | null;
   siteSupervisor: string | null;
   notes: string | null;
+  ledgerCompletedAt: string | null;
 }>;
 
 export type CreateCostEntryDraft = {

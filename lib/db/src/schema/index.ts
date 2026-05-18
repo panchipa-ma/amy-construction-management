@@ -112,6 +112,9 @@ export const projectsTable = pgTable("projects", {
   salesRep: text("sales_rep"),
   siteSupervisor: text("site_supervisor"),
   notes: text("notes"),
+  // 施工台帳の完了フラグ。set されると現場監督歩合の発生月になる。
+  // 「施工台帳を完了」UI でトグル。完了済を取り消すと null に戻る。
+  ledgerCompletedAt: timestamp("ledger_completed_at", { withTimezone: true }),
   createdBy: text("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

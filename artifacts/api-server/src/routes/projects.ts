@@ -77,6 +77,7 @@ async function serializeProject(p: ProjectRow) {
     salesRep: p.salesRep,
     siteSupervisor: p.siteSupervisor,
     notes: p.notes,
+    ledgerCompletedAt: isoDateTime(p.ledgerCompletedAt),
     createdAt: isoDateTime(p.createdAt),
   };
 }
@@ -206,6 +207,11 @@ router.patch("/projects/:id", async (req, res): Promise<void> => {
   }
   if ("startDate" in parsed.data) data.startDate = isoDate(parsed.data.startDate);
   if ("endDate" in parsed.data) data.endDate = isoDate(parsed.data.endDate);
+  if ("ledgerCompletedAt" in parsed.data) {
+    data.ledgerCompletedAt = parsed.data.ledgerCompletedAt
+      ? new Date(parsed.data.ledgerCompletedAt)
+      : null;
+  }
   const [row] = await db
     .update(projectsTable)
     .set(data)

@@ -6,7 +6,15 @@ Japanese interior contractor (内装屋) business app. UI 全面日本語。Hero
 
 pnpm monorepo, TypeScript project references。
 
-- `lib/db` — Drizzle ORM + Postgres。主テーブル: `customers`, `staff` (職人/外注), `employees` (社員: 営業/現場監督/事務), `projects`, `quotes`, `invoices`, `cost_entries`, `schedule_entries`, `progress_logs`, `vendor_invoices`, `vendor_quotes`, `project_phases`, `app_users`。`projects.unitNumber` (マンション号室) が職人請求書の自動振り分けキー。
+- `lib/db` — Drizzle ORM + Postgres。主テーブル: `customers`, `staff` (職人/外注), `employees` (社員: 営業/現場監督/事務), `projects`, `quotes`, `invoices`, `cost_entries`, `schedule_entries`, `progress_logs`, `vendor_invoices`, `vendor_quotes`, `project_phases`, `app_users`。`projects.unitNumber` (マンション号室) が職人請求書の自動振り分けキー。`projects.ledgerCompletedAt` (timestamp) が現場監督歩合の発生月キー。
+
+### 文書 → 原価/売上 自動同期マップ
+
+- **見積書 (`quotes`)** → `project.contractAmount` (受注=計画売上)。`syncProjectContractAmount` で税込合計に更新。
+- **請求書 (`invoices`)** → 締め (実績売上)。歩合計算の基準額。原価には影響しない。
+- **職人見積書 (`vendor_quotes`)** → `cost_entries.plannedAmount` (予算原価)、`sourceQuoteId` で cascade。
+- **職人請求書 (`vendor_invoices`)** → `cost_entries.actualAmount` (実績原価)、号室/手動 match で `costEntryId` リンク、cascade delete。
+- **領収書 (`receipts`)** → `cost_entries.actualAmount` (実績原価)、`costEntryId` リンク。
 - `lib/api-spec` — OpenAPI 3 source of truth。`lib/api-zod` + `lib/api-client-react` は orval-generated。
 - `lib/object-storage-web` — Uppy `<ObjectUploader>` (presigned PUT)。
 - `artifacts/api-server` — Express + Drizzle、`/api/*`。esbuild → `dist/index.mjs`。
@@ -68,13 +76,20 @@ Keys 自動 (`CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `VITE_CLERK_PUBLISHABL
 
 `GET /api/commissions?month=YYYY-MM` — 対象月に `invoices.sentAt` が入る請求書を担当者ごとに集計。`sentAt` は `sentToClient` の false→true 遷移で自動 stamp (true→false でクリア)。client 指定優先。
 
-**「竣工ベース統一」**: 3 種すべて、ステータス=`completed` 案件で **最新の送付請求書が対象月** にある時、その案件の **全請求書合計 (税込)** をベースに **一度に** 計上する (案件 1 つにつき各歩合 1 回)。受注/施工中の案件は対象外。`commissionableProjects` で gating 済。
+**発生基準は 2 系統:**
 
-3 components (同じ `sales = sum(税込)` を共有):
+- **営業歩合 + マネジメント報酬** = **請求金額依存**。請求書 `sentAt` が対象月の請求書ごとに per-invoice で計上 (請求書 1 通=1 行)。案件ステータス・施工台帳の状態は問わない。
+- **現場監督歩合** = **施工台帳依存**。`projects.ledgerCompletedAt` が対象月にセットされた案件ごとに **per-project 1 回** 計上。施工台帳画面の「施工台帳を完了」ボタンでトグル (再開時は null に戻して再計上を阻止)。
 
-1. **営業歩合** — `sales × 実効営業歩合率%` を `project.salesRep` に計上。**実効率 = `project.salesCommissionRate − Σマネジメント報酬率`**。例: エディ案件 (営業 7.5%) + 亘 (2.5%) なら エディ 5%、亘 2.5%。負は 0 でクリップ。
-2. **現場監督歩合** — `規定超過粗利 × project.supervisorCommissionRate%`、`規定超過粗利 = max(0, sales − sales × salesRate% − sales × standardProfitRate% − sum(actualAmount))`。`standardProfitRate` がなければ `customer.defaultProfitRate` にフォールバック。`project.siteSupervisor` に計上。
-3. **マネジメント報酬** — giver-driven, per-project。`projects.otherSalesBonusRecipient` + `otherSalesBonusRate` (recipient ≠ salesRep の時のみ有効)。`sales × rate%` を recipient に。**営業歩合から差し引いた分** — 二重計上ではない。
+3 components:
+
+1. **営業歩合** — 各請求書ごとに `invoice.total × 実効営業歩合率%` を `project.salesRep` に計上。**実効率 = `project.salesCommissionRate − Σマネジメント報酬率`**。例: エディ案件 (営業 7.5%) + 亘 (2.5%) なら エディ 5%、亘 2.5%。負は 0 でクリップ。
+2. **マネジメント報酬** — 各請求書ごとに `invoice.total × otherSalesBonusRate%` を `project.otherSalesBonusRecipient` に。giver-driven、recipient ≠ salesRep の時のみ有効。**営業歩合から差し引いた分** — 二重計上ではない。
+3. **現場監督歩合** — 施工台帳完了月に案件全体ベースで 1 回:
+   - `sales` = 案件の全請求書合計 (税込)、`actual` = `cost_entries.actualAmount` 合計 (按分なし)
+   - `規定超過粗利 = max(0, sales − sales×salesRate% − sales×standardProfitRate% − actual)`
+   - `amount = 規定超過粗利 × supervisorCommissionRate%` を `project.siteSupervisor` に計上
+   - `standardProfitRate` がなければ `customer.defaultProfitRate` にフォールバック
 
 Page: month picker + 3 つのクリック可能サマリタイル (全体 / 営業含むマネジメント報酬 / 現場監督)。Expandable per-person table、kind タグ付き invoice 行は project にリンク。
 

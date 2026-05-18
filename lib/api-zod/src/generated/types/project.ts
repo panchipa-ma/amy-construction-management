@@ -41,5 +41,7 @@ export interface Project {
   /** 担当現場監督 */
   siteSupervisor?: string | null;
   notes?: string | null;
+  /** 施工台帳完了日時。現場監督歩合の発生月になる。 */
+  ledgerCompletedAt?: Date | null;
   createdAt: Date;
 }

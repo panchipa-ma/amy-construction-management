@@ -25,4 +25,6 @@ export interface UpdateProjectBody {
   salesRep?: string | null;
   siteSupervisor?: string | null;
   notes?: string | null;
+  /** 施工台帳完了日時 (null で取り消し) */
+  ledgerCompletedAt?: Date | null;
 }

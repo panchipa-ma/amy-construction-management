@@ -184,6 +184,10 @@ export const ListProjectsResponseItem = zod.object({
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
+  ledgerCompletedAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("施工台帳完了日時。現場監督歩合の発生月になる。"),
   createdAt: zod.coerce.date(),
 });
 export const ListProjectsResponse = zod.array(ListProjectsResponseItem);
@@ -260,6 +264,10 @@ export const CreateProjectResponse = zod.object({
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
+  ledgerCompletedAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("施工台帳完了日時。現場監督歩合の発生月になる。"),
   createdAt: zod.coerce.date(),
 });
 
@@ -313,6 +321,10 @@ export const GetProjectResponse = zod.object({
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
+  ledgerCompletedAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("施工台帳完了日時。現場監督歩合の発生月になる。"),
   createdAt: zod.coerce.date(),
 });
 
@@ -340,6 +352,10 @@ export const UpdateProjectBody = zod.object({
   salesRep: zod.string().nullish(),
   siteSupervisor: zod.string().nullish(),
   notes: zod.string().nullish(),
+  ledgerCompletedAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("施工台帳完了日時 (null で取り消し)"),
 });
 
 export const UpdateProjectResponse = zod.object({
@@ -388,6 +404,10 @@ export const UpdateProjectResponse = zod.object({
   salesRep: zod.string().nullish().describe("担当営業"),
   siteSupervisor: zod.string().nullish().describe("担当現場監督"),
   notes: zod.string().nullish(),
+  ledgerCompletedAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("施工台帳完了日時。現場監督歩合の発生月になる。"),
   createdAt: zod.coerce.date(),
 });
 
