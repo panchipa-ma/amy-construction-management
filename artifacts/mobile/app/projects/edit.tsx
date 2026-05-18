@@ -238,18 +238,11 @@ function ProjectEdit() {
         <Field label="号室" hint="マンション号室（職人請求書の自動振り分けキー）">
           <Input value={form.unitNumber} onChangeText={(v) => set("unitNumber", v)} />
         </Field>
-        <Field label="開始日">
-          <DateInput value={form.startDate} onChangeText={(v) => set("startDate", v)} />
-        </Field>
-        <Field label="終了日">
-          <DateInput value={form.endDate} onChangeText={(v) => set("endDate", v)} />
-        </Field>
-        <Field label="契約金額 (税抜, 円)">
-          <NumberInput
-            value={form.contractAmount}
-            onChangeText={(v) => set("contractAmount", v)}
-            decimal={false}
-          />
+        <Field
+          label="着工日・竣工予定日・契約金額"
+          hint="着工日/竣工予定日は工程表で工程を登録すると自動反映されます (施工台帳でも編集可)。契約金額は見積書を作成すると最新の見積合計 (税込) が自動反映されます。"
+        >
+          <></>
         </Field>
       </FormSection>
 

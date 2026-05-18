@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, asc, gte, lte, and, type SQL } from "drizzle-orm";
+import { eq, asc, gte, lte, and, min, max, type SQL } from "drizzle-orm";
 import { db, projectPhasesTable, staffTable, projectsTable } from "@workspace/db";
 import {
   ListProjectPhasesParams,
@@ -17,6 +17,28 @@ import { isoDate, isoDateTime, n } from "../lib/serializers";
 import { getOrCreateAppUser } from "../lib/auth";
 
 const router: IRouter = Router();
+
+// 工程表 (project_phases) の startDate/endDate から
+// projects.startDate (= MIN(phase.startDate)) と
+// projects.endDate (= MAX(phase.endDate)) を自動同期。
+// Phase が無い場合は null にクリアする (案件登録 form で入力しない方針)。
+// 施工台帳側で manual に edit したい場合は phase 追加後に上書き可。
+async function syncProjectDatesFromPhases(projectId: string): Promise<void> {
+  const [agg] = await db
+    .select({
+      minStart: min(projectPhasesTable.startDate),
+      maxEnd: max(projectPhasesTable.endDate),
+    })
+    .from(projectPhasesTable)
+    .where(eq(projectPhasesTable.projectId, projectId));
+  await db
+    .update(projectsTable)
+    .set({
+      startDate: (agg?.minStart as string | null | undefined) ?? null,
+      endDate: (agg?.maxEnd as string | null | undefined) ?? null,
+    })
+    .where(eq(projectsTable.id, projectId));
+}
 
 type Row = typeof projectPhasesTable.$inferSelect;
 
@@ -117,6 +139,7 @@ router.post(
         notes: body.data.notes ?? null,
       })
       .returning();
+    await syncProjectDatesFromPhases(params.data.projectId);
     let staffName: string | null = null;
     if (row.staffId) {
       const [s] = await db
@@ -255,6 +278,9 @@ router.patch("/project-phases/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Phase not found" });
     return;
   }
+  if (update.startDate !== undefined || update.endDate !== undefined) {
+    await syncProjectDatesFromPhases(row.projectId);
+  }
   let staffName: string | null = null;
   if (row.staffId) {
     const [s] = await db
@@ -272,9 +298,14 @@ router.delete("/project-phases/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const [existing] = await db
+    .select({ projectId: projectPhasesTable.projectId })
+    .from(projectPhasesTable)
+    .where(eq(projectPhasesTable.id, params.data.id));
   await db
     .delete(projectPhasesTable)
     .where(eq(projectPhasesTable.id, params.data.id));
+  if (existing) await syncProjectDatesFromPhases(existing.projectId);
   res.sendStatus(204);
 });
 

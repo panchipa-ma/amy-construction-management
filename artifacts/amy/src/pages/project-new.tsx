@@ -250,38 +250,11 @@ export default function ProjectNewPage() {
                   職人請求書を号室で自動振分けする際に使用します
                 </p>
               </div>
-              <div>
-                <Label htmlFor="startDate">着工日</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={form.startDate}
-                  onChange={(e) =>
-                    setForm({ ...form, startDate: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="endDate">竣工予定日</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={form.endDate}
-                  onChange={(e) =>
-                    setForm({ ...form, endDate: e.target.value })
-                  }
-                />
-              </div>
               <div className="col-span-2">
-                <Label htmlFor="contractAmount">契約金額 (税抜・円)</Label>
-                <Input
-                  id="contractAmount"
-                  type="number"
-                  value={form.contractAmount}
-                  onChange={(e) =>
-                    setForm({ ...form, contractAmount: e.target.value })
-                  }
-                />
+                <p className="text-xs text-muted-foreground bg-muted/40 border border-border rounded px-3 py-2">
+                  着工日・竣工予定日は工程表で工程を登録すると自動反映されます (施工台帳でも編集可)。<br />
+                  契約金額は見積書を作成すると最新の見積合計 (税込) が自動反映されます。
+                </p>
               </div>
               <div className="col-span-2">
                 <Label htmlFor="standardProfitRate">
