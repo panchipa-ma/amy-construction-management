@@ -213,18 +213,22 @@ export default function VendorQuoteNewPage() {
   const updateRow = (i: number, patch: Partial<LineRow>) =>
     setItems((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
 
-  // Excel-like fill handle (ドラッグして下にコピー)
-  const [fillDrag, setFillDrag] = useState<{ src: number; target: number } | null>(null);
+  // Excel-like fill handle (列ごとにドラッグして下にコピー)
+  const [fillDrag, setFillDrag] = useState<{
+    src: number;
+    target: number;
+    field: LineItemField;
+  } | null>(null);
   const fillCleanupRef = useRef<(() => void) | null>(null);
   useEffect(() => () => {
     fillCleanupRef.current?.();
     fillCleanupRef.current = null;
   }, []);
-  const startFillDrag = (srcIdx: number) => (e: React.PointerEvent) => {
+  const startFillDrag = (srcIdx: number, field: LineItemField) => (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
     fillCleanupRef.current?.();
-    setFillDrag({ src: srcIdx, target: srcIdx });
+    setFillDrag({ src: srcIdx, target: srcIdx, field });
     const onMove = (ev: PointerEvent) => {
       const el = document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null;
       const rowEl = el?.closest("[data-row]") as HTMLElement | null;
@@ -246,7 +250,7 @@ export default function VendorQuoteNewPage() {
       cleanup();
       setFillDrag((curr) => {
         if (curr && curr.target > curr.src) {
-          applyFillDown(curr.src, curr.target);
+          applyFillDown(curr.src, curr.target, curr.field);
         }
         return null;
       });
@@ -261,20 +265,15 @@ export default function VendorQuoteNewPage() {
     document.addEventListener("pointercancel", onCancel);
     window.addEventListener("blur", onCancel);
   };
-  const applyFillDown = (srcIdx: number, targetIdx: number) => {
+  const applyFillDown = (srcIdx: number, targetIdx: number, field: LineItemField) => {
     setItems((prev) => {
       const src = prev[srcIdx];
       if (!src) return prev;
       const next = [...prev];
+      const value = src[field] as LineRow[LineItemField];
       for (let i = srcIdx + 1; i <= targetIdx; i++) {
         while (next.length <= i) next.push(emptyRow());
-        next[i] = {
-          description: src.description ?? "",
-          unit: src.unit ?? "",
-          quantity: src.quantity || 0,
-          unitPrice: src.unitPrice || 0,
-          notes: next[i]?.notes ?? "",
-        };
+        next[i] = { ...next[i], [field]: value } as LineRow;
       }
       return next;
     });
@@ -787,6 +786,9 @@ export default function VendorQuoteNewPage() {
             background-size: 7px 5px;
             padding-right: 12px;
           }
+          .vq-cell-wrap:hover .vq-fill-handle,
+          .vq-fill-handle:hover { opacity: 1 !important; }
+          @media print { .vq-fill-handle { display: none !important; } }
         `}</style>
 
         {/* Items table */}
@@ -822,9 +824,40 @@ export default function VendorQuoteNewPage() {
                   const r: LineRow = row || emptyRow();
                   const amt = (r.quantity || 0) * (r.unitPrice || 0);
                   const isFirstEmpty = exists ? i === firstEmptyIdx : i === items.length;
-                  const hasData = !!(r.description || r.unit || r.quantity || r.unitPrice);
-                  const inFillRange =
-                    !!fillDrag && i > fillDrag.src && i <= fillDrag.target;
+                  const cellHasData = (f: LineItemField): boolean => {
+                    const v = r[f];
+                    return typeof v === "number" ? v > 0 : !!(v && String(v).trim());
+                  };
+                  const isCellInFillRange = (f: LineItemField): boolean =>
+                    !!fillDrag &&
+                    fillDrag.field === f &&
+                    i > fillDrag.src &&
+                    i <= fillDrag.target;
+                  const cellBg = (f: LineItemField) =>
+                    isCellInFillRange(f) ? "rgba(31,58,102,0.08)" : undefined;
+                  const fillHandleStyle: React.CSSProperties = {
+                    position: "absolute",
+                    bottom: "0",
+                    right: "0",
+                    width: "8px",
+                    height: "8px",
+                    background: "#1f3a66",
+                    border: "1px solid #fff",
+                    cursor: "crosshair",
+                    zIndex: 10,
+                    opacity: 0,
+                  };
+                  const renderFillHandle = (f: LineItemField) =>
+                    cellHasData(f) ? (
+                      <div
+                        data-pdf-hide="true"
+                        className="vq-fill-handle"
+                        onPointerDown={startFillDrag(i, f)}
+                        title="ドラッグして下にコピー"
+                        aria-label="フィルハンドル"
+                        style={fillHandleStyle}
+                      />
+                    ) : null;
                   const ensureRow = () => {
                     if (!exists) {
                       setItems((rs) => {
@@ -837,9 +870,9 @@ export default function VendorQuoteNewPage() {
                     }
                   };
                   return (
-                  <div key={i} data-pdf-row="true" data-row={i} style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, fontSize: "11px", minHeight: "18px", position: "relative", background: inFillRange ? "rgba(31,58,102,0.08)" : undefined }}>
+                  <div key={i} data-pdf-row="true" data-row={i} style={{ display: "grid", gridTemplateColumns: cols, borderTop: rowBorder, fontSize: "11px", minHeight: "18px", position: "relative" }}>
                     <div style={{ padding: "2px 2px", textAlign: "center", color: "#64748b", borderRight: rowBorder, fontVariantNumeric: "tabular-nums", fontSize: "10px" }}>{exists ? i + 1 : ""}</div>
-                    <div style={{ padding: "1px 6px", borderRight: rowBorder }}>
+                    <div className="vq-cell-wrap" style={{ padding: "1px 6px", borderRight: rowBorder, position: "relative", background: cellBg("description") }}>
                       <input
                         className="vq-cell-input"
                         data-cell={`r${i}-cdesc`}
@@ -853,8 +886,9 @@ export default function VendorQuoteNewPage() {
                           handleMultiPaste(e, i, "description");
                         }}
                       />
+                      {renderFillHandle("description")}
                     </div>
-                    <div style={{ padding: "1px 0", borderRight: rowBorder, textAlign: "center" }}>
+                    <div className="vq-cell-wrap" style={{ padding: "1px 0", borderRight: rowBorder, textAlign: "center", position: "relative", background: cellBg("unit") }}>
                       <select
                         className="vq-cell-input"
                         data-cell={`r${i}-cunit`}
@@ -873,8 +907,9 @@ export default function VendorQuoteNewPage() {
                           <option key={u} value={u}>{u}</option>
                         ))}
                       </select>
+                      {renderFillHandle("unit")}
                     </div>
-                    <div style={{ padding: "1px 3px", borderRight: rowBorder }}>
+                    <div className="vq-cell-wrap" style={{ padding: "1px 3px", borderRight: rowBorder, position: "relative", background: cellBg("quantity") }}>
                       <input
                         className="vq-cell-input"
                         data-cell={`r${i}-cqty`}
@@ -892,8 +927,9 @@ export default function VendorQuoteNewPage() {
                         }}
                         style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
                       />
+                      {renderFillHandle("quantity")}
                     </div>
-                    <div style={{ padding: "1px 4px", borderRight: rowBorder }}>
+                    <div className="vq-cell-wrap" style={{ padding: "1px 4px", borderRight: rowBorder, position: "relative", background: cellBg("unitPrice") }}>
                       <input
                         className="vq-cell-input"
                         data-cell={`r${i}-cprice`}
@@ -911,11 +947,12 @@ export default function VendorQuoteNewPage() {
                         }}
                         style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
                       />
+                      {renderFillHandle("unitPrice")}
                     </div>
                     <div style={{ padding: "2px 4px", textAlign: "right", fontVariantNumeric: "tabular-nums", borderRight: rowBorder, fontWeight: 500 }}>
                       {exists && amt > 0 ? formatCurrency(amt) : ""}
                     </div>
-                    <div style={{ padding: "1px 6px" }}>
+                    <div className="vq-cell-wrap" style={{ padding: "1px 6px", position: "relative", background: cellBg("notes") }}>
                       <input
                         className="vq-cell-input"
                         data-cell={`r${i}-cnotes`}
@@ -926,6 +963,7 @@ export default function VendorQuoteNewPage() {
                         onKeyDown={(e) => handleEnterDown(e, i, "notes")}
                         style={{ fontSize: "10.5px" }}
                       />
+                      {renderFillHandle("notes")}
                     </div>
                     {/* Per-row delete button (hidden in PDF) */}
                     {exists && items.length > 1 && (
@@ -956,26 +994,6 @@ export default function VendorQuoteNewPage() {
                       >
                         ×
                       </button>
-                    )}
-                    {hasData && (
-                      <div
-                        data-pdf-hide="true"
-                        onPointerDown={startFillDrag(i)}
-                        title="ドラッグして下にコピー (フィルハンドル)"
-                        aria-label="フィルハンドル"
-                        className="vq-fill-handle"
-                        style={{
-                          position: "absolute",
-                          bottom: "-3px",
-                          right: "-3px",
-                          width: "8px",
-                          height: "8px",
-                          background: "#1f3a66",
-                          border: "1px solid #fff",
-                          cursor: "crosshair",
-                          zIndex: 10,
-                        }}
-                      />
                     )}
                   </div>
                 );

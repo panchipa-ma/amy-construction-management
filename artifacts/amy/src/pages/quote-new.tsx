@@ -263,18 +263,22 @@ export default function QuoteNewPage() {
   const addRow = () =>
     setRows((prev) => [...prev, seedItemFromPrevious(findLastNonEmpty(prev))]);
 
-  // Excel-like fill handle (ドラッグして下にコピー)
-  const [fillDrag, setFillDrag] = useState<{ src: number; target: number } | null>(null);
+  // Excel-like fill handle (列ごとにドラッグして下にコピー)
+  const [fillDrag, setFillDrag] = useState<{
+    src: number;
+    target: number;
+    field: LineItemField;
+  } | null>(null);
   const fillCleanupRef = useRef<(() => void) | null>(null);
   useEffect(() => () => {
     fillCleanupRef.current?.();
     fillCleanupRef.current = null;
   }, []);
-  const startFillDrag = (srcIdx: number) => (e: React.PointerEvent) => {
+  const startFillDrag = (srcIdx: number, field: LineItemField) => (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
     fillCleanupRef.current?.();
-    setFillDrag({ src: srcIdx, target: srcIdx });
+    setFillDrag({ src: srcIdx, target: srcIdx, field });
     const onMove = (ev: PointerEvent) => {
       const el = document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null;
       const rowEl = el?.closest("[data-row]") as HTMLElement | null;
@@ -296,7 +300,7 @@ export default function QuoteNewPage() {
       cleanup();
       setFillDrag((curr) => {
         if (curr && curr.target > curr.src) {
-          applyFillDown(curr.src, curr.target);
+          applyFillDown(curr.src, curr.target, curr.field);
         }
         return null;
       });
@@ -312,24 +316,19 @@ export default function QuoteNewPage() {
     window.addEventListener("blur", onCancel);
   };
 
-  const applyFillDown = (srcIdx: number, targetIdx: number) => {
+  const applyFillDown = (srcIdx: number, targetIdx: number, field: LineItemField) => {
     setRows((prev) => {
       const src = prev[srcIdx];
       if (!src) return prev;
       const next = [...prev];
+      const value = src[field] as LineItem[LineItemField];
       for (let i = srcIdx + 1; i <= targetIdx; i++) {
         if (i >= next.length) next.push(emptyItem());
-        next[i] = {
-          description: src.description ?? "",
-          unit: src.unit ?? "",
-          quantity: src.quantity || 0,
-          unitPrice: src.unitPrice || 0,
-          notes: next[i]?.notes ?? "",
-        };
+        next[i] = { ...next[i], [field]: value } as LineItem;
       }
       // Ensure trailing empty row for further input
       const last = next[next.length - 1];
-      if (last && (last.description || last.unit || last.quantity || last.unitPrice)) {
+      if (last && (last.description || last.unit || last.quantity || last.unitPrice || last.notes)) {
         next.push(emptyItem());
       }
       return next;
@@ -698,86 +697,117 @@ export default function QuoteNewPage() {
               !row.unit &&
               !row.quantity &&
               !row.unitPrice;
-            const hasData = !!(row.description || row.unit || row.quantity || row.unitPrice);
-            const inFillRange =
-              !!fillDrag && i > fillDrag.src && i <= fillDrag.target;
+            const cellHasData = (f: LineItemField): boolean => {
+              const v = row[f];
+              return typeof v === "number" ? v > 0 : !!(v && String(v).trim());
+            };
+            const isCellInFillRange = (f: LineItemField): boolean =>
+              !!fillDrag &&
+              fillDrag.field === f &&
+              i > fillDrag.src &&
+              i <= fillDrag.target;
+            const renderFillHandle = (f: LineItemField) =>
+              cellHasData(f) ? (
+                <div
+                  onPointerDown={startFillDrag(i, f)}
+                  className="absolute bottom-0 right-0 w-2 h-2 bg-primary border border-background cursor-crosshair opacity-0 group-hover/cell:opacity-100 hover:opacity-100 z-10 print:hidden"
+                  title="ドラッグして下にコピー"
+                  aria-label="フィルハンドル"
+                />
+              ) : null;
+            const cellWrap = "relative group/cell";
             return (
               <div
                 key={i}
                 data-row={i}
-                className={`group relative grid ${colTemplate} border-t border-foreground/30 text-[11px] hover:bg-accent/5 items-stretch ${inFillRange ? "bg-primary/10" : ""}`}
+                className={`grid ${colTemplate} border-t border-foreground/30 text-[11px] hover:bg-accent/5 items-stretch`}
               >
                 <div className="px-1 py-0.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px] flex items-start justify-center min-h-[18px]">
                   {i + 1}
                 </div>
-                <AutoGrowTextarea
-                  value={row.description}
-                  onChange={(v) => updateRow(i, "description", v)}
-                  onKeyDown={(e) => handleEnterDown(e, i, "desc")}
-                  onPaste={(e) => handleMultiPaste(e, i, "description")}
-                  placeholder={
-                    isFirstEmpty
-                      ? "例: クロス貼り工事 (リビング・寝室)"
-                      : ""
-                  }
-                  className="block w-full px-2 py-0.5 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground/30 resize-none leading-tight placeholder:text-muted-foreground/30 overflow-hidden min-h-[18px]"
-                  dataCell={`r${i}-cdesc`}
-                  ariaLabel={`摘要 ${i + 1}行目`}
-                />
-                <Select
-                  value={row.unit ?? ""}
-                  onValueChange={(v) => updateRow(i, "unit", v)}
-                >
-                  <SelectTrigger className="border-0 border-r border-foreground/30 rounded-none shadow-none h-auto py-0.5 px-1 text-center justify-center focus:ring-0 focus:bg-accent/10 [&>svg]:hidden self-start min-h-[18px] text-[10px]">
-                    <SelectValue placeholder="—" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {UNIT_OPTIONS.map((u) => (
-                      <SelectItem key={u} value={u}>
-                        {u}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={row.quantity || ""}
-                  onChange={(e) => {
-                    const n = e.target.valueAsNumber;
-                    updateRow(i, "quantity", Number.isFinite(n) ? n : 0);
-                  }}
-                  onKeyDown={(e) => handleEnterDown(e, i, "qty")}
-                  onPaste={(e) => handleMultiPaste(e, i, "quantity")}
-                  className="px-1 py-0.5 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground/30 text-right tabular-nums min-w-0 self-start min-h-[18px] text-[11px]"
-                  data-cell={`r${i}-cqty`}
-                />
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={row.unitPrice || ""}
-                  onChange={(e) => {
-                    const n = e.target.valueAsNumber;
-                    updateRow(i, "unitPrice", Number.isFinite(n) ? n : 0);
-                  }}
-                  onKeyDown={(e) => handleEnterDown(e, i, "price")}
-                  onPaste={(e) => handleMultiPaste(e, i, "unitPrice")}
-                  className="px-1.5 py-0.5 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground/30 text-right tabular-nums min-w-0 self-start min-h-[18px] text-[11px]"
-                  data-cell={`r${i}-cprice`}
-                />
+                <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("description") ? "bg-primary/10" : ""}`}>
+                  <AutoGrowTextarea
+                    value={row.description}
+                    onChange={(v) => updateRow(i, "description", v)}
+                    onKeyDown={(e) => handleEnterDown(e, i, "desc")}
+                    onPaste={(e) => handleMultiPaste(e, i, "description")}
+                    placeholder={
+                      isFirstEmpty
+                        ? "例: クロス貼り工事 (リビング・寝室)"
+                        : ""
+                    }
+                    className="block w-full px-2 py-0.5 bg-transparent outline-none focus:bg-accent/10 resize-none leading-tight placeholder:text-muted-foreground/30 overflow-hidden min-h-[18px]"
+                    dataCell={`r${i}-cdesc`}
+                    ariaLabel={`摘要 ${i + 1}行目`}
+                  />
+                  {renderFillHandle("description")}
+                </div>
+                <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("unit") ? "bg-primary/10" : ""}`}>
+                  <Select
+                    value={row.unit ?? ""}
+                    onValueChange={(v) => updateRow(i, "unit", v)}
+                  >
+                    <SelectTrigger className="border-0 rounded-none shadow-none h-auto py-0.5 px-1 text-center justify-center focus:ring-0 focus:bg-accent/10 [&>svg]:hidden self-start min-h-[18px] text-[10px] w-full">
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNIT_OPTIONS.map((u) => (
+                        <SelectItem key={u} value={u}>
+                          {u}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {renderFillHandle("unit")}
+                </div>
+                <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("quantity") ? "bg-primary/10" : ""}`}>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={row.quantity || ""}
+                    onChange={(e) => {
+                      const n = e.target.valueAsNumber;
+                      updateRow(i, "quantity", Number.isFinite(n) ? n : 0);
+                    }}
+                    onKeyDown={(e) => handleEnterDown(e, i, "qty")}
+                    onPaste={(e) => handleMultiPaste(e, i, "quantity")}
+                    className="block w-full px-1 py-0.5 bg-transparent outline-none focus:bg-accent/10 text-right tabular-nums min-w-0 self-start min-h-[18px] text-[11px]"
+                    data-cell={`r${i}-cqty`}
+                  />
+                  {renderFillHandle("quantity")}
+                </div>
+                <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("unitPrice") ? "bg-primary/10" : ""}`}>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={row.unitPrice || ""}
+                    onChange={(e) => {
+                      const n = e.target.valueAsNumber;
+                      updateRow(i, "unitPrice", Number.isFinite(n) ? n : 0);
+                    }}
+                    onKeyDown={(e) => handleEnterDown(e, i, "price")}
+                    onPaste={(e) => handleMultiPaste(e, i, "unitPrice")}
+                    className="block w-full px-1.5 py-0.5 bg-transparent outline-none focus:bg-accent/10 text-right tabular-nums min-w-0 self-start min-h-[18px] text-[11px]"
+                    data-cell={`r${i}-cprice`}
+                  />
+                  {renderFillHandle("unitPrice")}
+                </div>
                 <div className="px-1.5 py-0.5 text-right tabular-nums border-r border-foreground/30 self-start min-h-[18px] font-medium">
                   {amount > 0 ? formatCurrency(amount) : ""}
                 </div>
-                <AutoGrowTextarea
-                  value={row.notes ?? ""}
-                  onChange={(v) => updateRow(i, "notes", v)}
-                  onKeyDown={(e) => handleEnterDown(e, i, "notes")}
-                  className="block w-full px-2 py-0.5 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground/30 resize-none leading-tight placeholder:text-muted-foreground/30 overflow-hidden min-h-[18px] text-[10.5px]"
-                  dataCell={`r${i}-cnotes`}
-                  ariaLabel={`備考 ${i + 1}行目`}
-                />
+                <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("notes") ? "bg-primary/10" : ""}`}>
+                  <AutoGrowTextarea
+                    value={row.notes ?? ""}
+                    onChange={(v) => updateRow(i, "notes", v)}
+                    onKeyDown={(e) => handleEnterDown(e, i, "notes")}
+                    className="block w-full px-2 py-0.5 bg-transparent outline-none focus:bg-accent/10 resize-none leading-tight placeholder:text-muted-foreground/30 overflow-hidden min-h-[18px] text-[10.5px]"
+                    dataCell={`r${i}-cnotes`}
+                    ariaLabel={`備考 ${i + 1}行目`}
+                  />
+                  {renderFillHandle("notes")}
+                </div>
                 <button
                   type="button"
                   onClick={() => clearRow(i)}
@@ -787,14 +817,6 @@ export default function QuoteNewPage() {
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
-                {hasData && (
-                  <div
-                    onPointerDown={startFillDrag(i)}
-                    className="absolute -bottom-[3px] -right-[3px] w-2 h-2 bg-primary border border-background cursor-crosshair opacity-0 group-hover:opacity-100 hover:opacity-100 z-10 print:hidden"
-                    title="ドラッグして下にコピー (フィルハンドル)"
-                    aria-label="フィルハンドル"
-                  />
-                )}
               </div>
             );
           })}
