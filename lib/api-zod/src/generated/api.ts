@@ -605,13 +605,6 @@ export const GetMeResponse = zod.object({
   approvedAt: zod.coerce.date().nullish(),
   approvedBy: zod.string().nullish(),
   createdAt: zod.coerce.date(),
-  linkedStaffId: zod.string().nullish().describe("紐付け済 職人 (staff) ID"),
-  linkedStaffName: zod.string().nullish(),
-  linkedEmployeeId: zod
-    .string()
-    .nullish()
-    .describe("紐付け済 社員 (employee) ID"),
-  linkedEmployeeName: zod.string().nullish(),
 });
 
 /**
@@ -627,13 +620,6 @@ export const ListUsersResponseItem = zod.object({
   approvedAt: zod.coerce.date().nullish(),
   approvedBy: zod.string().nullish(),
   createdAt: zod.coerce.date(),
-  linkedStaffId: zod.string().nullish().describe("紐付け済 職人 (staff) ID"),
-  linkedStaffName: zod.string().nullish(),
-  linkedEmployeeId: zod
-    .string()
-    .nullish()
-    .describe("紐付け済 社員 (employee) ID"),
-  linkedEmployeeName: zod.string().nullish(),
 });
 export const ListUsersResponse = zod.array(ListUsersResponseItem);
 
@@ -660,13 +646,6 @@ export const UpdateUserResponse = zod.object({
   approvedAt: zod.coerce.date().nullish(),
   approvedBy: zod.string().nullish(),
   createdAt: zod.coerce.date(),
-  linkedStaffId: zod.string().nullish().describe("紐付け済 職人 (staff) ID"),
-  linkedStaffName: zod.string().nullish(),
-  linkedEmployeeId: zod
-    .string()
-    .nullish()
-    .describe("紐付け済 社員 (employee) ID"),
-  linkedEmployeeName: zod.string().nullish(),
 });
 
 /**
@@ -700,12 +679,6 @@ export const ListEmployeesResponseItem = zod.object({
   email: zod.string().nullish(),
   otherSalesBonusRate: zod.number().nullish().describe("(レガシー \/ 未使用)"),
   notes: zod.string().nullish(),
-  appUserId: zod
-    .string()
-    .nullish()
-    .describe("紐付け済アプリユーザー (app_users.id)"),
-  appUserEmail: zod.string().nullish(),
-  appUserName: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListEmployeesResponse = zod.array(ListEmployeesResponseItem);
@@ -716,7 +689,6 @@ export const CreateEmployeeBody = zod.object({
   phone: zod.string().nullish(),
   email: zod.string().nullish(),
   notes: zod.string().nullish(),
-  appUserId: zod.string().nullish(),
 });
 
 export const CreateEmployeeResponse = zod.object({
@@ -727,12 +699,6 @@ export const CreateEmployeeResponse = zod.object({
   email: zod.string().nullish(),
   otherSalesBonusRate: zod.number().nullish().describe("(レガシー \/ 未使用)"),
   notes: zod.string().nullish(),
-  appUserId: zod
-    .string()
-    .nullish()
-    .describe("紐付け済アプリユーザー (app_users.id)"),
-  appUserEmail: zod.string().nullish(),
-  appUserName: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -746,7 +712,6 @@ export const UpdateEmployeeBody = zod.object({
   phone: zod.string().nullish(),
   email: zod.string().nullish(),
   notes: zod.string().nullish(),
-  appUserId: zod.string().nullish(),
 });
 
 export const UpdateEmployeeResponse = zod.object({
@@ -757,12 +722,6 @@ export const UpdateEmployeeResponse = zod.object({
   email: zod.string().nullish(),
   otherSalesBonusRate: zod.number().nullish().describe("(レガシー \/ 未使用)"),
   notes: zod.string().nullish(),
-  appUserId: zod
-    .string()
-    .nullish()
-    .describe("紐付け済アプリユーザー (app_users.id)"),
-  appUserEmail: zod.string().nullish(),
-  appUserName: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -775,19 +734,12 @@ export const ListStaffResponseItem = zod.object({
   name: zod.string(),
   role: zod.string().describe("職種 (大工\/クロス\/電気 など)"),
   phone: zod.string().nullish(),
-  email: zod.string().nullish(),
   dailyRate: zod.number().nullish().describe("日当 (円)"),
   company: zod.string().nullish(),
   otherSalesBonusRate: zod
     .number()
     .nullish()
     .describe("(レガシー) 社員テーブルに移行済"),
-  appUserId: zod
-    .string()
-    .nullish()
-    .describe("紐付け済アプリユーザー (app_users.id)"),
-  appUserEmail: zod.string().nullish(),
-  appUserName: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListStaffResponse = zod.array(ListStaffResponseItem);
@@ -796,11 +748,9 @@ export const CreateStaffBody = zod.object({
   name: zod.string(),
   role: zod.string(),
   phone: zod.string().nullish(),
-  email: zod.string().nullish(),
   dailyRate: zod.number().nullish(),
   company: zod.string().nullish(),
   otherSalesBonusRate: zod.number().nullish(),
-  appUserId: zod.string().nullish(),
 });
 
 export const CreateStaffResponse = zod.object({
@@ -808,19 +758,12 @@ export const CreateStaffResponse = zod.object({
   name: zod.string(),
   role: zod.string().describe("職種 (大工\/クロス\/電気 など)"),
   phone: zod.string().nullish(),
-  email: zod.string().nullish(),
   dailyRate: zod.number().nullish().describe("日当 (円)"),
   company: zod.string().nullish(),
   otherSalesBonusRate: zod
     .number()
     .nullish()
     .describe("(レガシー) 社員テーブルに移行済"),
-  appUserId: zod
-    .string()
-    .nullish()
-    .describe("紐付け済アプリユーザー (app_users.id)"),
-  appUserEmail: zod.string().nullish(),
-  appUserName: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -832,11 +775,9 @@ export const UpdateStaffBody = zod.object({
   name: zod.string(),
   role: zod.string(),
   phone: zod.string().nullish(),
-  email: zod.string().nullish(),
   dailyRate: zod.number().nullish(),
   company: zod.string().nullish(),
   otherSalesBonusRate: zod.number().nullish(),
-  appUserId: zod.string().nullish(),
 });
 
 export const UpdateStaffResponse = zod.object({
@@ -844,19 +785,12 @@ export const UpdateStaffResponse = zod.object({
   name: zod.string(),
   role: zod.string().describe("職種 (大工\/クロス\/電気 など)"),
   phone: zod.string().nullish(),
-  email: zod.string().nullish(),
   dailyRate: zod.number().nullish().describe("日当 (円)"),
   company: zod.string().nullish(),
   otherSalesBonusRate: zod
     .number()
     .nullish()
     .describe("(レガシー) 社員テーブルに移行済"),
-  appUserId: zod
-    .string()
-    .nullish()
-    .describe("紐付け済アプリユーザー (app_users.id)"),
-  appUserEmail: zod.string().nullish(),
-  appUserName: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 

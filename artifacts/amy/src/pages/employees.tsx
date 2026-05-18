@@ -5,12 +5,9 @@ import {
   useCreateEmployee,
   useUpdateEmployee,
   useDeleteEmployee,
-  useListUsers,
   getListEmployeesQueryKey,
   type Employee,
 } from "@workspace/api-client-react";
-
-const UNLINKED = "__none__";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,8 +72,6 @@ export default function EmployeesPage() {
   const createMut = useCreateEmployee();
   const updateMut = useUpdateEmployee();
   const deleteMut = useDeleteEmployee();
-  const usersQ = useListUsers();
-  const appUsers = usersQ.data ?? [];
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(empty);
@@ -95,7 +90,6 @@ export default function EmployeesPage() {
       phone: string | null;
       email: string | null;
       notes: string | null;
-      appUserId: string | null;
     }>,
   ) => {
     try {
@@ -107,8 +101,6 @@ export default function EmployeesPage() {
           phone: patch.phone !== undefined ? patch.phone : (e.phone ?? null),
           email: patch.email !== undefined ? patch.email : (e.email ?? null),
           notes: patch.notes !== undefined ? patch.notes : (e.notes ?? null),
-          appUserId:
-            patch.appUserId !== undefined ? patch.appUserId : (e.appUserId ?? null),
         },
       });
       await queryClient.invalidateQueries({ queryKey: getListEmployeesQueryKey() });
@@ -129,7 +121,7 @@ export default function EmployeesPage() {
       name: form.name,
       role: form.role,
       phone: form.phone || null,
-      email: form.email ? form.email.toLowerCase() : null,
+      email: form.email || null,
       notes: form.notes || null,
     };
     try {
@@ -203,7 +195,6 @@ export default function EmployeesPage() {
                   <TableHead>役割</TableHead>
                   <TableHead>電話</TableHead>
                   <TableHead>メール</TableHead>
-                  <TableHead className="min-w-[180px]">アプリ連動</TableHead>
                   <TableHead>備考</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
@@ -237,42 +228,9 @@ export default function EmployeesPage() {
                     <TableCell className="p-1">
                       <EditableText
                         value={e.email ?? ""}
-                        onSave={(v) =>
-                          inlineUpdate(e, {
-                            email: v ? v.toLowerCase() : null,
-                          })
-                        }
+                        onSave={(v) => inlineUpdate(e, { email: v || null })}
                         placeholder="メール"
                       />
-                    </TableCell>
-                    <TableCell className="p-1">
-                      <Select
-                        value={e.appUserId ?? UNLINKED}
-                        onValueChange={(v) =>
-                          inlineUpdate(e, {
-                            appUserId: v === UNLINKED ? null : v,
-                          })
-                        }
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="未連動">
-                            {e.appUserId
-                              ? (e.appUserName ||
-                                  e.appUserEmail ||
-                                  "未連動")
-                              : "未連動"}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={UNLINKED}>未連動</SelectItem>
-                          {appUsers.map((u) => (
-                            <SelectItem key={u.id} value={u.id}>
-                              {u.displayName || u.email || u.clerkUserId}
-                              {u.status === "pending" ? " (承認待ち)" : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </TableCell>
                     <TableCell className="p-1">
                       <EditableText

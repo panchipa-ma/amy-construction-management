@@ -57,17 +57,11 @@ export const staffTable = pgTable("staff", {
   name: text("name").notNull(),
   role: text("role").notNull(),
   phone: text("phone"),
-  email: text("email"),
   dailyRate: numeric("daily_rate"),
   company: text("company"),
   // マネジメント報酬率 (%) — レガシー (社員テーブルに移行済)。
   // 既存データ保持用に列は残すが、UI/集計は employeesTable.otherSalesBonusRate を参照する。
   otherSalesBonusRate: numeric("other_sales_bonus_rate"),
-  // アプリにサインインしたユーザーとの紐付け (任意)。職人が招待されてサインインしたら
-  // ここで結ぶことで、出面表/職人請求書/職人見積書をそのユーザー専用にスコープできる。
-  appUserId: uuid("app_user_id").references(() => appUsersTable.id, {
-    onDelete: "set null",
-  }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -85,11 +79,6 @@ export const employeesTable = pgTable("employees", {
   // マネジメント報酬率 (%) — 自分以外の営業が獲得した売上から受け取る歩合 (例: 亘=2.5%)
   otherSalesBonusRate: numeric("other_sales_bonus_rate"),
   notes: text("notes"),
-  // アプリにサインインしたユーザーとの紐付け (任意)。社員が招待されてサインインしたら
-  // ここで結ぶ。internal ロール昇格や歩合計算と整合性を取りやすくなる。
-  appUserId: uuid("app_user_id").references(() => appUsersTable.id, {
-    onDelete: "set null",
-  }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

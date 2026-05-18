@@ -14,7 +14,6 @@ import {
 } from "@workspace/api-zod";
 import {
   getOrCreateAppUser,
-  getLinkedRecords,
   requireInternal,
   serializeAppUser,
 } from "../lib/auth";
@@ -23,8 +22,7 @@ const router: IRouter = Router();
 
 router.get("/me", async (req, res): Promise<void> => {
   const me = await getOrCreateAppUser(req);
-  const linked = await getLinkedRecords(me.id);
-  res.json(GetMeResponse.parse(serializeAppUser(me, linked)));
+  res.json(GetMeResponse.parse(serializeAppUser(me)));
 });
 
 router.get("/users", requireInternal, async (_req, res): Promise<void> => {
@@ -32,12 +30,7 @@ router.get("/users", requireInternal, async (_req, res): Promise<void> => {
     .select()
     .from(appUsersTable)
     .orderBy(appUsersTable.createdAt);
-  const linkedList = await Promise.all(rows.map((u) => getLinkedRecords(u.id)));
-  res.json(
-    ListUsersResponse.parse(
-      rows.map((u, i) => serializeAppUser(u, linkedList[i])),
-    ),
-  );
+  res.json(ListUsersResponse.parse(rows.map(serializeAppUser)));
 });
 
 router.patch(

@@ -16,9 +16,5 @@ export interface Employee {
   /** (レガシー / 未使用) */
   otherSalesBonusRate?: number | null;
   notes?: string | null;
-  /** 紐付け済アプリユーザー (app_users.id) */
-  appUserId?: string | null;
-  appUserEmail?: string | null;
-  appUserName?: string | null;
   createdAt: Date;
 }

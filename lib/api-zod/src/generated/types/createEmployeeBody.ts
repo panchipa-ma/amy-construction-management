@@ -12,5 +12,4 @@ export interface CreateEmployeeBody {
   phone?: string | null;
   email?: string | null;
   notes?: string | null;
-  appUserId?: string | null;
 }

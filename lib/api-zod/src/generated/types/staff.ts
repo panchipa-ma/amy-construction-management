@@ -12,15 +12,10 @@ export interface Staff {
   /** 職種 (大工/クロス/電気 など) */
   role: string;
   phone?: string | null;
-  email?: string | null;
   /** 日当 (円) */
   dailyRate?: number | null;
   company?: string | null;
   /** (レガシー) 社員テーブルに移行済 */
   otherSalesBonusRate?: number | null;
-  /** 紐付け済アプリユーザー (app_users.id) */
-  appUserId?: string | null;
-  appUserEmail?: string | null;
-  appUserName?: string | null;
   createdAt: Date;
 }

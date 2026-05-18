@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { getAuth, clerkClient } from "@clerk/express";
-import { eq, and, isNull } from "drizzle-orm";
-import { db, appUsersTable, staffTable, employeesTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
+import { db, appUsersTable } from "@workspace/db";
 
 export type AppUserRow = typeof appUsersTable.$inferSelect;
 
@@ -66,44 +66,7 @@ export async function getOrCreateAppUser(req: Request): Promise<AppUserRow> {
       approvedBy: isFirstUser ? "bootstrap" : null,
     })
     .returning();
-
-  // Auto-link by email: 招待された 職人 / 社員 のメールアドレスが一致したら
-  // appUserId を自動でセット。ユーザー管理画面で承認するだけで紐付けが完了する。
-  if (email) {
-    const lower = email.toLowerCase();
-    await db
-      .update(staffTable)
-      .set({ appUserId: row.id })
-      .where(and(eq(staffTable.email, lower), isNull(staffTable.appUserId)));
-    await db
-      .update(employeesTable)
-      .set({ appUserId: row.id })
-      .where(
-        and(eq(employeesTable.email, lower), isNull(employeesTable.appUserId)),
-      );
-  }
-
   return row;
-}
-
-/** Look up linked staff / employee names for an app user (for UI display). */
-export async function getLinkedRecords(appUserId: string) {
-  const [staff] = await db
-    .select({ id: staffTable.id, name: staffTable.name })
-    .from(staffTable)
-    .where(eq(staffTable.appUserId, appUserId))
-    .limit(1);
-  const [employee] = await db
-    .select({ id: employeesTable.id, name: employeesTable.name })
-    .from(employeesTable)
-    .where(eq(employeesTable.appUserId, appUserId))
-    .limit(1);
-  return {
-    linkedStaffId: staff?.id ?? null,
-    linkedStaffName: staff?.name ?? null,
-    linkedEmployeeId: employee?.id ?? null,
-    linkedEmployeeName: employee?.name ?? null,
-  };
 }
 
 /**
@@ -148,15 +111,7 @@ export async function requireInternal(
   }
 }
 
-export function serializeAppUser(
-  u: AppUserRow,
-  linked?: {
-    linkedStaffId: string | null;
-    linkedStaffName: string | null;
-    linkedEmployeeId: string | null;
-    linkedEmployeeName: string | null;
-  },
-) {
+export function serializeAppUser(u: AppUserRow) {
   return {
     id: u.id,
     clerkUserId: u.clerkUserId,
@@ -167,9 +122,5 @@ export function serializeAppUser(
     approvedAt: u.approvedAt ? u.approvedAt.toISOString() : null,
     approvedBy: u.approvedBy,
     createdAt: u.createdAt.toISOString(),
-    linkedStaffId: linked?.linkedStaffId ?? null,
-    linkedStaffName: linked?.linkedStaffName ?? null,
-    linkedEmployeeId: linked?.linkedEmployeeId ?? null,
-    linkedEmployeeName: linked?.linkedEmployeeName ?? null,
   };
 }

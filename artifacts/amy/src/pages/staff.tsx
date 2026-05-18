@@ -7,17 +7,9 @@ import {
   useUpdateStaff,
   useDeleteStaff,
   useListStaffAssignments,
-  useListUsers,
   getListStaffQueryKey,
   type Staff,
 } from "@workspace/api-client-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,14 +55,7 @@ import { Plus, Trash2, HardHat, MapPin, CalendarClock, Users } from "lucide-reac
 import { formatCurrency, formatDate, todayLocalISO, addDaysISO } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 
-const empty = {
-  name: "",
-  role: "",
-  phone: "",
-  email: "",
-  company: "",
-};
-const UNLINKED = "__none__";
+const empty = { name: "", role: "", phone: "", dailyRate: "0", company: "", otherSalesBonusRate: "" };
 
 type StaffStatusEntry = { name: string; firstDate: string; lastDate: string };
 type StaffStatus = {
@@ -164,8 +149,6 @@ export default function StaffPage() {
   const createMut = useCreateStaff();
   const updateMut = useUpdateStaff();
   const deleteMut = useDeleteStaff();
-  const usersQ = useListUsers();
-  const appUsers = usersQ.data ?? [];
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(empty);
@@ -176,19 +159,7 @@ export default function StaffPage() {
     setOpen(true);
   };
 
-  const inlineUpdate = async (
-    s: Staff,
-    patch: Partial<{
-      name: string;
-      role: string;
-      phone: string | null;
-      email: string | null;
-      dailyRate: number | null;
-      company: string | null;
-      otherSalesBonusRate: number | null;
-      appUserId: string | null;
-    }>,
-  ) => {
+  const inlineUpdate = async (s: Staff, patch: Partial<{ name: string; role: string; phone: string | null; dailyRate: number | null; company: string | null; otherSalesBonusRate: number | null }>) => {
     try {
       await updateMut.mutateAsync({
         id: s.id,
@@ -196,15 +167,12 @@ export default function StaffPage() {
           name: patch.name ?? s.name,
           role: patch.role ?? s.role,
           phone: patch.phone !== undefined ? patch.phone : (s.phone ?? null),
-          email: patch.email !== undefined ? patch.email : (s.email ?? null),
           dailyRate: patch.dailyRate !== undefined ? patch.dailyRate : (s.dailyRate ?? null),
           company: patch.company !== undefined ? patch.company : (s.company ?? null),
           otherSalesBonusRate:
             patch.otherSalesBonusRate !== undefined
               ? patch.otherSalesBonusRate
               : (s.otherSalesBonusRate ?? null),
-          appUserId:
-            patch.appUserId !== undefined ? patch.appUserId : (s.appUserId ?? null),
         },
       });
       await queryClient.invalidateQueries({ queryKey: getListStaffQueryKey() });
@@ -225,8 +193,11 @@ export default function StaffPage() {
       name: form.name,
       role: form.role,
       phone: form.phone || null,
-      email: form.email ? form.email.toLowerCase() : null,
+      dailyRate: form.dailyRate ? Number(form.dailyRate) : null,
       company: form.company || null,
+      otherSalesBonusRate: form.otherSalesBonusRate
+        ? Number(form.otherSalesBonusRate)
+        : null,
     };
     try {
       await createMut.mutateAsync({ data });
@@ -344,8 +315,6 @@ export default function StaffPage() {
                   <TableHead>会社</TableHead>
                   <TableHead className="min-w-[260px]">現状況 (発注の参考)</TableHead>
                   <TableHead>電話</TableHead>
-                  <TableHead>メール</TableHead>
-                  <TableHead className="min-w-[180px]">アプリ連動</TableHead>
                   <TableHead className="text-right">日当</TableHead>
                   <TableHead className="text-right">マネジメント報酬</TableHead>
                   <TableHead className="w-12"></TableHead>
@@ -396,46 +365,6 @@ export default function StaffPage() {
                           onSave={(v) => inlineUpdate(s, { phone: v || null })}
                           placeholder="電話番号"
                         />
-                      </TableCell>
-                      <TableCell className="p-1">
-                        <EditableText
-                          value={s.email ?? ""}
-                          onSave={(v) =>
-                            inlineUpdate(s, {
-                              email: v ? v.toLowerCase() : null,
-                            })
-                          }
-                          placeholder="メール"
-                        />
-                      </TableCell>
-                      <TableCell className="p-1">
-                        <Select
-                          value={s.appUserId ?? UNLINKED}
-                          onValueChange={(v) =>
-                            inlineUpdate(s, {
-                              appUserId: v === UNLINKED ? null : v,
-                            })
-                          }
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="未連動">
-                              {s.appUserId
-                                ? (s.appUserName ||
-                                    s.appUserEmail ||
-                                    "未連動")
-                                : "未連動"}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={UNLINKED}>未連動</SelectItem>
-                            {appUsers.map((u) => (
-                              <SelectItem key={u.id} value={u.id}>
-                                {u.displayName || u.email || u.clerkUserId}
-                                {u.status === "pending" ? " (承認待ち)" : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
                       </TableCell>
                       <TableCell className="text-right p-1">
                         <EditableNumber
@@ -517,17 +446,31 @@ export default function StaffPage() {
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 />
               </div>
-              <div className="col-span-2">
-                <Label htmlFor="email">メールアドレス</Label>
+              <div>
+                <Label htmlFor="rate">日当 (円)</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="例: tanaka@example.com"
+                  id="rate"
+                  type="number"
+                  value={form.dailyRate}
+                  onChange={(e) =>
+                    setForm({ ...form, dailyRate: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label htmlFor="bonus">マネジメント報酬率 (%)</Label>
+                <Input
+                  id="bonus"
+                  type="number"
+                  step="0.1"
+                  placeholder="例: 亘 → 2.5"
+                  value={form.otherSalesBonusRate}
+                  onChange={(e) =>
+                    setForm({ ...form, otherSalesBonusRate: e.target.value })
+                  }
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  同じメールでアプリにサインインしたら自動で連動します
+                  自分以外の営業が獲得した売上から受け取る歩合率
                 </p>
               </div>
             </div>

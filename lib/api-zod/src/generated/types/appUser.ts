@@ -18,10 +18,4 @@ export interface AppUser {
   approvedAt?: Date | null;
   approvedBy?: string | null;
   createdAt: Date;
-  /** 紐付け済 職人 (staff) ID */
-  linkedStaffId?: string | null;
-  linkedStaffName?: string | null;
-  /** 紐付け済 社員 (employee) ID */
-  linkedEmployeeId?: string | null;
-  linkedEmployeeName?: string | null;
 }

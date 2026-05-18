@@ -109,7 +109,6 @@ export default function UsersPage() {
                 <TableHead>メール</TableHead>
                 <TableHead>権限</TableHead>
                 <TableHead>状態</TableHead>
-                <TableHead>連動先</TableHead>
                 <TableHead>登録日</TableHead>
                 <TableHead className="text-right">操作</TableHead>
               </TableRow>
@@ -164,21 +163,6 @@ export default function UsersPage() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm">
-                      {u.linkedStaffName ? (
-                        <Badge variant="secondary" className="mr-1">
-                          職人: {u.linkedStaffName}
-                        </Badge>
-                      ) : null}
-                      {u.linkedEmployeeName ? (
-                        <Badge variant="secondary">
-                          社員: {u.linkedEmployeeName}
-                        </Badge>
-                      ) : null}
-                      {!u.linkedStaffName && !u.linkedEmployeeName ? (
-                        <span className="text-muted-foreground">—</span>
-                      ) : null}
-                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(u.createdAt)}
                     </TableCell>
@@ -232,7 +216,7 @@ export default function UsersPage() {
               {users.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={6}
                     className="text-center text-muted-foreground py-8"
                   >
                     ユーザーがいません
