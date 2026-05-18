@@ -28,7 +28,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { COMPANY_INFO, BANK_INFO } from "@/lib/company-info";
 
-const ITEM_ROWS = 17;
+const ITEM_ROWS = 15;
 
 export default function InvoiceDetailPage() {
   const [, params] = useRoute("/invoices/:id");
@@ -269,14 +269,14 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
 
-        <table className="w-full border-collapse text-sm mb-4">
+        <table className="w-full border-collapse text-sm mb-4 table-fixed">
           <thead>
-            <tr className="bg-[hsl(220,50%,25%)] text-white">
-              <th className="border border-[hsl(220,50%,25%)] px-2 py-1.5 w-10 text-center font-medium">No.</th>
-              <th className="border border-[hsl(220,50%,25%)] px-2 py-1.5 text-left font-medium">摘要</th>
-              <th className="border border-[hsl(220,50%,25%)] px-2 py-1.5 w-16 text-center font-medium">数量</th>
-              <th className="border border-[hsl(220,50%,25%)] px-2 py-1.5 w-24 text-right font-medium">単価</th>
-              <th className="border border-[hsl(220,50%,25%)] px-2 py-1.5 w-28 text-right font-medium">金額</th>
+            <tr className="bg-[hsl(220,15%,92%)] text-foreground">
+              <th className="border border-border px-2 py-1.5 w-10 text-center font-medium">No.</th>
+              <th className="border border-border px-2 py-1.5 text-left font-medium">摘要</th>
+              <th className="border border-border px-2 py-1.5 w-16 text-center font-medium">数量</th>
+              <th className="border border-border px-2 py-1.5 w-24 text-right font-medium">単価</th>
+              <th className="border border-border px-2 py-1.5 w-28 text-right font-medium">金額</th>
             </tr>
           </thead>
           <tbody>
@@ -318,24 +318,24 @@ export default function InvoiceDetailPage() {
             </div>
           </div>
 
-          <div className="w-64">
-            <table className="w-full border-collapse text-sm">
+          <div>
+            <table className="border-collapse text-sm table-fixed">
               <tbody>
-                <tr className="bg-[hsl(220,50%,25%)] text-white">
-                  <td className="border border-[hsl(220,50%,25%)] px-3 py-1.5 font-medium text-center">小計</td>
-                  <td className="border border-[hsl(220,50%,25%)] px-3 py-1.5 text-right tabular-nums bg-white text-foreground">
+                <tr className="bg-[hsl(220,15%,92%)] text-foreground">
+                  <td className="border border-border px-3 py-1.5 font-medium text-center w-24">小計</td>
+                  <td className="border border-border px-3 py-1.5 text-right tabular-nums bg-white text-foreground w-28">
                     {formatCurrency(inv.subtotal)}
                   </td>
                 </tr>
-                <tr className="bg-[hsl(220,50%,25%)] text-white">
-                  <td className="border border-[hsl(220,50%,25%)] px-3 py-1.5 font-medium text-center">消費税(10%)</td>
-                  <td className="border border-[hsl(220,50%,25%)] px-3 py-1.5 text-right tabular-nums bg-white text-foreground">
+                <tr className="bg-[hsl(220,15%,92%)] text-foreground">
+                  <td className="border border-border px-3 py-1.5 font-medium text-center w-24">消費税(10%)</td>
+                  <td className="border border-border px-3 py-1.5 text-right tabular-nums bg-white text-foreground w-28">
                     {formatCurrency(inv.tax)}
                   </td>
                 </tr>
-                <tr className="bg-[hsl(220,50%,25%)] text-white">
-                  <td className="border border-[hsl(220,50%,25%)] px-3 py-1.5 font-bold text-center">合計</td>
-                  <td className="border border-[hsl(220,50%,25%)] px-3 py-1.5 text-right tabular-nums font-bold bg-white text-foreground">
+                <tr className="bg-[hsl(220,15%,92%)] text-foreground">
+                  <td className="border border-border px-3 py-1.5 font-bold text-center w-24">合計</td>
+                  <td className="border border-border px-3 py-1.5 text-right tabular-nums font-bold bg-white text-foreground w-28">
                     {formatCurrency(inv.total)}
                   </td>
                 </tr>
