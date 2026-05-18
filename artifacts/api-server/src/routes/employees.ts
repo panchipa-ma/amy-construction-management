@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, employeesTable } from "@workspace/db";
+import { db, employeesTable, appUsersTable } from "@workspace/db";
 import {
   CreateEmployeeBody,
   UpdateEmployeeParams,
@@ -14,7 +14,10 @@ import { isoDateTime, n } from "../lib/serializers";
 
 const router: IRouter = Router();
 
-function serialize(e: typeof employeesTable.$inferSelect) {
+function serialize(
+  e: typeof employeesTable.$inferSelect,
+  appUser?: { email: string | null; displayName: string | null } | null,
+) {
   return {
     id: e.id,
     name: e.name,
@@ -24,16 +27,37 @@ function serialize(e: typeof employeesTable.$inferSelect) {
     otherSalesBonusRate:
       e.otherSalesBonusRate == null ? null : n(e.otherSalesBonusRate),
     notes: e.notes,
+    appUserId: e.appUserId,
+    appUserEmail: appUser?.email ?? null,
+    appUserName: appUser?.displayName ?? null,
     createdAt: isoDateTime(e.createdAt),
   };
 }
 
+async function fetchAppUser(id: string | null) {
+  if (!id) return null;
+  const [u] = await db
+    .select({ email: appUsersTable.email, displayName: appUsersTable.displayName })
+    .from(appUsersTable)
+    .where(eq(appUsersTable.id, id));
+  return u ?? null;
+}
+
 router.get("/employees", async (_req, res): Promise<void> => {
   const rows = await db
-    .select()
+    .select({
+      e: employeesTable,
+      u: {
+        email: appUsersTable.email,
+        displayName: appUsersTable.displayName,
+      },
+    })
     .from(employeesTable)
+    .leftJoin(appUsersTable, eq(employeesTable.appUserId, appUsersTable.id))
     .orderBy(employeesTable.createdAt);
-  res.json(ListEmployeesResponse.parse(rows.map(serialize)));
+  res.json(
+    ListEmployeesResponse.parse(rows.map((r) => serialize(r.e, r.u))),
+  );
 });
 
 router.post("/employees", async (req, res): Promise<void> => {
@@ -43,7 +67,7 @@ router.post("/employees", async (req, res): Promise<void> => {
     return;
   }
   const [row] = await db.insert(employeesTable).values(parsed.data).returning();
-  res.json(CreateEmployeeResponse.parse(serialize(row)));
+  res.json(CreateEmployeeResponse.parse(serialize(row, await fetchAppUser(row.appUserId))));
 });
 
 router.patch("/employees/:id", async (req, res): Promise<void> => {
@@ -66,7 +90,7 @@ router.patch("/employees/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Employee not found" });
     return;
   }
-  res.json(UpdateEmployeeResponse.parse(serialize(row)));
+  res.json(UpdateEmployeeResponse.parse(serialize(row, await fetchAppUser(row.appUserId))));
 });
 
 router.delete("/employees/:id", async (req, res): Promise<void> => {

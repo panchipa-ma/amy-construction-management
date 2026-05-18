@@ -10,7 +10,9 @@ export interface CreateStaffBody {
   name: string;
   role: string;
   phone?: string | null;
+  email?: string | null;
   dailyRate?: number | null;
   company?: string | null;
   otherSalesBonusRate?: number | null;
+  appUserId?: string | null;
 }

@@ -1376,6 +1376,10 @@ components:
         approvedAt: { type: string, format: date-time, nullable: true }
         approvedBy: { type: string, nullable: true }
         createdAt: { type: string, format: date-time }
+        linkedStaffId: { type: string, nullable: true, description: "紐付け済 職人 (staff) ID" }
+        linkedStaffName: { type: string, nullable: true }
+        linkedEmployeeId: { type: string, nullable: true, description: "紐付け済 社員 (employee) ID" }
+        linkedEmployeeName: { type: string, nullable: true }
 
     UpdateUserBody:
       type: object
@@ -1409,9 +1413,13 @@ components:
         name: { type: string }
         role: { type: string, description: "職種 (大工/クロス/電気 など)" }
         phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
         dailyRate: { type: number, nullable: true, description: "日当 (円)" }
         company: { type: string, nullable: true }
         otherSalesBonusRate: { type: number, nullable: true, description: "(レガシー) 社員テーブルに移行済" }
+        appUserId: { type: string, nullable: true, description: "紐付け済アプリユーザー (app_users.id)" }
+        appUserEmail: { type: string, nullable: true }
+        appUserName: { type: string, nullable: true }
         createdAt: { type: string, format: date-time }
 
     CreateStaffBody:
@@ -1421,9 +1429,11 @@ components:
         name: { type: string }
         role: { type: string }
         phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
         dailyRate: { type: number, nullable: true }
         company: { type: string, nullable: true }
         otherSalesBonusRate: { type: number, nullable: true }
+        appUserId: { type: string, nullable: true }
 
     Employee:
       type: object
@@ -1436,6 +1446,9 @@ components:
         email: { type: string, nullable: true }
         otherSalesBonusRate: { type: number, nullable: true, description: "(レガシー / 未使用)" }
         notes: { type: string, nullable: true }
+        appUserId: { type: string, nullable: true, description: "紐付け済アプリユーザー (app_users.id)" }
+        appUserEmail: { type: string, nullable: true }
+        appUserName: { type: string, nullable: true }
         createdAt: { type: string, format: date-time }
 
     CreateEmployeeBody:
@@ -1447,6 +1460,7 @@ components:
         phone: { type: string, nullable: true }
         email: { type: string, nullable: true }
         notes: { type: string, nullable: true }
+        appUserId: { type: string, nullable: true }
 
     Project:
       type: object

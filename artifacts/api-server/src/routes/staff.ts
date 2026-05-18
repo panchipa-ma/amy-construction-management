@@ -6,6 +6,7 @@ import {
   scheduleEntriesTable,
   projectsTable,
   projectPhasesTable,
+  appUsersTable,
 } from "@workspace/db";
 import {
   CreateStaffBody,
@@ -54,23 +55,43 @@ function parseAssignmentsQuery(
 
 const router: IRouter = Router();
 
-function serialize(s: typeof staffTable.$inferSelect) {
+function serialize(
+  s: typeof staffTable.$inferSelect,
+  appUser?: { email: string | null; displayName: string | null } | null,
+) {
   return {
     id: s.id,
     name: s.name,
     role: s.role,
     phone: s.phone,
+    email: s.email,
     dailyRate: s.dailyRate == null ? null : n(s.dailyRate),
     company: s.company,
     otherSalesBonusRate:
       s.otherSalesBonusRate == null ? null : n(s.otherSalesBonusRate),
+    appUserId: s.appUserId,
+    appUserEmail: appUser?.email ?? null,
+    appUserName: appUser?.displayName ?? null,
     createdAt: isoDateTime(s.createdAt),
   };
 }
 
 router.get("/staff", async (_req, res): Promise<void> => {
-  const rows = await db.select().from(staffTable).orderBy(staffTable.createdAt);
-  res.json(ListStaffResponse.parse(rows.map(serialize)));
+  const rows = await db
+    .select({
+      s: staffTable,
+      u: {
+        id: appUsersTable.id,
+        email: appUsersTable.email,
+        displayName: appUsersTable.displayName,
+      },
+    })
+    .from(staffTable)
+    .leftJoin(appUsersTable, eq(staffTable.appUserId, appUsersTable.id))
+    .orderBy(staffTable.createdAt);
+  res.json(
+    ListStaffResponse.parse(rows.map((r) => serialize(r.s, r.u))),
+  );
 });
 
 const MAX_EXPAND_DAYS = 90;
@@ -222,7 +243,15 @@ router.post("/staff", async (req, res): Promise<void> => {
         : String(parsed.data.otherSalesBonusRate),
   };
   const [row] = await db.insert(staffTable).values(data).returning();
-  res.json(CreateStaffResponse.parse(serialize(row)));
+  let appUser = null;
+  if (row.appUserId) {
+    const [u] = await db
+      .select({ email: appUsersTable.email, displayName: appUsersTable.displayName })
+      .from(appUsersTable)
+      .where(eq(appUsersTable.id, row.appUserId));
+    appUser = u ?? null;
+  }
+  res.json(CreateStaffResponse.parse(serialize(row, appUser)));
 });
 
 router.patch("/staff/:id", async (req, res): Promise<void> => {
@@ -256,7 +285,15 @@ router.patch("/staff/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Staff not found" });
     return;
   }
-  res.json(UpdateStaffResponse.parse(serialize(row)));
+  let appUser = null;
+  if (row.appUserId) {
+    const [u] = await db
+      .select({ email: appUsersTable.email, displayName: appUsersTable.displayName })
+      .from(appUsersTable)
+      .where(eq(appUsersTable.id, row.appUserId));
+    appUser = u ?? null;
+  }
+  res.json(UpdateStaffResponse.parse(serialize(row, appUser)));
 });
 
 router.delete("/staff/:id", async (req, res): Promise<void> => {

@@ -91,6 +91,12 @@ export interface AppUser {
   approvedAt?: string | null;
   approvedBy?: string | null;
   createdAt: string;
+  /** 紐付け済 職人 (staff) ID */
+  linkedStaffId?: string | null;
+  linkedStaffName?: string | null;
+  /** 紐付け済 社員 (employee) ID */
+  linkedEmployeeId?: string | null;
+  linkedEmployeeName?: string | null;
 }
 
 export type UpdateUserBodyRole =
@@ -134,11 +140,16 @@ export interface Staff {
   /** 職種 (大工/クロス/電気 など) */
   role: string;
   phone?: string | null;
+  email?: string | null;
   /** 日当 (円) */
   dailyRate?: number | null;
   company?: string | null;
   /** (レガシー) 社員テーブルに移行済 */
   otherSalesBonusRate?: number | null;
+  /** 紐付け済アプリユーザー (app_users.id) */
+  appUserId?: string | null;
+  appUserEmail?: string | null;
+  appUserName?: string | null;
   createdAt: string;
 }
 
@@ -146,9 +157,11 @@ export interface CreateStaffBody {
   name: string;
   role: string;
   phone?: string | null;
+  email?: string | null;
   dailyRate?: number | null;
   company?: string | null;
   otherSalesBonusRate?: number | null;
+  appUserId?: string | null;
 }
 
 export interface Employee {
@@ -161,6 +174,10 @@ export interface Employee {
   /** (レガシー / 未使用) */
   otherSalesBonusRate?: number | null;
   notes?: string | null;
+  /** 紐付け済アプリユーザー (app_users.id) */
+  appUserId?: string | null;
+  appUserEmail?: string | null;
+  appUserName?: string | null;
   createdAt: string;
 }
 
@@ -170,6 +187,7 @@ export interface CreateEmployeeBody {
   phone?: string | null;
   email?: string | null;
   notes?: string | null;
+  appUserId?: string | null;
 }
 
 export interface Project {
