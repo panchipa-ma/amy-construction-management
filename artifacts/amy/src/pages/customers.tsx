@@ -126,15 +126,15 @@ export default function CustomersPage() {
       notes: form.notes || null,
       defaultProfitRate:
         form.defaultProfitRate === ""
-          ? 20
+          ? 0
           : Number(form.defaultProfitRate),
       defaultSalesCommissionRate:
         form.defaultSalesCommissionRate === ""
-          ? 5
+          ? 0
           : Number(form.defaultSalesCommissionRate),
       defaultSupervisorCommissionRate:
         form.defaultSupervisorCommissionRate === ""
-          ? 30
+          ? 0
           : Number(form.defaultSupervisorCommissionRate),
       defaultSalesRep: form.defaultSalesRep || null,
       defaultOtherSalesBonusRecipient:
