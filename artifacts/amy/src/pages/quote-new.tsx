@@ -25,6 +25,11 @@ import { apiErrorMessage } from "@/lib/api-error";
 import { COMPANY_INFO, QUOTE_TERMS } from "@/lib/company-info";
 import { formatCurrency } from "@/lib/format";
 import { UNIT_OPTIONS } from "@/lib/units";
+import {
+  isMultiCellPaste,
+  parsePastedLineItems,
+  type LineItemField,
+} from "@/lib/line-item-paste";
 
 const ROWS = 8;
 
@@ -32,6 +37,7 @@ function AutoGrowTextarea({
   value,
   onChange,
   onKeyDown,
+  onPaste,
   placeholder,
   className,
   dataCell,
@@ -40,6 +46,7 @@ function AutoGrowTextarea({
   value: string;
   onChange: (v: string) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onPaste?: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
   placeholder?: string;
   className?: string;
   dataCell?: string;
@@ -58,6 +65,7 @@ function AutoGrowTextarea({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={onKeyDown}
+      onPaste={onPaste}
       rows={1}
       placeholder={placeholder}
       data-cell={dataCell}
@@ -81,6 +89,36 @@ function searchParamFromQuoteId(): string {
 
 function emptyItem(): LineItem {
   return { description: "", unit: "", quantity: 0, unitPrice: 0, notes: "" };
+}
+
+function isItemEmpty(it: LineItem | undefined): boolean {
+  if (!it) return true;
+  return (
+    !it.description &&
+    !it.unit &&
+    !it.quantity &&
+    !it.unitPrice &&
+    !it.notes
+  );
+}
+
+function findLastNonEmpty(rows: LineItem[]): LineItem | undefined {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (!isItemEmpty(rows[i])) return rows[i];
+  }
+  return undefined;
+}
+
+function seedItemFromPrevious(prev: LineItem | undefined): LineItem {
+  if (!prev) return emptyItem();
+  // 工事項目・単位・数量・単価 を引き継ぐ。備考は per-item なので空に。
+  return {
+    description: prev.description ?? "",
+    unit: prev.unit ?? "",
+    quantity: prev.quantity || 0,
+    unitPrice: prev.unitPrice || 0,
+    notes: "",
+  };
 }
 
 export default function QuoteNewPage() {
@@ -222,11 +260,48 @@ export default function QuoteNewPage() {
     });
   };
 
-  const addRow = () => setRows([...rows, emptyItem()]);
+  const addRow = () =>
+    setRows((prev) => [...prev, seedItemFromPrevious(findLastNonEmpty(prev))]);
   const clearRow = (i: number) => {
     const next = [...rows];
     next[i] = emptyItem();
     setRows(next);
+  };
+
+  // 複数行ペースト (PDF/Excel から TSV や改行区切りで貼り付け)。
+  // 現在の行・現在のフィールドを起点に列をマップし、足りない行は追加する。
+  const handleMultiPaste = (
+    e: React.ClipboardEvent,
+    rowIdx: number,
+    startField: LineItemField,
+  ): boolean => {
+    const text = e.clipboardData.getData("text");
+    if (!isMultiCellPaste(text)) return false;
+    const parsed = parsePastedLineItems(text, startField);
+    if (parsed.length === 0) return false;
+    e.preventDefault();
+    setRows((prev) => {
+      const next = [...prev];
+      parsed.forEach((p, j) => {
+        const idx = rowIdx + j;
+        const base = next[idx] ?? emptyItem();
+        next[idx] = { ...base, ...p };
+      });
+      // 末尾に空行を確保
+      const last = next[next.length - 1];
+      if (
+        !last ||
+        last.description ||
+        last.unit ||
+        last.quantity ||
+        last.unitPrice ||
+        last.notes
+      ) {
+        next.push(emptyItem());
+      }
+      return next;
+    });
+    return true;
   };
 
   const focusCell = (row: number, col: string) => {
@@ -561,6 +636,7 @@ export default function QuoteNewPage() {
                   value={row.description}
                   onChange={(v) => updateRow(i, "description", v)}
                   onKeyDown={(e) => handleEnterDown(e, i, "desc")}
+                  onPaste={(e) => handleMultiPaste(e, i, "description")}
                   placeholder={
                     isFirstEmpty
                       ? "例: クロス貼り工事 (リビング・寝室)"
@@ -595,6 +671,7 @@ export default function QuoteNewPage() {
                     updateRow(i, "quantity", Number.isFinite(n) ? n : 0);
                   }}
                   onKeyDown={(e) => handleEnterDown(e, i, "qty")}
+                  onPaste={(e) => handleMultiPaste(e, i, "quantity")}
                   className="px-1 py-0.5 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground/30 text-right tabular-nums min-w-0 self-start min-h-[18px] text-[11px]"
                   data-cell={`r${i}-cqty`}
                 />
@@ -608,6 +685,7 @@ export default function QuoteNewPage() {
                     updateRow(i, "unitPrice", Number.isFinite(n) ? n : 0);
                   }}
                   onKeyDown={(e) => handleEnterDown(e, i, "price")}
+                  onPaste={(e) => handleMultiPaste(e, i, "unitPrice")}
                   className="px-1.5 py-0.5 bg-transparent outline-none focus:bg-accent/10 border-r border-foreground/30 text-right tabular-nums min-w-0 self-start min-h-[18px] text-[11px]"
                   data-cell={`r${i}-cprice`}
                 />

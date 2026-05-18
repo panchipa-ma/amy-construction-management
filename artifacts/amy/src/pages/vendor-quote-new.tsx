@@ -29,6 +29,11 @@ import { apiErrorMessage } from "@/lib/api-error";
 import { useUser } from "@clerk/react";
 import { readProfile } from "@/lib/profile";
 import { UNIT_OPTIONS } from "@/lib/units";
+import {
+  isMultiCellPaste,
+  parsePastedLineItems,
+  type LineItemField,
+} from "@/lib/line-item-paste";
 import { QUOTE_TERMS } from "@/lib/company-info";
 import { addCanvasToPdfWithRowBreaks } from "@/lib/pdf-row-breaks";
 import { freezeInputsForCapture } from "@/lib/pdf-freeze-inputs";
@@ -190,11 +195,46 @@ export default function VendorQuoteNewPage() {
     unitPrice: 0,
     notes: "",
   });
-  const addRow = () => setItems((rs) => [...rs, emptyRow()]);
+  const seedRowFromPrevious = (prev: LineRow | undefined): LineRow => {
+    if (!prev) return emptyRow();
+    // 工事項目・単位・数量・単価 を引き継ぎ。備考は per-item なので空に。
+    return {
+      description: prev.description ?? "",
+      unit: prev.unit ?? "",
+      quantity: prev.quantity || 0,
+      unitPrice: prev.unitPrice || 0,
+      notes: "",
+    };
+  };
+  const addRow = () =>
+    setItems((rs) => [...rs, seedRowFromPrevious(rs[rs.length - 1])]);
   const removeRow = (i: number) =>
     setItems((rs) => rs.filter((_, idx) => idx !== i));
   const updateRow = (i: number, patch: Partial<LineRow>) =>
     setItems((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+
+  // 複数行ペースト (PDF/Excel から TSV や改行区切りで貼り付け)。
+  const handleMultiPaste = (
+    e: React.ClipboardEvent,
+    rowIdx: number,
+    startField: LineItemField,
+  ): boolean => {
+    const text = e.clipboardData.getData("text");
+    if (!isMultiCellPaste(text)) return false;
+    const parsed = parsePastedLineItems(text, startField);
+    if (parsed.length === 0) return false;
+    e.preventDefault();
+    setItems((prev) => {
+      const next = [...prev];
+      parsed.forEach((p, j) => {
+        const idx = rowIdx + j;
+        const base = next[idx] ?? emptyRow();
+        next[idx] = { ...base, ...p };
+      });
+      return next;
+    });
+    return true;
+  };
 
   const focusCell = (rowIdx: number, col: string) => {
     const sel = `[data-cell="r${rowIdx}-c${col}"]`;
@@ -738,6 +778,10 @@ export default function VendorQuoteNewPage() {
                         onFocus={ensureRow}
                         onChange={(e) => updateRow(i, { description: e.target.value })}
                         onKeyDown={(e) => handleEnterDown(e, i, "desc")}
+                        onPaste={(e) => {
+                          ensureRow();
+                          handleMultiPaste(e, i, "description");
+                        }}
                       />
                     </div>
                     <div style={{ padding: "1px 0", borderRight: rowBorder, textAlign: "center" }}>
@@ -772,6 +816,10 @@ export default function VendorQuoteNewPage() {
                         onFocus={ensureRow}
                         onChange={(e) => updateRow(i, { quantity: Number(e.target.value) || 0 })}
                         onKeyDown={(e) => handleEnterDown(e, i, "qty")}
+                        onPaste={(e) => {
+                          ensureRow();
+                          handleMultiPaste(e, i, "quantity");
+                        }}
                         style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
                       />
                     </div>
@@ -787,6 +835,10 @@ export default function VendorQuoteNewPage() {
                         onFocus={ensureRow}
                         onChange={(e) => updateRow(i, { unitPrice: Number(e.target.value) || 0 })}
                         onKeyDown={(e) => handleEnterDown(e, i, "price")}
+                        onPaste={(e) => {
+                          ensureRow();
+                          handleMultiPaste(e, i, "unitPrice");
+                        }}
                         style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}
                       />
                     </div>
