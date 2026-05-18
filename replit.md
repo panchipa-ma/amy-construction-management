@@ -11,6 +11,7 @@ pnpm monorepo, TypeScript project references。
 - `lib/object-storage-web` — Uppy `<ObjectUploader>` (presigned PUT)。
 - `artifacts/api-server` — Express + Drizzle、`/api/*`。esbuild → `dist/index.mjs`。
 - `artifacts/amy` — React + Vite + Wouter + shadcn/ui + Tailwind v4 + Recharts。
+- `artifacts/mobile` — Expo (expo-router) + React Native。**Web/モバイル機能パリティ必須**: Web で追加/変更した機能はモバイルにも同時に反映する (顧客/案件/見積/請求書/職人請求書/台帳/歩合 など)。新規実装・バグ修正時は両方を更新し、片方だけで完結させない。
 
 Theme: warm wood + controlled industrial — off-white bg, dark wood-tone sidebar, navy primary, blueprint-blue accent, rust-red destructive, emerald positive (粗利)。
 
