@@ -268,11 +268,6 @@ export const costEntriesTable = pgTable("cost_entries", {
   sourceQuoteId: uuid("source_quote_id").references(() => quotesTable.id, {
     onDelete: "cascade",
   }),
-  // 請求書から自動取込された実績原価。請求書の保存ごとに sync (削除→再作成)。
-  // 請求書が削除されたら cascade で消える。手動作成エントリは null。
-  sourceInvoiceId: uuid("source_invoice_id").references(() => invoicesTable.id, {
-    onDelete: "cascade",
-  }),
   createdBy: text("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
