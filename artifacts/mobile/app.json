@@ -14,7 +14,9 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "jp.amy.kanri",
+      "buildNumber": "1"
     },
     "android": {},
     "web": {
