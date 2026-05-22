@@ -47,6 +47,8 @@ import LedgerPage from "@/pages/ledger";
 import StaffAssignmentsPage from "@/pages/staff-assignments";
 import GanttPage from "@/pages/gantt";
 import LandingPage from "@/pages/landing";
+import PrivacyPage from "@/pages/privacy";
+import SupportPage from "@/pages/support";
 import ProfileSetupPage from "@/pages/profile-setup";
 import PendingApprovalPage from "@/pages/pending-approval";
 import UsersPage from "@/pages/users";
@@ -296,6 +298,8 @@ function AppRoutes() {
     <Switch>
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignUpPage} />
+      <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/support" component={SupportPage} />
       <Route>
         <Show when="signed-in">
           <RoleProvider>
