@@ -14,9 +14,16 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { enableScreens } from "react-native-screens";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+// iOS 26 クラッシュ回避: リリースビルドで RNSTabBarController.updateTabBarAppearance が
+// 未捕捉の NSException を投げ、起動直後に SIGABRT (TurboModule キュー) で落ちる既知バグ。
+// ネイティブ screens を無効化してネイティブタブバーコントローラを使わないようにする。
+// 参考: facebook/react-native#54859, react-native-screens iOS 26 RNSTabBarController crash。
+enableScreens(false);
 
 const domain = process.env.EXPO_PUBLIC_DOMAIN;
 if (domain) {

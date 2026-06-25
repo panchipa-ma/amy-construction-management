@@ -1,0 +1,1 @@
+- [iOS 26 起動クラッシュ](ios26-turbomodule-crash.md) — Apple審査落ちの真因 react-native-screens RNSTabBarController; 修正は enableScreens(false)、要新規EASビルド
