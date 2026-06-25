@@ -1,0 +1,16 @@
+Error: @clerk/clerk-js: The publishableKey passed to Clerk is invalid. You can get your Publishable key at https://dashboard.clerk.com/last-active?path=api-keys. (key=pk_live_xxxxx)
+
+Stack Trace:
+Error: @clerk/clerk-js: The publishableKey passed to Clerk is invalid. You can get your Publishable key at https://dashboard.clerk.com/last-active?path=api-keys. (key=pk_live_xxxxx)
+    at throwInvalidPublishableKeyError (/Users/expo/workingdir/build/artifacts/mobile/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/AMY/BuildProductsPath/Release-iphoneos/main.jsbundle:86253:24)
+    at nZ (/Users/expo/workingdir/build/artifacts/mobile/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/AMY/BuildProductsPath/Release-iphoneos/main.jsbundle:99100:63)
+    at anonymous (/Users/expo/workingdir/build/artifacts/mobile/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/AMY/BuildProductsPath/Release-iphoneos/main.jsbundle:99743:42)
+    at ClerkProvider (/Users/expo/workingdir/build/artifacts/mobile/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/AMY/BuildProductsPath/Release-iphoneos/main.jsbundle:101307:96)
+    at renderWithHooks (/Users/expo/workingdir/build/artifacts/mobile/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/AMY/BuildProductsPath/Release-iphoneos/main.jsbundle:16530:32)
+    at updateFunctionComponent (/Users/expo/workingdir/build/artifacts/mobile/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/AMY/BuildProductsPath/Release-iphoneos/main.jsbundle:18083:32)
+    at beginWork (/Users/expo/workingdir/build/artifacts/mobile/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/AMY/BuildProductsPath/Release-iphoneos/main.jsbundle:18497:39)
+    at performUnitOfWork (/Users/expo/workingdir/build/artifacts/mobile/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/AMY/BuildProductsPath/Release-iphoneos/main.jsbundle:20050:25)
+    at workLoopSync (/Users/expo/workingdir/build/artifacts/mobile/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/AMY/BuildProductsPath/Release-iphoneos/main.jsbundle:19954:55)
+    at renderRootSync (/Users/expo/workingdir/build/artifacts/mobile/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/AMY/BuildProductsPath/Release-iphoneos/main.jsbundle:19939:19)
+    at performWorkOnRoot (/Users/expo/workingdir/build/artifacts/mobile/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/AMY/BuildProductsPath/Release-iphoneos/main.jsbundle:19742:56)
+    at performWorkOnRootViaSchedulerTask (/Users/expo/workingdir/build/artifacts/mobile/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/AMY/BuildProductsPath/Release-iphoneos/main.jsbundle:16085:22)
