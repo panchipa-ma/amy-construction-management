@@ -1,1 +1,2 @@
 - [iOS 26 起動クラッシュ](ios26-turbomodule-crash.md) — Apple審査落ちの真因 react-native-screens RNSTabBarController; 修正は enableScreens(false)、要新規EASビルド
+- [EAS iOS modular headers](eas-ios-modular-headers.md) — INSTALL_PODS "do not define modules" は expo-build-properties の ios.extraPods + modular_headers:true で解決 (Clerk→GoogleSignIn→AppCheckCore)
