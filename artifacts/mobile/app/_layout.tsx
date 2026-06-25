@@ -114,7 +114,11 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ErrorBoundary>
+      <ErrorBoundary
+        onError={(error, stack) => {
+          console.error("[ErrorBoundary]", error?.message, "\n", stack);
+        }}
+      >
         <ClerkProvider
           publishableKey={publishableKey}
           tokenCache={tokenCache}

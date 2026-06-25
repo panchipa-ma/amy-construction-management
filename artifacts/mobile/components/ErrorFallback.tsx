@@ -77,6 +77,24 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           Please reload the app to continue.
         </Text>
 
+        <ScrollView
+          style={[
+            styles.diagBox,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+          contentContainerStyle={styles.diagContent}
+        >
+          <Text
+            selectable
+            style={[
+              styles.diagText,
+              { color: colors.foreground, fontFamily: monoFont },
+            ]}
+          >
+            {formatErrorDetails()}
+          </Text>
+        </ScrollView>
+
         <Pressable
           onPress={handleRestart}
           style={({ pressed }) => [
@@ -197,6 +215,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
+  },
+  diagBox: {
+    width: "100%",
+    maxHeight: 240,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  diagContent: {
+    padding: 12,
+  },
+  diagText: {
+    fontSize: 11,
+    lineHeight: 16,
   },
   topButton: {
     position: "absolute",

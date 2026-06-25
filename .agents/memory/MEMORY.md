@@ -1,2 +1,3 @@
 - [iOS 26 起動クラッシュ](ios26-turbomodule-crash.md) — Apple審査落ちの真因 react-native-screens RNSTabBarController; 修正は enableScreens(false)、要新規EASビルド
 - [EAS iOS modular headers](eas-ios-modular-headers.md) — INSTALL_PODS "do not define modules" は expo-build-properties の ios.extraPods + modular_headers:true で解決 (Clerk→GoogleSignIn→AppCheckCore)
+- [EAS prod runtime debug](eas-prod-runtime-debug.md) — 本番のみ ErrorBoundary 落ち: prod fallback がエラーを隠す→可視化; build の resolvedEnvironment で env 埋込確認; 容疑は EXPO_PUBLIC_DOMAIN/CLERK key
