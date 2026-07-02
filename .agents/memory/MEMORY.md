@@ -1,3 +1,2 @@
-- [iOS 26 起動クラッシュ](ios26-turbomodule-crash.md) — Apple審査落ちの真因 react-native-screens RNSTabBarController; 修正は enableScreens(false)、要新規EASビルド
-- [EAS iOS modular headers](eas-ios-modular-headers.md) — INSTALL_PODS "do not define modules" は expo-build-properties の ios.extraPods + modular_headers:true で解決 (Clerk→GoogleSignIn→AppCheckCore)
-- [EAS prod runtime debug](eas-prod-runtime-debug.md) — 本番のみ ErrorBoundary 落ちの真因=EAS の Clerk pk_live キー不正/PROXY_URL欠落; 正キーは公開済 web バンドルから抽出; auto-submit は eas.json ascAppId 必須; 長い eas コマンドは workflow で実行
+- [Apple review rejections](apple-review-rejections.md) — recurring App Store rejection reasons (4.8 login, 2.1 demo acct, 1.5 support URL, 2.1(b) business model) and the decided fixes.
+- [EAS prod runtime debug](eas-prod-runtime-debug.md) — "works in dev, fails in TestFlight" Expo/EAS debugging; Clerk pk_live must come from published web bundle; run long eas cmds via temp workflow.

@@ -1,9 +1,6 @@
-import { useSignIn, useSSO } from "@clerk/expo";
-import { Feather } from "@expo/vector-icons";
-import * as AuthSession from "expo-auth-session";
+import { useSignIn } from "@clerk/expo";
 import { Link, useRouter } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback } from "react";
 import {
   Image,
   KeyboardAvoidingView,
@@ -20,30 +17,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ErrorState, PrimaryButton } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 
-WebBrowser.maybeCompleteAuthSession();
-
-const useWarmUpBrowser = () => {
-  useEffect(() => {
-    if (Platform.OS !== "android") return;
-    void WebBrowser.warmUpAsync();
-    return () => {
-      void WebBrowser.coolDownAsync();
-    };
-  }, []);
-};
-
 export default function SignInScreen() {
-  useWarmUpBrowser();
   const c = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { signIn, errors, fetchStatus } = useSignIn();
-  const { startSSOFlow } = useSSO();
 
   const [emailAddress, setEmailAddress] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [generalError, setGeneralError] = React.useState<string | null>(null);
-  const [oauthLoading, setOauthLoading] = React.useState(false);
 
   const handleSubmit = useCallback(async () => {
     setGeneralError(null);
@@ -72,32 +54,6 @@ export default function SignInScreen() {
       );
     }
   }, [emailAddress, password, signIn, router]);
-
-  const handleGoogle = useCallback(async () => {
-    setGeneralError(null);
-    setOauthLoading(true);
-    try {
-      const { createdSessionId, setActive } = await startSSOFlow({
-        strategy: "oauth_google",
-        redirectUrl: AuthSession.makeRedirectUri(),
-      });
-      if (createdSessionId && setActive) {
-        await setActive({
-          session: createdSessionId,
-          navigate: ({ session }) => {
-            if (session?.currentTask) return;
-            router.replace("/(tabs)");
-          },
-        });
-      }
-    } catch (err) {
-      setGeneralError(
-        err instanceof Error ? err.message : "Google ログインに失敗しました。",
-      );
-    } finally {
-      setOauthLoading(false);
-    }
-  }, [router, startSSOFlow]);
 
   const isFetching = fetchStatus === "fetching";
 
@@ -180,44 +136,6 @@ export default function SignInScreen() {
             loading={isFetching}
           />
         </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            marginVertical: 20,
-            gap: 8,
-          }}
-        >
-          <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
-          <Text style={{ color: c.mutedForeground, fontSize: 12 }}>または</Text>
-          <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
-        </View>
-
-        <Pressable
-          onPress={handleGoogle}
-          disabled={oauthLoading}
-          style={({ pressed }) => [
-            {
-              paddingVertical: 12,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: c.border,
-              backgroundColor: c.card,
-              flexDirection: "row",
-              gap: 10,
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: oauthLoading ? 0.5 : 1,
-            },
-            pressed && { opacity: 0.7 },
-          ]}
-        >
-          <Feather name="globe" size={18} color={c.foreground} />
-          <Text style={{ color: c.foreground, fontWeight: "600", fontSize: 15 }}>
-            Google で続ける
-          </Text>
-        </Pressable>
 
         <View
           style={{
