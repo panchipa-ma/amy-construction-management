@@ -24,17 +24,38 @@ export default function SignInScreen() {
   const { signIn, errors, fetchStatus } = useSignIn();
 
   const [emailAddress, setEmailAddress] = React.useState("");
-  const [password, setPassword] = React.useState("");
+  const [code, setCode] = React.useState("");
+  const [codeSent, setCodeSent] = React.useState(false);
   const [generalError, setGeneralError] = React.useState<string | null>(null);
 
-  const handleSubmit = useCallback(async () => {
+  const handleSendCode = useCallback(async () => {
     setGeneralError(null);
     try {
-      const { error } = await signIn.password({ emailAddress, password });
+      const { error } = await signIn.emailCode.sendCode({ emailAddress });
       if (error) {
         setGeneralError(
           (error as { message?: string })?.message ||
-            "ログインに失敗しました。",
+            "認証コードの送信に失敗しました。",
+        );
+        return;
+      }
+      setCodeSent(true);
+    } catch (err) {
+      setGeneralError(
+        err instanceof Error
+          ? err.message
+          : "認証コードの送信に失敗しました。",
+      );
+    }
+  }, [emailAddress, signIn]);
+
+  const handleVerify = useCallback(async () => {
+    setGeneralError(null);
+    try {
+      const { error } = await signIn.emailCode.verifyCode({ code });
+      if (error) {
+        setGeneralError(
+          (error as { message?: string })?.message || "認証に失敗しました。",
         );
         return;
       }
@@ -46,14 +67,14 @@ export default function SignInScreen() {
           },
         });
       } else {
-        setGeneralError("追加の認証が必要です。Web版でお試しください。");
+        setGeneralError("認証が完了しませんでした。コードを確認してください。");
       }
     } catch (err) {
       setGeneralError(
-        err instanceof Error ? err.message : "ログインに失敗しました。",
+        err instanceof Error ? err.message : "認証に失敗しました。",
       );
     }
-  }, [emailAddress, password, signIn, router]);
+  }, [code, signIn, router]);
 
   const isFetching = fetchStatus === "fetching";
 
@@ -80,62 +101,113 @@ export default function SignInScreen() {
           <Text style={{ fontSize: 26, fontWeight: "700", color: c.foreground }}>
             AMY 施工管理
           </Text>
-          <Text style={{ marginTop: 6, color: c.mutedForeground }}>
-            ログインして続けてください
+          <Text
+            style={{
+              marginTop: 6,
+              color: c.mutedForeground,
+              textAlign: "center",
+            }}
+          >
+            {codeSent
+              ? "メールに届いた認証コードを入力してください"
+              : "ログインして続けてください"}
           </Text>
         </View>
 
-        <Text style={[styles.label, { color: c.mutedForeground }]}>
-          メールアドレス
-        </Text>
-        <TextInput
-          style={[styles.input, { borderColor: c.border, color: c.foreground, backgroundColor: c.card }]}
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          placeholder="you@example.com"
-          placeholderTextColor={c.mutedForeground}
-          value={emailAddress}
-          onChangeText={setEmailAddress}
-        />
-        {errors?.fields?.identifier ? (
-          <Text style={[styles.error, { color: c.destructive }]}>
-            {errors.fields.identifier.message}
-          </Text>
-        ) : null}
+        {codeSent ? (
+          <>
+            <Text style={[styles.label, { color: c.mutedForeground }]}>
+              認証コード
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                { borderColor: c.border, color: c.foreground, backgroundColor: c.card },
+              ]}
+              keyboardType="numeric"
+              autoComplete="one-time-code"
+              textContentType="oneTimeCode"
+              placeholder="000000"
+              placeholderTextColor={c.mutedForeground}
+              value={code}
+              onChangeText={setCode}
+            />
+            {errors?.fields?.code ? (
+              <Text style={[styles.error, { color: c.destructive }]}>
+                {errors.fields.code.message}
+              </Text>
+            ) : null}
 
-        <Text style={[styles.label, { color: c.mutedForeground, marginTop: 12 }]}>
-          パスワード
-        </Text>
-        <TextInput
-          style={[styles.input, { borderColor: c.border, color: c.foreground, backgroundColor: c.card }]}
-          secureTextEntry
-          autoComplete="password"
-          placeholder="••••••••"
-          placeholderTextColor={c.mutedForeground}
-          value={password}
-          onChangeText={setPassword}
-        />
-        {errors?.fields?.password ? (
-          <Text style={[styles.error, { color: c.destructive }]}>
-            {errors.fields.password.message}
-          </Text>
-        ) : null}
+            <View style={{ marginTop: 20 }}>
+              <PrimaryButton
+                title="ログイン"
+                onPress={handleVerify}
+                disabled={!code}
+                loading={isFetching}
+              />
+            </View>
+            <Pressable
+              onPress={handleSendCode}
+              style={{ marginTop: 12, alignItems: "center" }}
+            >
+              <Text style={{ color: c.primary }}>コードを再送する</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setCodeSent(false);
+                setCode("");
+                setGeneralError(null);
+              }}
+              style={{ marginTop: 12, alignItems: "center" }}
+            >
+              <Text style={{ color: c.mutedForeground }}>
+                メールアドレスを変更する
+              </Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Text style={[styles.label, { color: c.mutedForeground }]}>
+              メールアドレス
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                { borderColor: c.border, color: c.foreground, backgroundColor: c.card },
+              ]}
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              placeholder="you@example.com"
+              placeholderTextColor={c.mutedForeground}
+              value={emailAddress}
+              onChangeText={setEmailAddress}
+            />
+            {errors?.fields?.identifier ? (
+              <Text style={[styles.error, { color: c.destructive }]}>
+                {errors.fields.identifier.message}
+              </Text>
+            ) : null}
+
+            <View style={{ marginTop: 20 }}>
+              <PrimaryButton
+                title="認証コードを送信"
+                onPress={handleSendCode}
+                disabled={!emailAddress}
+                loading={isFetching}
+              />
+            </View>
+
+            {/* Required for Clerk bot protection */}
+            <View nativeID="clerk-captcha" />
+          </>
+        )}
 
         {generalError ? (
           <View style={{ marginTop: 12 }}>
             <ErrorState message={generalError} />
           </View>
         ) : null}
-
-        <View style={{ marginTop: 20 }}>
-          <PrimaryButton
-            title="ログイン"
-            onPress={handleSubmit}
-            disabled={!emailAddress || !password}
-            loading={isFetching}
-          />
-        </View>
 
         <View
           style={{

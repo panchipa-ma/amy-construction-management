@@ -24,14 +24,13 @@ export default function SignUpScreen() {
   const { signUp, errors, fetchStatus } = useSignUp();
 
   const [emailAddress, setEmailAddress] = React.useState("");
-  const [password, setPassword] = React.useState("");
   const [code, setCode] = React.useState("");
   const [generalError, setGeneralError] = React.useState<string | null>(null);
 
   const handleSubmit = useCallback(async () => {
     setGeneralError(null);
     try {
-      const { error } = await signUp.password({ emailAddress, password });
+      const { error } = await signUp.create({ emailAddress });
       if (error) {
         setGeneralError(
           (error as { message?: string })?.message ||
@@ -45,7 +44,7 @@ export default function SignUpScreen() {
         err instanceof Error ? err.message : "登録に失敗しました。",
       );
     }
-  }, [emailAddress, password, signUp]);
+  }, [emailAddress, signUp]);
 
   const handleVerify = useCallback(async () => {
     setGeneralError(null);
@@ -158,28 +157,11 @@ export default function SignUpScreen() {
               </Text>
             ) : null}
 
-            <Text style={[styles.label, { color: c.mutedForeground, marginTop: 12 }]}>
-              パスワード
-            </Text>
-            <TextInput
-              style={[styles.input, { borderColor: c.border, color: c.foreground, backgroundColor: c.card }]}
-              secureTextEntry
-              placeholder="8文字以上"
-              placeholderTextColor={c.mutedForeground}
-              value={password}
-              onChangeText={setPassword}
-            />
-            {errors?.fields?.password ? (
-              <Text style={[styles.error, { color: c.destructive }]}>
-                {errors.fields.password.message}
-              </Text>
-            ) : null}
-
             <View style={{ marginTop: 20 }}>
               <PrimaryButton
-                title="登録する"
+                title="認証コードを送信"
                 onPress={handleSubmit}
-                disabled={!emailAddress || !password}
+                disabled={!emailAddress}
                 loading={isFetching}
               />
             </View>
