@@ -1,0 +1,82 @@
+Hello,
+
+Thank you for your resubmission. Upon further review, we identified additional issues that need your attention. See below for more information.
+
+If you have any questions, we are here to help. Reply to this message in App Store Connect and let us know.
+
+Review Environment
+Submission ID: 0cd5ed10-a118-4d79-91fe-d4a4c0e34e84
+Review date: June 25, 2026
+Review Device: iPad Air 11-inch (M3) and iPhone 17 Pro Max
+Version reviewed: 1.0 (10)
+
+Guideline 4.8 - Design - Login Services
+
+Issue Description
+
+The app uses a third-party login service, but does not appear to offer as an equivalent login option another login service with all of the following features:
+
+- The login option limits data collection to the user’s name and email address.
+- The login option allows users to keep their email address private from all parties as part of setting up their account.
+- The login option does not collect interactions with the app for advertising purposes without consent. 
+
+Next Steps
+
+Revise the app to offer as an equivalent login option another login service that meets all of the above requirements.
+
+If the app already includes another login service that meets all of the above requirements, reply to App Review in App Store Connect, identify which login service meets all of the requirements, and explain why it meets all of the requirements.
+
+Note that Sign in with Apple is a login service that meets all the requirements specified in guideline 4.8.
+
+Resources
+
+Learn about Sign in with Apple.
+Guideline 2.1 - Information Needed
+
+We were unable to sign in with the following demo account credentials you provided in App Store Connect:
+
+User name: hmdkzk423@gmail.com
+Password: tesuto5555
+
+To avoid delays, it is essential to provide access to the app's full features and functionality with every submission.
+
+Next Steps
+
+Provide the username and password for a valid demo account in App Store Connect that provides full access to the app's features and functionality or include a demonstration mode that shows all of the features and functionality available in the app. Note that we cannot use a demo video showing the app in use to continue the review.
+
+Resources
+
+Learn how to share information when submitting an app for review.
+Guideline 2.1(b) - Information Needed
+
+We have started our review, but we need additional information to continue. Specifically, it appears the app may access or include paid digital content or services, and we want to understand your business model before completing our review. 
+
+Next Steps
+
+Please review the following questions and provide as much detailed information about your business model as you can.
+
+1. Who are the users that will use the paid content, subscriptions, features, and services in the app?
+2. Where can users purchase the content, subscriptions, features, and services that can be accessed in the app?
+3. What specific types of previously purchased content, subscriptions, features, and services can a user access in the app?
+4. What paid content, subscriptions, or features are unlocked within the app that do not use In-App Purchase?
+5. How do users obtain an account? Do users have to pay a fee to create an account?
+Guideline 1.5 - Safety
+Issue Description
+
+The Support URL provided in App Store Connect, https://amy-kanri.replit.app/support, is currently not functional and/or displays an error. 
+
+Next Steps
+
+Update the specified Support URL to direct users to a functional webpage with support information.
+
+Resources
+
+- Learn about Support URLs and other platform version information on App Store Connect Help.
+- Learn more about developer information requirements in guideline 1.5.
+Support
+- Reply to this message in your preferred language if you need assistance. If you need additional support, use the Contact Us module.
+- Consult with fellow developers and Apple engineers on the Apple Developer Forums.
+- Provide feedback on this message and your review experience by completing a short survey.
+
+Test on the latest betas
+Betas of iOS 27, iPadOS 27, macOS 27, tvOS 27 and visionOS 27 are now available. Download the latest betas to prepare your app for upcoming software releases. Learn more about installing and using Apple beta software.
