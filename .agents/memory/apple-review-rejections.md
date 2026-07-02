@@ -21,6 +21,12 @@ The prod Clerk instance authenticates via **email verification code** (the web l
 - **Why this also fixes the demo account:** any existing web-created account (incl. the reviewer demo) can now log in on mobile because email code works regardless of whether a password was ever set. No need to create a special email+password prod user anymore.
 - **How to apply:** never reintroduce `signIn.password()` / a password field on mobile unless the prod Clerk instance is reconfigured to require passwords. Keep web and mobile on the same email-code strategy (feature parity).
 
+## Modal FormScreen header must add safe-area top inset (post-login trap)
+On iOS, screens presented as `presentation: "modal"` with `headerShown: false` and a **custom** in-app header render UNDER the status bar/notch when native screens are disabled (`enableScreens(false)`, set for the iOS 26 tab-bar crash workaround). The shared `components/form/index.tsx` `FormScreen` header used a fixed `paddingTop` → its キャンセル/保存 buttons overlapped the clock/wifi icons and were untappable.
+- **Symptom seen on TestFlight:** right after a successful login, the required プロフィール編集 (profile) screen showed Cancel/Save fused into the status bar → reviewer/user stuck (looked like "can't select"). Login itself was actually working.
+- **Fix:** `FormScreen` uses `useSafeAreaInsets()` and `paddingTop: insets.top + 12`. Safe because ALL FormScreen consumers are modal + `headerShown:false` (no native header → no double padding). `SafeAreaProvider` already wraps the app root.
+- **How to apply:** any custom top header on a headerless/modal Expo screen must add `insets.top`; do NOT assume the modal card leaves a gap — with `enableScreens(false)` modals present full-screen. If a future non-modal screen reuses FormScreen with a native header, gate the inset behind a prop.
+
 ## 1.5 Support URL
 The ASC Support URL must be the **actually deployed** domain. `amy-kanri.replit.app` does not exist (404); the live deployment is `interior-design-app.replit.app` and `/support` (and `/privacy`) are **public** routes there (outside the signed-in gate in `artifacts/amy/src/App.tsx` `AppRoutes`). Fix = point ASC Support URL to the live domain, no code change.
 

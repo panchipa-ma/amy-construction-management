@@ -19,6 +19,8 @@ import {
   View,
 } from "react-native";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { useColors } from "@/hooks/useColors";
 import { confirmDestructive, notify } from "@/lib/confirm";
 
@@ -606,6 +608,7 @@ export function FormScreen({
 }) {
   const c = useColors();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const [errors, setErrors] = useState<ReadonlySet<string>>(new Set());
 
@@ -679,7 +682,7 @@ export function FormScreen({
           alignItems: "center",
           justifyContent: "space-between",
           paddingHorizontal: 12,
-          paddingTop: 12,
+          paddingTop: insets.top + 12,
           paddingBottom: 10,
           borderBottomWidth: StyleSheet.hairlineWidth,
           borderBottomColor: c.border,
