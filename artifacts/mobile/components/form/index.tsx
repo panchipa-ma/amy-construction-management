@@ -582,6 +582,7 @@ export function Select<T extends string>({
 export function FormScreen({
   title,
   onSave,
+  onCancel,
   saving,
   saveLabel = "保存",
   saveDisabled,
@@ -592,6 +593,7 @@ export function FormScreen({
 }: {
   title: string;
   onSave: () => Promise<void> | void;
+  onCancel?: () => Promise<void> | void;
   saving?: boolean;
   saveLabel?: string;
   saveDisabled?: boolean;
@@ -691,7 +693,15 @@ export function FormScreen({
         }}
       >
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => {
+            if (onCancel) {
+              void onCancel();
+            } else if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/(tabs)");
+            }
+          }}
           style={({ pressed }) => [
             { paddingHorizontal: 8, paddingVertical: 6 },
             pressed && { opacity: 0.6 },

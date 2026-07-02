@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/expo";
+import { useAuth, useUser } from "@clerk/expo";
 import { useGetMe } from "@workspace/api-client-react";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -10,6 +10,7 @@ import { EMPTY_PROFILE, readProfile, saveProfile, type UserProfile } from "@/lib
 export default function ProfileScreen() {
   const router = useRouter();
   const { user } = useUser();
+  const { signOut } = useAuth();
   const meQ = useGetMe();
   const initial = useMemo(() => (user ? readProfile(user) : EMPTY_PROFILE), [user]);
   const [p, setP] = useState<UserProfile>(initial);
@@ -25,7 +26,11 @@ export default function ProfileScreen() {
     setSaving(true);
     try {
       await saveProfile(user, p);
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/(tabs)");
+      }
     } finally {
       setSaving(false);
     }
@@ -35,6 +40,14 @@ export default function ProfileScreen() {
     <FormScreen
       title="プロフィール編集"
       onSave={submit}
+      onCancel={async () => {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          await signOut();
+          router.replace("/(auth)/sign-in");
+        }
+      }}
       saving={saving}
       validate={() => {
         const missing: Array<{ name?: string; label: string }> = [];
