@@ -38,3 +38,9 @@ The ASC Support URL must be the **actually deployed** domain. `amy-kanri.replit.
 
 ## 2.1(b) Business model
 The app looks like it may sell content because it shows 見積/請求書 money figures. Reality: private internal B2B tool for one construction company, no IAP, no paid digital content, free accounts approved by admin. This is answered by **replying** in ASC, not a code change.
+
+## 社外(external)ユーザーが本番で全画面 403 = 本番デプロイが古い (コード修正ではなく再公開)
+Mobile app は **本番API** (`interior-design-app.replit.app`) を叩く。承認済み external ユーザーで 出面(schedule)タブ →「読み込みに失敗しました」。本番ログで `/api/project-phases/overview` `/api/projects` `/api/vendor-invoices` `/api/vendor-quotes` が全部 403、`/api/me` だけ 200。
+- **切り分け:** `requireApproved` は status≠approved で 403 にするが、本番DBで当該ユーザーは role=external / **status=approved**。モバイル承認ゲートも通過済 (status==="pending" の時だけ /pending へ)。→ 承認は問題なし。
+- **真因:** 現行ソースは承認済 external に overview=[] (200) / vendor-invoices・quotes は created_by で自分の分 (200) / projects は無ガード (200) を返す。本番が 403 を返すのは、**これら external アクセス許可コミット (例: "Restrict access to vendor invoices and quotes for external users") より前のビルドが本番で動いている**から。dev で直したが本番に publish していなかった。
+- **How to apply:** external の本番不具合を見たら、まず本番ログの status code と本番DBの当該ユーザー status を確認。全 API が 403 で me だけ 200 なら「古い本番デプロイ」を疑い、**コードをいじる前に再公開**。新しい 20分の iOS ビルドは不要 (サーバ側 republish のみ)。
