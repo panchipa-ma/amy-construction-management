@@ -41,3 +41,16 @@ On-device error text: `@clerk/clerk-js: The publishableKey passed to Clerk is in
 **`eas build --auto-submit` gotcha:** non-interactive auto-submit fails with "Set ascAppId in the submit profile" unless `eas.json` has `submit.production.ios.ascAppId`. Add it once (ASC App ID is numeric, from App Store Connect). The build itself still succeeds even when the auto-submit step fails.
 
 **Long EAS commands from the agent:** `eas build` upload exceeds the 120s bash-tool ceiling and detached/`setsid` processes get killed on tool return. Run it via a temporary Replit **workflow** (configureWorkflow → poll getWorkflowStatus → removeWorkflow); the build registers + continues on EAS servers independently.
+
+## Variant: "every screen shows 再試行/Retry" (data-fetch fails, app itself launches)
+Distinct from the ErrorBoundary/bad-Clerk-key class above. Here the app launches AND sign-in works (Clerk proxy is fine), but every data screen shows a Retry state.
+
+**Meaning:** authenticated `/api/*` fetches never succeed. Root cause is almost always a wrong baked `EXPO_PUBLIC_DOMAIN` (feeds `setBaseUrl` in `app/_layout.tsx`) — if it's empty/dev/stale, native fetch has no reachable host, so nothing reaches prod.
+
+**Decisive diagnosis (no rebuild needed to confirm):**
+1. Prod API healthy? Public health route is `/api/healthz` (NOT `/api/health` — that 401s because it's not a route). `curl https://<app>.replit.app/api/healthz` → 200 means server is up. Unauthenticated `/api/*` returning 401 is CORRECT, not a bug.
+2. Pull prod deployment logs. If you see ONLY healthchecks + web Clerk proxy (`/api/__clerk/npm/@clerk/ui...` are browser/web-only) and request IDs are a tiny sequential set — i.e. ZERO authenticated `/api/me|projects|staff...` requests — the native app is NOT reaching prod. That points squarely at the baked domain, not the server.
+
+**Fix:** set `EXPO_PUBLIC_DOMAIN` = the published base host (e.g. `interior-design-app.replit.app`, from the plaintext `EXPO_PUBLIC_CLERK_PROXY_URL`), then rebuild + resubmit. **Prefer plaintext visibility** for `EXPO_PUBLIC_*` — they're inlined into the client bundle anyway (no secrecy), and plaintext lets you verify the value later via `env:list`.
+- You cannot flip secret→plaintext; must delete then create: `env:delete --variable-name EXPO_PUBLIC_DOMAIN --variable-environment production --non-interactive` then `env:create --environment production --name ... --value ... --visibility plaintext`.
+- Env is baked at BUILD time, so the fix only reaches the device via a fresh `eas build --profile production --auto-submit` (build number auto-increments; submit needs `submit.production.ios.ascAppId` in eas.json).
