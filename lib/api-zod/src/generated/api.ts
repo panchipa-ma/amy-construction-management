@@ -734,6 +734,12 @@ export const ListStaffResponseItem = zod.object({
   name: zod.string(),
   role: zod.string().describe("職種 (大工\/クロス\/電気 など)"),
   phone: zod.string().nullish(),
+  email: zod
+    .string()
+    .nullish()
+    .describe(
+      "職人アプリ連携キー (app_users.email と一致で工程\/出面を自動反映)",
+    ),
   dailyRate: zod.number().nullish().describe("日当 (円)"),
   company: zod.string().nullish(),
   otherSalesBonusRate: zod
@@ -748,6 +754,7 @@ export const CreateStaffBody = zod.object({
   name: zod.string(),
   role: zod.string(),
   phone: zod.string().nullish(),
+  email: zod.string().nullish(),
   dailyRate: zod.number().nullish(),
   company: zod.string().nullish(),
   otherSalesBonusRate: zod.number().nullish(),
@@ -758,6 +765,12 @@ export const CreateStaffResponse = zod.object({
   name: zod.string(),
   role: zod.string().describe("職種 (大工\/クロス\/電気 など)"),
   phone: zod.string().nullish(),
+  email: zod
+    .string()
+    .nullish()
+    .describe(
+      "職人アプリ連携キー (app_users.email と一致で工程\/出面を自動反映)",
+    ),
   dailyRate: zod.number().nullish().describe("日当 (円)"),
   company: zod.string().nullish(),
   otherSalesBonusRate: zod
@@ -775,6 +788,7 @@ export const UpdateStaffBody = zod.object({
   name: zod.string(),
   role: zod.string(),
   phone: zod.string().nullish(),
+  email: zod.string().nullish(),
   dailyRate: zod.number().nullish(),
   company: zod.string().nullish(),
   otherSalesBonusRate: zod.number().nullish(),
@@ -785,6 +799,12 @@ export const UpdateStaffResponse = zod.object({
   name: zod.string(),
   role: zod.string().describe("職種 (大工\/クロス\/電気 など)"),
   phone: zod.string().nullish(),
+  email: zod
+    .string()
+    .nullish()
+    .describe(
+      "職人アプリ連携キー (app_users.email と一致で工程\/出面を自動反映)",
+    ),
   dailyRate: zod.number().nullish().describe("日当 (円)"),
   company: zod.string().nullish(),
   otherSalesBonusRate: zod

@@ -1,10 +1,18 @@
 import { Link, useLocation, useSearch } from "wouter";
-import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog, Shield, FileSignature, CheckCircle2, BadgeCheck, Calculator, Briefcase } from "lucide-react";
+import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog, Shield, FileSignature, CheckCircle2, BadgeCheck, Calculator, Briefcase, CalendarDays } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { useRole, isPathAllowed } from "@/lib/role";
 import { Button } from "@/components/ui/button";
 
-const navItems = [
+type NavItem = {
+  name: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  internalOnly?: boolean;
+  externalOnly?: boolean;
+};
+
+const navItems: NavItem[] = [
   { name: "ダッシュボード", href: "/", icon: LayoutDashboard, internalOnly: false },
   { name: "案件", href: "/projects", icon: FolderKanban, internalOnly: false },
   { name: "竣工", href: "/projects?status=completed", icon: CheckCircle2, internalOnly: false },
@@ -17,7 +25,8 @@ const navItems = [
   { name: "職人請求書", href: "/vendor-invoices", icon: Upload, internalOnly: false },
   { name: "職人振込済", href: "/vendor-invoices?paid=true", icon: BadgeCheck, internalOnly: false },
   { name: "領収書", href: "/receipts", icon: ReceiptText, internalOnly: false },
-  { name: "職人 出面表", href: "/staff-assignments", icon: ClipboardList, internalOnly: false },
+  { name: "職人 出面表", href: "/staff-assignments", icon: ClipboardList, internalOnly: true },
+  { name: "マイ工程・出面", href: "/my-schedule", icon: CalendarDays, externalOnly: true },
   { name: "顧客", href: "/customers", icon: Users, internalOnly: false },
   { name: "職人", href: "/staff", icon: HardHat, internalOnly: false },
   { name: "社員", href: "/employees", icon: Briefcase, internalOnly: true },
@@ -34,7 +43,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const visibleNav = navItems.filter((item) => {
     const pathOnly = item.href.split("?")[0];
     return (
-      isPathAllowed(role, pathOnly) && (!item.internalOnly || role === "internal")
+      isPathAllowed(role, pathOnly) &&
+      (!item.internalOnly || role === "internal") &&
+      (!item.externalOnly || role === "external")
     );
   });
   const currentSearch = search ? `?${search}` : "";

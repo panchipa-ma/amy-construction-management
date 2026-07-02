@@ -134,6 +134,8 @@ export interface Staff {
   /** 職種 (大工/クロス/電気 など) */
   role: string;
   phone?: string | null;
+  /** 職人アプリ連携キー (app_users.email と一致で工程/出面を自動反映) */
+  email?: string | null;
   /** 日当 (円) */
   dailyRate?: number | null;
   company?: string | null;
@@ -146,6 +148,7 @@ export interface CreateStaffBody {
   name: string;
   role: string;
   phone?: string | null;
+  email?: string | null;
   dailyRate?: number | null;
   company?: string | null;
   otherSalesBonusRate?: number | null;

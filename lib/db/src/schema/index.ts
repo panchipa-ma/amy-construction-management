@@ -57,6 +57,9 @@ export const staffTable = pgTable("staff", {
   name: text("name").notNull(),
   role: text("role").notNull(),
   phone: text("phone"),
+  // 職人アプリアカウント連携キー。app_users.email と一致すると、社内が作成した
+  // 工程表/出面が該当職人のアプリに自動反映される (project-phases/overview)。
+  email: text("email"),
   dailyRate: numeric("daily_rate"),
   company: text("company"),
   // マネジメント報酬率 (%) — レガシー (社員テーブルに移行済)。

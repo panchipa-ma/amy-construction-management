@@ -69,7 +69,7 @@ export function useRole(): { role: Role; status: Status } {
 export const EXTERNAL_ALLOWED_PREFIXES = [
   "/vendor-invoices",
   "/vendor-quotes",
-  "/staff-assignments",
+  "/my-schedule",
   "/profile",
   "/profile-setup",
 ];

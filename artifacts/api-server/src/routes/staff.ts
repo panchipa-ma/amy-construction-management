@@ -18,6 +18,7 @@ import {
   ListStaffAssignmentsResponse,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime, n } from "../lib/serializers";
+import { getOrCreateAppUser } from "../lib/auth";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 function isValidISODate(s: string): boolean {
@@ -60,6 +61,7 @@ function serialize(s: typeof staffTable.$inferSelect) {
     name: s.name,
     role: s.role,
     phone: s.phone,
+    email: s.email,
     dailyRate: s.dailyRate == null ? null : n(s.dailyRate),
     company: s.company,
     otherSalesBonusRate:
@@ -68,9 +70,16 @@ function serialize(s: typeof staffTable.$inferSelect) {
   };
 }
 
-router.get("/staff", async (_req, res): Promise<void> => {
+router.get("/staff", async (req, res): Promise<void> => {
+  const me = await getOrCreateAppUser(req);
   const rows = await db.select().from(staffTable).orderBy(staffTable.createdAt);
-  res.json(ListStaffResponse.parse(rows.map(serialize)));
+  const serialized = rows.map(serialize);
+  // email は職人アプリ連携キー (PII)。社外ユーザーには開示しない。
+  const payload =
+    me.role === "internal"
+      ? serialized
+      : serialized.map((s) => ({ ...s, email: null }));
+  res.json(ListStaffResponse.parse(payload));
 });
 
 const MAX_EXPAND_DAYS = 90;

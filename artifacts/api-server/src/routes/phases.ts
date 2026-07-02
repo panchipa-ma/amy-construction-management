@@ -1,5 +1,16 @@
 import { Router, type IRouter } from "express";
-import { eq, asc, gte, lte, and, min, max, type SQL } from "drizzle-orm";
+import {
+  eq,
+  asc,
+  gte,
+  lte,
+  and,
+  min,
+  max,
+  inArray,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { db, projectPhasesTable, staffTable, projectsTable } from "@workspace/db";
 import {
   ListProjectPhasesParams,
@@ -14,7 +25,7 @@ import {
   DeleteProjectPhaseParams,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime, n } from "../lib/serializers";
-import { getOrCreateAppUser } from "../lib/auth";
+import { getOrCreateAppUser, requireInternal } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -74,6 +85,7 @@ function serialize(p: Row, staffName?: string | null) {
 
 router.get(
   "/projects/:projectId/phases",
+  requireInternal,
   async (req, res): Promise<void> => {
     const params = ListProjectPhasesParams.safeParse(req.params);
     if (!params.success) {
@@ -102,6 +114,7 @@ router.get(
 
 router.post(
   "/projects/:projectId/phases",
+  requireInternal,
   async (req, res): Promise<void> => {
     const params = CreateProjectPhaseParams.safeParse(req.params);
     if (!params.success) {
@@ -154,13 +167,6 @@ router.post(
 
 router.get("/project-phases/overview", async (req, res): Promise<void> => {
   const me = await getOrCreateAppUser(req);
-  // External users must not see other accounts' phase assignments on
-  // 職人出面表 — return an empty overview so they only see their own
-  // schedule_entries (filtered in /schedule).
-  if (me.role === "external") {
-    res.json(ListAllProjectPhasesResponse.parse([]));
-    return;
-  }
   const from = typeof req.query.from === "string" ? req.query.from : undefined;
   const to = typeof req.query.to === "string" ? req.query.to : undefined;
   if ((from && !isValidISODate(from)) || (to && !isValidISODate(to))) {
@@ -170,6 +176,29 @@ router.get("/project-phases/overview", async (req, res): Promise<void> => {
   const conds: SQL[] = [];
   if (from) conds.push(gte(projectPhasesTable.endDate, from));
   if (to) conds.push(lte(projectPhasesTable.startDate, to));
+  // 社外(職人)ユーザーは、自分のメールアドレスに紐付いた staff に
+  // アサインされた工程のみ表示する。メール一致で自動連携 (staff.email == app_users.email)。
+  if (me.role === "external") {
+    const email = me.email?.trim();
+    if (!email) {
+      res.json(ListAllProjectPhasesResponse.parse([]));
+      return;
+    }
+    const linked = await db
+      .select({ id: staffTable.id })
+      .from(staffTable)
+      .where(sql`lower(${staffTable.email}) = lower(${email})`);
+    if (linked.length === 0) {
+      res.json(ListAllProjectPhasesResponse.parse([]));
+      return;
+    }
+    conds.push(
+      inArray(
+        projectPhasesTable.staffId,
+        linked.map((s) => s.id),
+      ),
+    );
+  }
   const rows = await db
     .select({
       phaseId: projectPhasesTable.id,
@@ -201,7 +230,7 @@ router.get("/project-phases/overview", async (req, res): Promise<void> => {
   res.json(ListAllProjectPhasesResponse.parse(result));
 });
 
-router.patch("/project-phases/:id", async (req, res): Promise<void> => {
+router.patch("/project-phases/:id", requireInternal, async (req, res): Promise<void> => {
   const params = UpdateProjectPhaseParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -292,7 +321,7 @@ router.patch("/project-phases/:id", async (req, res): Promise<void> => {
   res.json(UpdateProjectPhaseResponse.parse(serialize(row, staffName)));
 });
 
-router.delete("/project-phases/:id", async (req, res): Promise<void> => {
+router.delete("/project-phases/:id", requireInternal, async (req, res): Promise<void> => {
   const params = DeleteProjectPhaseParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

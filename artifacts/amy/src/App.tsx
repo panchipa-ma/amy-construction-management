@@ -45,6 +45,7 @@ import VendorQuoteNewPage from "@/pages/vendor-quote-new";
 import ReceiptsPage from "@/pages/receipts";
 import LedgerPage from "@/pages/ledger";
 import StaffAssignmentsPage from "@/pages/staff-assignments";
+import MySchedulePage from "@/pages/my-schedule";
 import GanttPage from "@/pages/gantt";
 import LandingPage from "@/pages/landing";
 import PrivacyPage from "@/pages/privacy";
@@ -285,6 +286,7 @@ function ProtectedRoutes() {
         <Route path="/receipts" component={ReceiptsPage} />
         <Route path="/ledger" component={LedgerPage} />
         <Route path="/staff-assignments" component={StaffAssignmentsPage} />
+        <Route path="/my-schedule" component={MySchedulePage} />
         <Route path="/users" component={UsersPage} />
         <Route path="/commissions" component={CommissionsPage} />
         <Route component={NotFound} />

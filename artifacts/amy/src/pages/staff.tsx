@@ -55,7 +55,7 @@ import { Plus, Trash2, HardHat, MapPin, CalendarClock, Users } from "lucide-reac
 import { formatCurrency, formatDate, todayLocalISO, addDaysISO } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 
-const empty = { name: "", role: "", phone: "", dailyRate: "0", company: "", otherSalesBonusRate: "" };
+const empty = { name: "", role: "", phone: "", email: "", dailyRate: "0", company: "", otherSalesBonusRate: "" };
 
 type StaffStatusEntry = { name: string; firstDate: string; lastDate: string };
 type StaffStatus = {
@@ -159,7 +159,7 @@ export default function StaffPage() {
     setOpen(true);
   };
 
-  const inlineUpdate = async (s: Staff, patch: Partial<{ name: string; role: string; phone: string | null; dailyRate: number | null; company: string | null; otherSalesBonusRate: number | null }>) => {
+  const inlineUpdate = async (s: Staff, patch: Partial<{ name: string; role: string; phone: string | null; email: string | null; dailyRate: number | null; company: string | null; otherSalesBonusRate: number | null }>) => {
     try {
       await updateMut.mutateAsync({
         id: s.id,
@@ -167,6 +167,7 @@ export default function StaffPage() {
           name: patch.name ?? s.name,
           role: patch.role ?? s.role,
           phone: patch.phone !== undefined ? patch.phone : (s.phone ?? null),
+          email: patch.email !== undefined ? patch.email : (s.email ?? null),
           dailyRate: patch.dailyRate !== undefined ? patch.dailyRate : (s.dailyRate ?? null),
           company: patch.company !== undefined ? patch.company : (s.company ?? null),
           otherSalesBonusRate:
@@ -193,6 +194,7 @@ export default function StaffPage() {
       name: form.name,
       role: form.role,
       phone: form.phone || null,
+      email: form.email || null,
       dailyRate: form.dailyRate ? Number(form.dailyRate) : null,
       company: form.company || null,
       otherSalesBonusRate: form.otherSalesBonusRate
@@ -315,6 +317,7 @@ export default function StaffPage() {
                   <TableHead>会社</TableHead>
                   <TableHead className="min-w-[260px]">現状況 (発注の参考)</TableHead>
                   <TableHead>電話</TableHead>
+                  <TableHead>メール (アプリ連携)</TableHead>
                   <TableHead className="text-right">日当</TableHead>
                   <TableHead className="text-right">マネジメント報酬</TableHead>
                   <TableHead className="w-12"></TableHead>
@@ -364,6 +367,13 @@ export default function StaffPage() {
                           value={s.phone ?? ""}
                           onSave={(v) => inlineUpdate(s, { phone: v || null })}
                           placeholder="電話番号"
+                        />
+                      </TableCell>
+                      <TableCell className="p-1">
+                        <EditableText
+                          value={s.email ?? ""}
+                          onSave={(v) => inlineUpdate(s, { email: v || null })}
+                          placeholder="メールアドレス"
                         />
                       </TableCell>
                       <TableCell className="text-right p-1">
@@ -445,6 +455,19 @@ export default function StaffPage() {
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="email">メール (アプリ連携)</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="職人のアプリ登録メールアドレス"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  職人がこのメールでアプリ登録すると、担当の工程表・出面が自動でその職人のアプリに表示されます。
+                </p>
               </div>
               <div>
                 <Label htmlFor="rate">日当 (円)</Label>

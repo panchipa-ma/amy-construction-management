@@ -17,6 +17,7 @@ const empty = {
   name: "",
   role: "",
   phone: "",
+  email: "",
   dailyRate: "",
   company: "",
 };
@@ -51,6 +52,7 @@ function StaffEdit() {
         name: s.name,
         role: s.role,
         phone: s.phone ?? "",
+        email: s.email ?? "",
         dailyRate: s.dailyRate != null ? String(s.dailyRate) : "",
         company: s.company ?? "",
       });
@@ -67,6 +69,7 @@ function StaffEdit() {
       name: form.name.trim(),
       role: form.role.trim(),
       phone: form.phone || null,
+      email: form.email.trim() || null,
       dailyRate: form.dailyRate === "" ? null : Number(form.dailyRate),
       company: form.company || null,
     };
@@ -110,6 +113,14 @@ function StaffEdit() {
         </Field>
         <Field label="電話番号">
           <Input value={form.phone} onChangeText={(v) => set("phone", v)} keyboardType="phone-pad" />
+        </Field>
+        <Field label="メール (アプリ連携)" hint="この職人がアプリ登録するメール。担当の工程表・出面がその職人のアプリに自動反映されます。">
+          <Input
+            value={form.email}
+            onChangeText={(v) => set("email", v)}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
         </Field>
         <Field label="日当 (円)">
           <NumberInput value={form.dailyRate} onChangeText={(v) => set("dailyRate", v)} decimal={false} />
