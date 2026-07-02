@@ -9,6 +9,27 @@ args = ["pnpm", "store", "prune"]
 env = { "CI" = "true" }
 
 [workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "eas-submit-16b"
+
+[[workflows.workflow]]
+name = "eas-submit-16b"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd /home/runner/workspace/artifacts/mobile && EXPO_TOKEN=\"$YOROZUYA2\" npx --yes eas-cli@latest submit --platform ios --id cd35a71e-20a1-4de9-99f0-1efb73ea20d0 --non-interactive --wait"
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [agent]
 stack = "PNPM_WORKSPACE"
