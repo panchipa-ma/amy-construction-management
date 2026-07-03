@@ -18,7 +18,7 @@ import {
   ListStaffAssignmentsResponse,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime, n } from "../lib/serializers";
-import { getOrCreateAppUser } from "../lib/auth";
+import { getOrCreateAppUser, requireInternal } from "../lib/auth";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 function isValidISODate(s: string): boolean {
@@ -216,7 +216,7 @@ router.get("/staff/assignments", async (req, res): Promise<void> => {
   res.json(ListStaffAssignmentsResponse.parse(result));
 });
 
-router.post("/staff", async (req, res): Promise<void> => {
+router.post("/staff", requireInternal, async (req, res): Promise<void> => {
   const parsed = CreateStaffBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -234,7 +234,7 @@ router.post("/staff", async (req, res): Promise<void> => {
   res.json(CreateStaffResponse.parse(serialize(row)));
 });
 
-router.patch("/staff/:id", async (req, res): Promise<void> => {
+router.patch("/staff/:id", requireInternal, async (req, res): Promise<void> => {
   const params = UpdateStaffParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -268,7 +268,7 @@ router.patch("/staff/:id", async (req, res): Promise<void> => {
   res.json(UpdateStaffResponse.parse(serialize(row)));
 });
 
-router.delete("/staff/:id", async (req, res): Promise<void> => {
+router.delete("/staff/:id", requireInternal, async (req, res): Promise<void> => {
   const params = DeleteStaffParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

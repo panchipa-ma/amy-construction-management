@@ -51,37 +51,56 @@ router.use(requireApproved);
 // which 403s external users out of their own screens. Scope it to the exact
 // path prefix instead so it only fires for that router's own routes.
 
-// Dashboard is internal-only: it aggregates data across all projects/users
-// (status breakdown, recent activity with actor names, monthly invoice totals,
-// cost pipeline). External users have no UI entry into it, but lock the
-// endpoints down so a direct API call can't leak global data either.
+// ── 社内(internal)のみ ───────────────────────────────────────────────
+// 社内業務データ。社外(職人)ユーザーは UI に入れないだけでなく、API を直接
+// 叩いても読めないよう requireInternal をパス単位でゲートする。社外向け画面
+// (下のグループ) はこれらを一切呼ばないので、閉じても社外機能は壊れない。
+
+// ダッシュボードは全案件・全ユーザーを横断集計するので社内のみ。
 router.use("/dashboard", requireInternal);
 router.use(dashboardRouter);
-router.use(projectsRouter);
+// 顧客マスタは社内のみ。
+router.use("/customers", requireInternal);
 router.use(customersRouter);
-router.use(staffRouter);
 // 社員 (営業/現場監督/事務) は社内マスタなので社内のみ
 router.use("/employees", requireInternal);
 router.use(employeesRouter);
+// 顧客向け 見積書/請求書 (売上) は社内文書。職人見積書/請求書 (/vendor-*) とは別物。
+router.use("/quotes", requireInternal);
 router.use(quotesRouter);
+router.use("/invoices", requireInternal);
 router.use(invoicesRouter);
 // 請求書/見積書の印刷HTMLは社内文書なので社内のみ。
 // (vendor-invoices/quotes 用の印刷はモバイル側で localストレージ + html ローカル生成)
 router.use("/print", requireInternal);
 router.use(printRouter);
+// 原価台帳・領収書・進捗記録は社内のみ (粗利や原価は社外に見せない)。
+router.use("/cost-entries", requireInternal);
 router.use(costsRouter);
-router.use(scheduleRouter);
+router.use("/receipts", requireInternal);
+router.use(receiptsRouter);
+router.use("/progress-logs", requireInternal);
 router.use(progressRouter);
-router.use(vendorInvoicesRouter);
-router.use(vendorQuotesRouter);
 // 現場写真は社内マスタなので社内のみ
 router.use("/project-photos", requireInternal);
 router.use(projectPhotosRouter);
-router.use(receiptsRouter);
-router.use(phasesRouter);
-router.use(ocrRouter);
+// 出面表 (職人×日付マトリクス) は社内の管理ビューなので社内のみ。
+// 社外の「出面」入力は /schedule 側 (created_by で本人分のみ) を使う。
+router.use("/staff/assignments", requireInternal);
 // 月次歩合は社内全体の数字 (他人の売上を含む) を返すため社内のみ
 router.use("/commissions", requireInternal);
 router.use(commissionsRouter);
+
+// ── 社外(職人)も利用可 (承認済みのみ) ────────────────────────────────
+// 職人請求書/見積書の作成時に「案件を選ぶ」「職人を割り当てる」ため、案件一覧と
+// 職人一覧は社外にも必要。staff は external には email を落として返す。
+// schedule / vendor-* は created_by で本人分のみ、phases は overview のみ。
+router.use(projectsRouter);
+router.use(staffRouter);
+router.use(scheduleRouter);
+router.use(vendorInvoicesRouter);
+router.use(vendorQuotesRouter);
+router.use(phasesRouter);
+router.use(ocrRouter);
 
 export default router;

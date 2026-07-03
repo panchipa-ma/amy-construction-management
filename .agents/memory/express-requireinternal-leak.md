@@ -34,9 +34,28 @@ prefix: `/dashboard`, `/employees`, `/print`, `/project-photos`, `/commissions`.
 If a future internal router shares a prefix with an external-accessible route
 (e.g. nesting under `/projects`), gate it inside the router file instead.
 
-**Security note:** After this fix external users CAN hit /api/projects,
-/customers, /invoices etc. via direct API (no created_by filtering there) — this
-matches the codebase's existing model (only the 5 routers above are internal;
-frontend RoleGuard hides the rest from external UI). Only vendor_invoices /
-vendor_quotes / schedule_entries filter by created_by. Tighten later if external
-users must not read global project/customer data via API.
+**Separation model (社内/社外) after hardening:** the user requires internal and
+external permissions stay strictly separate at the API layer, not just in the UI.
+
+Internal-only (path-gated `requireInternal` in index.ts): `/dashboard`,
+`/customers`, `/employees`, `/quotes` (sales), `/invoices` (sales), `/print`,
+`/cost-entries`, `/receipts`, `/progress-logs`, `/project-photos`,
+`/staff/assignments`, `/commissions`. External users never call these — verified
+against `EXTERNAL_ALLOWED_PREFIXES` (role.tsx) and the external mobile/web
+screens' hooks.
+
+External-accessible (承認済のみ): `projects`, `staff`, `schedule`,
+`vendor-invoices`, `vendor-quotes`, `project-phases` (overview only), `ocr`.
+- `projects` + `staff` list reads stay OPEN because 職人 must pick a project and
+  assign a staff when creating vendor invoices/quotes (`useListProjects` /
+  `useListStaff`). Their **writes** (POST/PATCH/DELETE) are gated per-route with
+  `requireInternal` inside projects.ts / staff.ts (can't path-gate — same path,
+  GET must stay open).
+- `staff` GET strips email for external; `schedule` / `vendor-*` filter by
+  `created_by`; `phases` external = overview only.
+
+**Known residual (accepted, needs schema change to fix):** `GET /projects`
+returns financial fields (`contractAmount`, `plannedCost`, `actualCost`, rate
+fields) to external users. Stripping them requires making those fields nullable
+in openapi.yaml (they're `required`/non-null) + codegen, which ripples `number →
+number|null` across internal screens. Deferred as a larger, riskier change.
