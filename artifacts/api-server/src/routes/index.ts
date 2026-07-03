@@ -43,32 +43,45 @@ router.use(storageRouter);
 router.use(requireAuth);
 router.use(usersRouter);
 router.use(requireApproved);
+// IMPORTANT: internal-only routers must gate requireInternal by PATH, not by
+// `router.use(requireInternal, xxxRouter)`. In Express, a bare middleware in
+// `use(mw, router)` is mounted at "/" and therefore runs for EVERY subsequent
+// request — not just the ones the paired router handles. Doing that once leaks
+// requireInternal onto all following routers (projects, vendor-invoices, ...),
+// which 403s external users out of their own screens. Scope it to the exact
+// path prefix instead so it only fires for that router's own routes.
+
 // Dashboard is internal-only: it aggregates data across all projects/users
 // (status breakdown, recent activity with actor names, monthly invoice totals,
 // cost pipeline). External users have no UI entry into it, but lock the
 // endpoints down so a direct API call can't leak global data either.
-router.use(requireInternal, dashboardRouter);
+router.use("/dashboard", requireInternal);
+router.use(dashboardRouter);
 router.use(projectsRouter);
 router.use(customersRouter);
 router.use(staffRouter);
 // 社員 (営業/現場監督/事務) は社内マスタなので社内のみ
-router.use(requireInternal, employeesRouter);
+router.use("/employees", requireInternal);
+router.use(employeesRouter);
 router.use(quotesRouter);
 router.use(invoicesRouter);
 // 請求書/見積書の印刷HTMLは社内文書なので社内のみ。
 // (vendor-invoices/quotes 用の印刷はモバイル側で localストレージ + html ローカル生成)
-router.use(requireInternal, printRouter);
+router.use("/print", requireInternal);
+router.use(printRouter);
 router.use(costsRouter);
 router.use(scheduleRouter);
 router.use(progressRouter);
 router.use(vendorInvoicesRouter);
 router.use(vendorQuotesRouter);
 // 現場写真は社内マスタなので社内のみ
-router.use(requireInternal, projectPhotosRouter);
+router.use("/project-photos", requireInternal);
+router.use(projectPhotosRouter);
 router.use(receiptsRouter);
 router.use(phasesRouter);
 router.use(ocrRouter);
 // 月次歩合は社内全体の数字 (他人の売上を含む) を返すため社内のみ
-router.use(requireInternal, commissionsRouter);
+router.use("/commissions", requireInternal);
+router.use(commissionsRouter);
 
 export default router;

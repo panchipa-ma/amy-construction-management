@@ -1,3 +1,4 @@
 - [Apple review rejections](apple-review-rejections.md) — recurring App Store rejection reasons (4.8 login, 2.1 demo acct, 1.5 support URL, 2.1(b) business model) and the decided fixes.
 - [EAS prod runtime debug](eas-prod-runtime-debug.md) — "works in dev, fails in TestFlight" Expo/EAS debugging; Clerk pk_live must come from published web bundle; run long eas cmds via temp workflow.
 - [Staff↔app_user email linkage](staff-appuser-linkage.md) — external 職人 linked to staff by email; external API access contract (overview-only phase read, /staff email stripped); orphaned app_user_id cols — don't drizzle push.
+- [Express requireInternal leak](express-requireinternal-leak.md) — internal-only routers must gate by PATH (`use("/x", requireInternal)`), not `use(requireInternal, router)` which 403s ALL external users on every screen.
