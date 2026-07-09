@@ -1,10 +1,22 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { useUser } from "@clerk/react";
+import { useAuth, useUser } from "@clerk/react";
+import { useDeleteMe } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -12,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   EMPTY_PROFILE,
@@ -26,11 +38,29 @@ type Mode = "setup" | "edit";
 
 export default function ProfileSetupPage({ mode = "setup" }: { mode?: Mode }) {
   const { user, isLoaded } = useUser();
+  const { signOut } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [profile, setProfile] = useState<UserProfile>(EMPTY_PROFILE);
   const [submitting, setSubmitting] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const deleteMeMut = useDeleteMe();
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await deleteMeMut.mutateAsync();
+      await signOut();
+    } catch (e) {
+      toast({
+        title: "アカウント削除に失敗しました",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     if (!hydrated && isLoaded && user) {
@@ -274,6 +304,52 @@ export default function ProfileSetupPage({ mode = "setup" }: { mode?: Mode }) {
               保存
             </Button>
           </div>
+
+          {mode === "edit" && (
+            <section className="border-t pt-4">
+              <h2 className="text-sm font-semibold text-destructive mb-2">
+                アカウント削除
+              </h2>
+              <p className="text-xs text-muted-foreground mb-3">
+                アカウントと関連するログイン情報を完全に削除します。この操作は取り消せません。
+              </p>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="text-destructive border-destructive/50 hover:bg-destructive/10"
+                    disabled={deleting}
+                    data-testid="button-delete-account"
+                  >
+                    {deleting ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-2" />
+                    )}
+                    アカウントを削除
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>アカウントを削除しますか?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      アカウントを完全に削除します。この操作は取り消せません。
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteAccount}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      data-testid="button-confirm-delete-account"
+                    >
+                      削除する
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </section>
+          )}
         </CardContent>
       </Card>
     </div>

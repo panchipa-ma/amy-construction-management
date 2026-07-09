@@ -115,6 +115,23 @@ export interface UpdateUserBody {
   displayName?: string | null;
 }
 
+export interface ReviewLoginCheckBody {
+  email: string;
+}
+
+export interface ReviewLoginCheckResult {
+  isReviewAccount: boolean;
+}
+
+export interface ReviewLoginBody {
+  email: string;
+  password: string;
+}
+
+export interface ReviewLoginResult {
+  token: string;
+}
+
 export interface CreateInvitationBody {
   emailAddress: string;
   redirectUrl?: string | null;

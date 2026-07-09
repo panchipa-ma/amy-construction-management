@@ -1,7 +1,8 @@
 import { useAuth, useUser } from "@clerk/expo";
-import { useGetMe } from "@workspace/api-client-react";
+import { useDeleteMe, useGetMe } from "@workspace/api-client-react";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
+import { Alert, Pressable, Text, View } from "react-native";
 
 import { Field, FormScreen, FormSection, Input, Select } from "@/components/form";
 import { Body, Loader, Muted } from "@/components/ui";
@@ -15,6 +16,34 @@ export default function ProfileScreen() {
   const initial = useMemo(() => (user ? readProfile(user) : EMPTY_PROFILE), [user]);
   const [p, setP] = useState<UserProfile>(initial);
   const [saving, setSaving] = useState(false);
+  const deleteMeMut = useDeleteMe();
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "アカウントを削除",
+      "アカウントを完全に削除します。この操作は取り消せません。よろしいですか?",
+      [
+        { text: "キャンセル", style: "cancel" },
+        {
+          text: "削除する",
+          style: "destructive",
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteMeMut.mutateAsync();
+              await signOut();
+              router.replace("/(auth)/sign-in");
+            } catch {
+              Alert.alert("エラー", "アカウント削除に失敗しました。時間をおいて再度お試しください。");
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   if (meQ.isLoading) return <Loader />;
   if (!user) return null;
@@ -127,6 +156,30 @@ export default function ProfileScreen() {
         <Field label="口座名義 (カナ)" name="accountHolder" required>
           <Input value={p.accountHolder} onChangeText={(v) => set("accountHolder", v)} />
         </Field>
+      </FormSection>
+
+      <FormSection title="アカウント">
+        <View>
+          <Pressable
+            onPress={handleDeleteAccount}
+            disabled={deleting}
+            style={{
+              borderWidth: 1,
+              borderColor: "#b91c1c",
+              borderRadius: 8,
+              paddingVertical: 12,
+              alignItems: "center",
+              opacity: deleting ? 0.5 : 1,
+            }}
+          >
+            <Text style={{ color: "#b91c1c", fontWeight: "600" }}>
+              {deleting ? "削除中..." : "アカウントを削除"}
+            </Text>
+          </Pressable>
+          <Muted style={{ fontSize: 11, marginTop: 8 }}>
+            アカウントと関連するログイン情報を完全に削除します。この操作は取り消せません。
+          </Muted>
+        </View>
       </FormSection>
     </FormScreen>
   );

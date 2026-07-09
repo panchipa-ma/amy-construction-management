@@ -1,4 +1,5 @@
 import { useSignIn } from "@clerk/expo";
+import { useCheckReviewLogin, useReviewLogin } from "@workspace/api-client-react";
 import { Link, useRouter } from "expo-router";
 import React, { useCallback } from "react";
 import {
@@ -26,11 +27,27 @@ export default function SignInScreen() {
   const [emailAddress, setEmailAddress] = React.useState("");
   const [code, setCode] = React.useState("");
   const [codeSent, setCodeSent] = React.useState(false);
+  const [reviewMode, setReviewMode] = React.useState(false);
+  const [password, setPassword] = React.useState("");
   const [generalError, setGeneralError] = React.useState<string | null>(null);
+  const checkReviewMut = useCheckReviewLogin();
+  const reviewLoginMut = useReviewLogin();
 
   const handleSendCode = useCallback(async () => {
     setGeneralError(null);
     try {
+      // App Store 審査用デモアカウントはパスワードログイン (OTP 受信箱なし)。
+      try {
+        const check = await checkReviewMut.mutateAsync({
+          data: { email: emailAddress },
+        });
+        if (check.isReviewAccount) {
+          setReviewMode(true);
+          return;
+        }
+      } catch {
+        // check 失敗時は通常の OTP フローへ
+      }
       const { error } = await signIn.emailCode.sendCode({ emailAddress });
       if (error) {
         setGeneralError(
@@ -47,7 +64,37 @@ export default function SignInScreen() {
           : "認証コードの送信に失敗しました。",
       );
     }
-  }, [emailAddress, signIn]);
+  }, [emailAddress, signIn, checkReviewMut]);
+
+  const handleReviewLogin = useCallback(async () => {
+    setGeneralError(null);
+    try {
+      const r = await reviewLoginMut.mutateAsync({
+        data: { email: emailAddress, password },
+      });
+      const { error } = await signIn.ticket({ ticket: r.token });
+      if (error) {
+        setGeneralError(
+          (error as { message?: string })?.message || "ログインに失敗しました。",
+        );
+        return;
+      }
+      if (signIn.status === "complete") {
+        await signIn.finalize({
+          navigate: ({ session }) => {
+            if (session?.currentTask) return;
+            router.replace("/(tabs)");
+          },
+        });
+      } else {
+        setGeneralError("ログインが完了しませんでした。");
+      }
+    } catch (err) {
+      setGeneralError(
+        err instanceof Error ? err.message : "ログインに失敗しました。",
+      );
+    }
+  }, [emailAddress, password, reviewLoginMut, signIn, router]);
 
   const handleVerify = useCallback(async () => {
     setGeneralError(null);
@@ -108,13 +155,55 @@ export default function SignInScreen() {
               textAlign: "center",
             }}
           >
-            {codeSent
-              ? "メールに届いた認証コードを入力してください"
-              : "ログインして続けてください"}
+            {reviewMode
+              ? "パスワードを入力してください"
+              : codeSent
+                ? "メールに届いた認証コードを入力してください"
+                : "ログインして続けてください"}
           </Text>
         </View>
 
-        {codeSent ? (
+        {reviewMode ? (
+          <>
+            <Text style={[styles.label, { color: c.mutedForeground }]}>
+              パスワード
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                { borderColor: c.border, color: c.foreground, backgroundColor: c.card },
+              ]}
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="password"
+              textContentType="password"
+              placeholder="パスワード"
+              placeholderTextColor={c.mutedForeground}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <View style={{ marginTop: 20 }}>
+              <PrimaryButton
+                title="ログイン"
+                onPress={handleReviewLogin}
+                disabled={!password}
+                loading={reviewLoginMut.isPending || isFetching}
+              />
+            </View>
+            <Pressable
+              onPress={() => {
+                setReviewMode(false);
+                setPassword("");
+                setGeneralError(null);
+              }}
+              style={{ marginTop: 12, alignItems: "center" }}
+            >
+              <Text style={{ color: c.mutedForeground }}>
+                メールアドレスを変更する
+              </Text>
+            </Pressable>
+          </>
+        ) : codeSent ? (
           <>
             <Text style={[styles.label, { color: c.mutedForeground }]}>
               認証コード

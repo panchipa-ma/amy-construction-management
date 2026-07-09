@@ -239,6 +239,49 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AppUser" }
+    delete:
+      operationId: deleteMe
+      tags: [users]
+      summary: Delete own account (App Store 5.1.1(v) self-deletion; removes app_users row and Clerk user)
+      responses:
+        "204":
+          description: Deleted
+
+  /review-login/check:
+    post:
+      operationId: checkReviewLogin
+      tags: [users]
+      summary: Public. Returns whether the email is the App Review demo account (password login path)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReviewLoginCheckBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReviewLoginCheckResult" }
+
+  /review-login:
+    post:
+      operationId: reviewLogin
+      tags: [users]
+      summary: Public. App Review demo account password login; returns a Clerk sign-in ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReviewLoginBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReviewLoginResult" }
+        "401":
+          description: Invalid credentials
 
   /users:
     get:
@@ -1383,6 +1426,31 @@ components:
         role: { type: string, enum: [internal, external] }
         status: { type: string, enum: [pending, approved] }
         displayName: { type: string, nullable: true }
+
+    ReviewLoginCheckBody:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string }
+
+    ReviewLoginCheckResult:
+      type: object
+      required: [isReviewAccount]
+      properties:
+        isReviewAccount: { type: boolean }
+
+    ReviewLoginBody:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        password: { type: string }
+
+    ReviewLoginResult:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
 
     CreateInvitationBody:
       type: object

@@ -76,6 +76,10 @@ import type {
   Receipt,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
+  ReviewLoginBody,
+  ReviewLoginCheckBody,
+  ReviewLoginCheckResult,
+  ReviewLoginResult,
   ScheduleEntry,
   Staff,
   StaffAssignment,
@@ -1258,6 +1262,257 @@ export function useGetMe<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Delete own account (App Store 5.1.1(v) self-deletion; removes app_users row and Clerk user)
+ */
+export const getDeleteMeUrl = () => {
+  return `/api/me`;
+};
+
+export const deleteMe = async (options?: RequestInit): Promise<void> => {
+  return customFetch<void>(getDeleteMeUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteMeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMe>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteMe>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["deleteMe"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteMe>>,
+    void
+  > = () => {
+    return deleteMe(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteMeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteMe>>
+>;
+
+export type DeleteMeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete own account (App Store 5.1.1(v) self-deletion; removes app_users row and Clerk user)
+ */
+export const useDeleteMe = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMe>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteMe>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDeleteMeMutationOptions(options));
+};
+
+/**
+ * @summary Public. Returns whether the email is the App Review demo account (password login path)
+ */
+export const getCheckReviewLoginUrl = () => {
+  return `/api/review-login/check`;
+};
+
+export const checkReviewLogin = async (
+  reviewLoginCheckBody: ReviewLoginCheckBody,
+  options?: RequestInit,
+): Promise<ReviewLoginCheckResult> => {
+  return customFetch<ReviewLoginCheckResult>(getCheckReviewLoginUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(reviewLoginCheckBody),
+  });
+};
+
+export const getCheckReviewLoginMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof checkReviewLogin>>,
+    TError,
+    { data: BodyType<ReviewLoginCheckBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof checkReviewLogin>>,
+  TError,
+  { data: BodyType<ReviewLoginCheckBody> },
+  TContext
+> => {
+  const mutationKey = ["checkReviewLogin"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof checkReviewLogin>>,
+    { data: BodyType<ReviewLoginCheckBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return checkReviewLogin(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CheckReviewLoginMutationResult = NonNullable<
+  Awaited<ReturnType<typeof checkReviewLogin>>
+>;
+export type CheckReviewLoginMutationBody = BodyType<ReviewLoginCheckBody>;
+export type CheckReviewLoginMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Public. Returns whether the email is the App Review demo account (password login path)
+ */
+export const useCheckReviewLogin = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof checkReviewLogin>>,
+    TError,
+    { data: BodyType<ReviewLoginCheckBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof checkReviewLogin>>,
+  TError,
+  { data: BodyType<ReviewLoginCheckBody> },
+  TContext
+> => {
+  return useMutation(getCheckReviewLoginMutationOptions(options));
+};
+
+/**
+ * @summary Public. App Review demo account password login; returns a Clerk sign-in ticket
+ */
+export const getReviewLoginUrl = () => {
+  return `/api/review-login`;
+};
+
+export const reviewLogin = async (
+  reviewLoginBody: ReviewLoginBody,
+  options?: RequestInit,
+): Promise<ReviewLoginResult> => {
+  return customFetch<ReviewLoginResult>(getReviewLoginUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(reviewLoginBody),
+  });
+};
+
+export const getReviewLoginMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reviewLogin>>,
+    TError,
+    { data: BodyType<ReviewLoginBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reviewLogin>>,
+  TError,
+  { data: BodyType<ReviewLoginBody> },
+  TContext
+> => {
+  const mutationKey = ["reviewLogin"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reviewLogin>>,
+    { data: BodyType<ReviewLoginBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return reviewLogin(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReviewLoginMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reviewLogin>>
+>;
+export type ReviewLoginMutationBody = BodyType<ReviewLoginBody>;
+export type ReviewLoginMutationError = ErrorType<void>;
+
+/**
+ * @summary Public. App Review demo account password login; returns a Clerk sign-in ticket
+ */
+export const useReviewLogin = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reviewLogin>>,
+    TError,
+    { data: BodyType<ReviewLoginBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reviewLogin>>,
+  TError,
+  { data: BodyType<ReviewLoginBody> },
+  TContext
+> => {
+  return useMutation(getReviewLoginMutationOptions(options));
+};
 
 /**
  * @summary List all app users (internal admin only)

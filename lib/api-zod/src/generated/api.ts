@@ -608,6 +608,29 @@ export const GetMeResponse = zod.object({
 });
 
 /**
+ * @summary Public. Returns whether the email is the App Review demo account (password login path)
+ */
+export const CheckReviewLoginBody = zod.object({
+  email: zod.string(),
+});
+
+export const CheckReviewLoginResponse = zod.object({
+  isReviewAccount: zod.boolean(),
+});
+
+/**
+ * @summary Public. App Review demo account password login; returns a Clerk sign-in ticket
+ */
+export const ReviewLoginBody = zod.object({
+  email: zod.string(),
+  password: zod.string(),
+});
+
+export const ReviewLoginResponse = zod.object({
+  token: zod.string(),
+});
+
+/**
  * @summary List all app users (internal admin only)
  */
 export const ListUsersResponseItem = zod.object({

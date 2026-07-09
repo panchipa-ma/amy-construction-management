@@ -19,6 +19,7 @@ import phasesRouter from "./phases";
 import storageRouter from "./storage";
 import ocrRouter from "./ocr";
 import usersRouter from "./users";
+import reviewLoginRouter from "./review-login";
 import commissionsRouter from "./commissions";
 import printRouter from "./print";
 import { requireApproved, requireInternal } from "../lib/auth";
@@ -40,6 +41,8 @@ router.use(healthRouter);
 // contain unguessable UUIDs). The POST upload endpoint inside storageRouter
 // performs its own auth check.
 router.use(storageRouter);
+// App Store 審査用デモログイン (public)。env 未設定なら常に 401/false を返すだけ。
+router.use(reviewLoginRouter);
 router.use(requireAuth);
 router.use(usersRouter);
 router.use(requireApproved);

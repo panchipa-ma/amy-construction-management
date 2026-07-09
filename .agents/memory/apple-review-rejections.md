@@ -33,6 +33,16 @@ The forced profile gate (tabs `_layout`) enters the profile screen via `router.r
 - FormScreen gained an optional `onCancel` prop so a screen can override the generic canGoBack fallback (profile passes the sign-out variant).
 - **Also, separately:** with `enableScreens(false)`, `presentation:"modal"` (JS-based modal) has fragile hit-testing on iOS — converted all edit/create screens to normal push (`headerShown:false`, FormScreen provides its own header) as hardening. **Why:** removes a whole class of modal-touch risk before App Review; native push works fine under enableScreens(false).
 
+## 2.1 審査用デモアカウント = パスワード式レビュー専用ログイン (OTP 受信箱問題の恒久解)
+Apple 審査員はデモアカウントのメール受信箱を持てないため、OTP-only の Clerk では審査ログイン不可能。
+- **Fix:** public API `/api/review-login/check` (email がデモアカウントか判定) + `/api/review-login` (email+password → Clerk sign-in token)。env `REVIEW_DEMO_EMAIL` / `REVIEW_DEMO_PASSWORD` (shared) 一致時のみ。Clerk デモユーザー + approved external app_users 行を find-or-create するので受信箱・事前登録不要。モバイル sign-in は check が true ならパスワード欄に切替 → `signIn.ticket({ ticket })` → `finalize`。
+- **Why:** OTP は審査員に届かない。ticket 方式なら Clerk 側の認証設定 (OTP-only) を一切変えずに済む。
+- **How to apply:** ブルートフォース対策の in-memory レート制限 (IP 10回/15分) を維持。審査完了後に無効化したければ env を消すだけ (endpoint は 401/false を返すのみになる)。**本番 API に endpoint が必要 → 審査提出前に必ず Publish**。ASC の App Review Information にデモ email/password を記載。
+
+## 5.1.1(v) アカウント自己削除
+アカウント作成があるアプリはアプリ内からの完全削除導線が必須。
+- **Fix:** `DELETE /api/me` — Clerk ユーザー削除 → 成功後に app_users 行削除 (この順序: 先に DB を消すと失敗時に再サインインで pending external として再作成され role が消える)。UI は Web (プロフィール編集 edit mode) とモバイル (プロフィール画面) 両方に確認ダイアログ付き削除ボタン → 成功後 signOut。
+
 ## 1.5 Support URL
 The ASC Support URL must be the **actually deployed** domain. `amy-kanri.replit.app` does not exist (404); the live deployment is `interior-design-app.replit.app` and `/support` (and `/privacy`) are **public** routes there (outside the signed-in gate in `artifacts/amy/src/App.tsx` `AppRoutes`). Fix = point ASC Support URL to the live domain, no code change.
 

@@ -25,6 +25,21 @@ router.get("/me", async (req, res): Promise<void> => {
   res.json(GetMeResponse.parse(serializeAppUser(me)));
 });
 
+// App Store 5.1.1(v): ユーザー自身によるアカウント削除。
+// app_users 行を消し、Clerk ユーザー本体も削除する (再サインアップは可能)。
+router.delete("/me", async (req, res): Promise<void> => {
+  const me = await getOrCreateAppUser(req);
+  try {
+    await clerkClient.users.deleteUser(me.clerkUserId);
+  } catch (e) {
+    req.log.error({ err: e }, "clerk user delete failed");
+    res.status(500).json({ error: "アカウント削除に失敗しました" });
+    return;
+  }
+  await db.delete(appUsersTable).where(eq(appUsersTable.id, me.id));
+  res.sendStatus(204);
+});
+
 router.get("/users", requireInternal, async (_req, res): Promise<void> => {
   const rows = await db
     .select()
