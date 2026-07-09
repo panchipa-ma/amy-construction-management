@@ -737,8 +737,18 @@ export const ListStaffResponseItem = zod.object({
   email: zod
     .string()
     .nullish()
+    .describe("連絡用メール (アプリ連携のフォールバックキー)"),
+  appLoginEmail: zod
+    .string()
+    .nullish()
     .describe(
-      "職人アプリ連携キー (app_users.email と一致で工程\/出面を自動反映)",
+      "アプリ連携用メール (ログイン用メールが連絡用と異なる場合に設定。連携判定はこちらを優先)",
+    ),
+  appLinked: zod
+    .boolean()
+    .nullish()
+    .describe(
+      "承認済みアプリアカウントと連携済みか (internal のみ返却、external は null)",
     ),
   dailyRate: zod.number().nullish().describe("日当 (円)"),
   company: zod.string().nullish(),
@@ -755,6 +765,7 @@ export const CreateStaffBody = zod.object({
   role: zod.string(),
   phone: zod.string().nullish(),
   email: zod.string().nullish(),
+  appLoginEmail: zod.string().nullish(),
   dailyRate: zod.number().nullish(),
   company: zod.string().nullish(),
   otherSalesBonusRate: zod.number().nullish(),
@@ -768,8 +779,18 @@ export const CreateStaffResponse = zod.object({
   email: zod
     .string()
     .nullish()
+    .describe("連絡用メール (アプリ連携のフォールバックキー)"),
+  appLoginEmail: zod
+    .string()
+    .nullish()
     .describe(
-      "職人アプリ連携キー (app_users.email と一致で工程\/出面を自動反映)",
+      "アプリ連携用メール (ログイン用メールが連絡用と異なる場合に設定。連携判定はこちらを優先)",
+    ),
+  appLinked: zod
+    .boolean()
+    .nullish()
+    .describe(
+      "承認済みアプリアカウントと連携済みか (internal のみ返却、external は null)",
     ),
   dailyRate: zod.number().nullish().describe("日当 (円)"),
   company: zod.string().nullish(),
@@ -789,6 +810,7 @@ export const UpdateStaffBody = zod.object({
   role: zod.string(),
   phone: zod.string().nullish(),
   email: zod.string().nullish(),
+  appLoginEmail: zod.string().nullish(),
   dailyRate: zod.number().nullish(),
   company: zod.string().nullish(),
   otherSalesBonusRate: zod.number().nullish(),
@@ -802,8 +824,18 @@ export const UpdateStaffResponse = zod.object({
   email: zod
     .string()
     .nullish()
+    .describe("連絡用メール (アプリ連携のフォールバックキー)"),
+  appLoginEmail: zod
+    .string()
+    .nullish()
     .describe(
-      "職人アプリ連携キー (app_users.email と一致で工程\/出面を自動反映)",
+      "アプリ連携用メール (ログイン用メールが連絡用と異なる場合に設定。連携判定はこちらを優先)",
+    ),
+  appLinked: zod
+    .boolean()
+    .nullish()
+    .describe(
+      "承認済みアプリアカウントと連携済みか (internal のみ返却、external は null)",
     ),
   dailyRate: zod.number().nullish().describe("日当 (円)"),
   company: zod.string().nullish(),

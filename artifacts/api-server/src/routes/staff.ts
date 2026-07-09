@@ -6,6 +6,7 @@ import {
   scheduleEntriesTable,
   projectsTable,
   projectPhasesTable,
+  appUsersTable,
 } from "@workspace/db";
 import {
   CreateStaffBody,
@@ -62,6 +63,7 @@ function serialize(s: typeof staffTable.$inferSelect) {
     role: s.role,
     phone: s.phone,
     email: s.email,
+    appLoginEmail: s.appLoginEmail,
     dailyRate: s.dailyRate == null ? null : n(s.dailyRate),
     company: s.company,
     otherSalesBonusRate:
@@ -74,11 +76,34 @@ router.get("/staff", async (req, res): Promise<void> => {
   const me = await getOrCreateAppUser(req);
   const rows = await db.select().from(staffTable).orderBy(staffTable.createdAt);
   const serialized = rows.map(serialize);
-  // email は職人アプリ連携キー (PII)。社外ユーザーには開示しない。
-  const payload =
-    me.role === "internal"
-      ? serialized
-      : serialized.map((s) => ({ ...s, email: null }));
+  // email / appLoginEmail は職人アプリ連携キー (PII)。社外ユーザーには開示しない。
+  let payload;
+  if (me.role === "internal") {
+    // 承認済みアプリアカウントのメール集合と照合して連携状態を返す。
+    const users = await db
+      .select({ email: appUsersTable.email })
+      .from(appUsersTable)
+      .where(eq(appUsersTable.status, "approved"));
+    const approvedEmails = new Set(
+      users
+        .map((u) => u.email?.trim().toLowerCase())
+        .filter((e): e is string => !!e),
+    );
+    const linked = (s: (typeof serialized)[number]) => {
+      const keys = [s.appLoginEmail, s.email]
+        .map((e) => e?.trim().toLowerCase())
+        .filter((e): e is string => !!e);
+      return keys.some((k) => approvedEmails.has(k));
+    };
+    payload = serialized.map((s) => ({ ...s, appLinked: linked(s) }));
+  } else {
+    payload = serialized.map((s) => ({
+      ...s,
+      email: null,
+      appLoginEmail: null,
+      appLinked: null,
+    }));
+  }
   res.json(ListStaffResponse.parse(payload));
 });
 

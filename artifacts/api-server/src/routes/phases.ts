@@ -177,7 +177,9 @@ router.get("/project-phases/overview", async (req, res): Promise<void> => {
   if (from) conds.push(gte(projectPhasesTable.endDate, from));
   if (to) conds.push(lte(projectPhasesTable.startDate, to));
   // 社外(職人)ユーザーは、自分のメールアドレスに紐付いた staff に
-  // アサインされた工程のみ表示する。メール一致で自動連携 (staff.email == app_users.email)。
+  // アサインされた工程のみ表示する。メール一致で自動連携。
+  // 連絡用メール (staff.email) とログイン用メールが異なる場合は
+  // staff.app_login_email に登録されたアドレスでも連携できる。
   if (me.role === "external") {
     const email = me.email?.trim();
     if (!email) {
@@ -187,7 +189,9 @@ router.get("/project-phases/overview", async (req, res): Promise<void> => {
     const linked = await db
       .select({ id: staffTable.id })
       .from(staffTable)
-      .where(sql`lower(${staffTable.email}) = lower(${email})`);
+      .where(
+        sql`lower(${staffTable.email}) = lower(${email}) OR lower(${staffTable.appLoginEmail}) = lower(${email})`,
+      );
     if (linked.length === 0) {
       res.json(ListAllProjectPhasesResponse.parse([]));
       return;

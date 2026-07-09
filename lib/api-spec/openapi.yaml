@@ -1409,7 +1409,9 @@ components:
         name: { type: string }
         role: { type: string, description: "職種 (大工/クロス/電気 など)" }
         phone: { type: string, nullable: true }
-        email: { type: string, nullable: true, description: "職人アプリ連携キー (app_users.email と一致で工程/出面を自動反映)" }
+        email: { type: string, nullable: true, description: "連絡用メール (アプリ連携のフォールバックキー)" }
+        appLoginEmail: { type: string, nullable: true, description: "アプリ連携用メール (ログイン用メールが連絡用と異なる場合に設定。連携判定はこちらを優先)" }
+        appLinked: { type: boolean, nullable: true, description: "承認済みアプリアカウントと連携済みか (internal のみ返却、external は null)" }
         dailyRate: { type: number, nullable: true, description: "日当 (円)" }
         company: { type: string, nullable: true }
         otherSalesBonusRate: { type: number, nullable: true, description: "(レガシー) 社員テーブルに移行済" }
@@ -1423,6 +1425,7 @@ components:
         role: { type: string }
         phone: { type: string, nullable: true }
         email: { type: string, nullable: true }
+        appLoginEmail: { type: string, nullable: true }
         dailyRate: { type: number, nullable: true }
         company: { type: string, nullable: true }
         otherSalesBonusRate: { type: number, nullable: true }

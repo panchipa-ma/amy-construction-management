@@ -11,6 +11,7 @@ export interface CreateStaffBody {
   role: string;
   phone?: string | null;
   email?: string | null;
+  appLoginEmail?: string | null;
   dailyRate?: number | null;
   company?: string | null;
   otherSalesBonusRate?: number | null;

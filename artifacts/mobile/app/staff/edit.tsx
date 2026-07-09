@@ -18,6 +18,7 @@ const empty = {
   role: "",
   phone: "",
   email: "",
+  appLoginEmail: "",
   dailyRate: "",
   company: "",
 };
@@ -53,6 +54,7 @@ function StaffEdit() {
         role: s.role,
         phone: s.phone ?? "",
         email: s.email ?? "",
+        appLoginEmail: s.appLoginEmail ?? "",
         dailyRate: s.dailyRate != null ? String(s.dailyRate) : "",
         company: s.company ?? "",
       });
@@ -70,6 +72,7 @@ function StaffEdit() {
       role: form.role.trim(),
       phone: form.phone || null,
       email: form.email.trim() || null,
+      appLoginEmail: form.appLoginEmail.trim() || null,
       dailyRate: form.dailyRate === "" ? null : Number(form.dailyRate),
       company: form.company || null,
     };
@@ -114,10 +117,21 @@ function StaffEdit() {
         <Field label="電話番号">
           <Input value={form.phone} onChangeText={(v) => set("phone", v)} keyboardType="phone-pad" />
         </Field>
-        <Field label="メール (アプリ連携)" hint="この職人がアプリ登録するメール。担当の工程表・出面がその職人のアプリに自動反映されます。">
+        <Field label="連絡用メール" hint="職人がこのメールでアプリ登録していれば、担当の工程表・出面が自動反映されます。">
           <Input
             value={form.email}
             onChangeText={(v) => set("email", v)}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </Field>
+        <Field
+          label="アプリ連携用メール"
+          hint="連絡用が会社ドメインなどでログイン用と異なる場合、職人がアプリのログインに使うメールをこちらに登録すると連携されます。"
+        >
+          <Input
+            value={form.appLoginEmail}
+            onChangeText={(v) => set("appLoginEmail", v)}
             keyboardType="email-address"
             autoCapitalize="none"
           />

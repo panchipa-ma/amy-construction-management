@@ -90,6 +90,11 @@ function StaffScreen() {
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Body style={{ fontWeight: "600", flex: 1 }}>{item.name}</Body>
+              {item.appLinked == null ? null : item.appLinked ? (
+                <Badge tone="success">連携済み</Badge>
+              ) : item.email || item.appLoginEmail ? (
+                <Badge tone="danger">未連携</Badge>
+              ) : null}
               <Badge tone="accent">{item.role}</Badge>
             </View>
             {item.company ? <Muted style={{ marginTop: 4 }}>{item.company}</Muted> : null}

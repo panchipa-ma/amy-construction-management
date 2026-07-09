@@ -60,6 +60,9 @@ export const staffTable = pgTable("staff", {
   // 職人アプリアカウント連携キー。app_users.email と一致すると、社内が作成した
   // 工程表/出面が該当職人のアプリに自動反映される (project-phases/overview)。
   email: text("email"),
+  // アプリ連携専用メール。連絡用メール (email) とログイン用メールが異なる場合に使用。
+  // 連携判定は appLoginEmail / email のどちらか一致で成立する。
+  appLoginEmail: text("app_login_email"),
   dailyRate: numeric("daily_rate"),
   company: text("company"),
   // マネジメント報酬率 (%) — レガシー (社員テーブルに移行済)。
