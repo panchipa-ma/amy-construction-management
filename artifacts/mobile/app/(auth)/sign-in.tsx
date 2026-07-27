@@ -1,4 +1,5 @@
 import { useSignIn } from "@clerk/expo";
+import { useSignIn as useLegacySignIn } from "@clerk/expo/legacy";
 import { useCheckReviewLogin, useReviewLogin } from "@workspace/api-client-react";
 import { Link, useRouter } from "expo-router";
 import React, { useCallback } from "react";
@@ -23,6 +24,13 @@ export default function SignInScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { signIn, errors, fetchStatus } = useSignIn();
+  // 審査用チケットログインは実績のある従来型 API を使う
+  // (新 signals API の finalize() が実機でセッション ID を見失うため)
+  const {
+    signIn: legacySignIn,
+    setActive: legacySetActive,
+    isLoaded: legacyLoaded,
+  } = useLegacySignIn();
 
   const [emailAddress, setEmailAddress] = React.useState("");
   const [code, setCode] = React.useState("");
@@ -66,42 +74,50 @@ export default function SignInScreen() {
     }
   }, [emailAddress, signIn, checkReviewMut]);
 
+  const [isReviewSigningIn, setIsReviewSigningIn] = React.useState(false);
+
   const handleReviewLogin = useCallback(async () => {
+    if (isReviewSigningIn) return;
+    if (!legacyLoaded || !legacySignIn) {
+      setGeneralError("初期化中です。少し待ってからもう一度お試しください。");
+      return;
+    }
     setGeneralError(null);
+    setIsReviewSigningIn(true);
     try {
       const r = await reviewLoginMut.mutateAsync({
         data: { email: emailAddress, password },
       });
-      const { error } = await signIn.ticket({ ticket: r.token });
-      if (error) {
-        setGeneralError(
-          (error as { message?: string })?.message || "ログインに失敗しました。",
-        );
-        return;
-      }
-      // NOTE: signIn.status はレンダリング時のスナップショットのため、
-      // ticket() 直後に読むと古い値のまま "complete" にならないことがある。
-      // ticket() がエラーなしで返った時点でセッションは作成済みなので、
-      // status を見ずに finalize() を直接呼ぶ。
-      try {
-        const fin = await signIn.finalize({
-          navigate: ({ session }) => {
-            if (session?.currentTask) return;
-            router.replace("/(tabs)");
-          },
-        });
-        if (fin && (fin as { error?: unknown }).error) {
-          setGeneralError("ログインが完了しませんでした。");
-        }
-      } catch {
+      // 従来型 API: create(ticket) → createdSessionId → setActive。
+      // 新 signals API の finalize() は実機でセッション ID を見失い
+      // 「ログインが完了しませんでした」になるため使わない。
+      const res = await legacySignIn.create({
+        strategy: "ticket",
+        ticket: r.token,
+      });
+      if (res.status === "complete" && res.createdSessionId) {
+        await legacySetActive({ session: res.createdSessionId });
+        router.replace("/(tabs)");
+      } else {
         setGeneralError("ログインが完了しませんでした。");
       }
     } catch (err) {
       setGeneralError(
         err instanceof Error ? err.message : "ログインに失敗しました。",
       );
+    } finally {
+      setIsReviewSigningIn(false);
     }
-  }, [emailAddress, password, reviewLoginMut, signIn, router]);
+  }, [
+    isReviewSigningIn,
+    emailAddress,
+    password,
+    reviewLoginMut,
+    legacySignIn,
+    legacySetActive,
+    legacyLoaded,
+    router,
+  ]);
 
   const handleVerify = useCallback(async () => {
     setGeneralError(null);
@@ -199,7 +215,9 @@ export default function SignInScreen() {
                 title="ログイン"
                 onPress={handleReviewLogin}
                 disabled={!password}
-                loading={reviewLoginMut.isPending || isFetching}
+                loading={
+                  reviewLoginMut.isPending || isReviewSigningIn || isFetching
+                }
               />
             </View>
             <Pressable
