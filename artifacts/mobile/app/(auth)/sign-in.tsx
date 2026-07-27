@@ -79,14 +79,21 @@ export default function SignInScreen() {
         );
         return;
       }
-      if (signIn.status === "complete") {
-        await signIn.finalize({
+      // NOTE: signIn.status はレンダリング時のスナップショットのため、
+      // ticket() 直後に読むと古い値のまま "complete" にならないことがある。
+      // ticket() がエラーなしで返った時点でセッションは作成済みなので、
+      // status を見ずに finalize() を直接呼ぶ。
+      try {
+        const fin = await signIn.finalize({
           navigate: ({ session }) => {
             if (session?.currentTask) return;
             router.replace("/(tabs)");
           },
         });
-      } else {
+        if (fin && (fin as { error?: unknown }).error) {
+          setGeneralError("ログインが完了しませんでした。");
+        }
+      } catch {
         setGeneralError("ログインが完了しませんでした。");
       }
     } catch (err) {
@@ -106,14 +113,19 @@ export default function SignInScreen() {
         );
         return;
       }
-      if (signIn.status === "complete") {
-        await signIn.finalize({
+      // NOTE: signIn.status はスナップショットのため直後に読むと古いことがある。
+      // verifyCode() 成功時は finalize() を直接呼ぶ。
+      try {
+        const fin = await signIn.finalize({
           navigate: ({ session }) => {
             if (session?.currentTask) return;
             router.replace("/(tabs)");
           },
         });
-      } else {
+        if (fin && (fin as { error?: unknown }).error) {
+          setGeneralError("認証が完了しませんでした。コードを確認してください。");
+        }
+      } catch {
         setGeneralError("認証が完了しませんでした。コードを確認してください。");
       }
     } catch (err) {
