@@ -1,0 +1,33 @@
+Hello,
+
+Thank you for your efforts to follow our guidelines. There are some outstanding issues that still need your attention.
+
+If you have any questions, we are here to help. Reply to this message in App Store Connect and let us know.
+
+Review Environment
+Submission ID: 0cd5ed10-a118-4d79-91fe-d4a4c0e34e84
+Review date: July 30, 2026
+Review Device: iPhone 17 Pro Max
+Version reviewed: 1.0 (24)
+
+Guideline 3.2 - Business
+
+Issue Description
+
+We found in our review that the app is intended to be used by a specific business or organization, including partners, clients, or employees, but you've selected public distribution on the App Store in App Store Connect. Since the App Store is intended for apps with a public audience, we recommend reviewing the other distribution options available to you through your Apple Developer Program Account. 
+
+Next Steps
+
+If the app is intended for use by a specific business or organization, review the other distribution options available for apps designed for specific businesses or organizations and choose a distribution option that works for the app and users. You can review these app distribution options on Apple Developer. 
+
+>>> We understand you may already have submitted a request for unlisted app distribution. If that is the case, do not resubmit the app until you've received email confirmation regarding the outcome of your request. If your request is approved, you may then resubmit the app for review in App Store Connect. If you are not approved for unlisted app distribution, it would be appropriate to consider the other app distribution options.
+
+
+Support
+- Reply to this message in your preferred language if you need assistance. If you need additional support, use the Contact Us module.
+- Consult with fellow developers and Apple engineers on the Apple Developer Forums.
+- Request an App Review Appointment at Meet with Apple to discuss your app's review. Appointments subject to availability during your local business hours on Tuesdays and Thursdays.
+- Provide feedback on this message and your review experience by completing a short survey.
+
+Test on the latest betas
+Betas of iOS 27, iPadOS 27, macOS 27, tvOS 27 and visionOS 27 are now available. Download the latest betas to prepare your app for upcoming software releases. Learn more about installing and using Apple beta software.
