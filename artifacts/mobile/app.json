@@ -18,7 +18,10 @@
       "bundleIdentifier": "jp.amy.kanri",
       "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "施工現場の進捗写真および経費の領収書を撮影するためにカメラを使用します。撮影した写真は案件の進捗報告や経費申請に添付されます。",
+        "NSPhotoLibraryUsageDescription": "施工現場の進捗写真および経費の領収書を写真ライブラリから選択するために使用します。選択した写真は案件の進捗報告や経費申請に添付されます。",
+        "NSPhotoLibraryAddUsageDescription": "撮影した施工現場の写真を写真ライブラリに保存するために使用します。"
       }
     },
     "android": {},
