@@ -1,5 +1,5 @@
 import { Link, useLocation, useSearch } from "wouter";
-import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog, Shield, FileSignature, CheckCircle2, BadgeCheck, Calculator, Briefcase, CalendarDays } from "lucide-react";
+import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog, Shield, FileSignature, CheckCircle2, BadgeCheck, Calculator, Briefcase, CalendarDays, RefreshCw } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { useRole, isPathAllowed } from "@/lib/role";
 import { Button } from "@/components/ui/button";
@@ -135,6 +135,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="flex-1 flex flex-col min-w-0">
+        <Button
+          variant="outline"
+          size="icon"
+          className="fixed top-4 right-4 z-50 bg-background/95 shadow-sm print:hidden"
+          onClick={() => window.location.reload()}
+          aria-label="画面を再読み込み"
+          title="画面を再読み込み"
+          data-testid="button-reload-page"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </Button>
         <div className="flex-1 p-8 print:p-0">
           {children}
         </div>
