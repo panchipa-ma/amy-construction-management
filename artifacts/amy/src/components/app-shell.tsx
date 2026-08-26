@@ -1,5 +1,6 @@
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
-import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog, Shield, FileSignature, CheckCircle2, BadgeCheck, Calculator, Briefcase, CalendarDays, RefreshCw } from "lucide-react";
+import { LayoutDashboard, FolderKanban, FileText, Receipt, Users, HardHat, Upload, ReceiptText, BookOpen, ClipboardList, GanttChart, LogOut, UserCog, Shield, FileSignature, CheckCircle2, BadgeCheck, Calculator, Briefcase, CalendarDays, RefreshCw, Menu, X } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { useRole, isPathAllowed } from "@/lib/role";
 import { Button } from "@/components/ui/button";
@@ -34,9 +35,10 @@ const navItems: NavItem[] = [
   { name: "ユーザー管理", href: "/users", icon: Shield, internalOnly: true },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const search = useSearch();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { role } = useRole();
   const { user } = useUser();
   const { signOut } = useClerk();
@@ -57,9 +59,44 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "ユーザー";
   const roleLabel = role === "internal" ? "社内（全機能）" : "社外";
 
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location, search]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileMenuOpen]);
+
+  const isActive = (item: NavItem) => {
+    const [itemPath, itemQuery] = item.href.split("?");
+    if (item.href === "/") {
+      return location === "/" && !currentSearch;
+    }
+    if (itemQuery) {
+      return currentFull === item.href;
+    }
+    const hasFilteredSibling = navItems.some(
+      (other) =>
+        other.href !== item.href &&
+        other.href.startsWith(itemPath + "?") &&
+        currentFull === other.href,
+    );
+    return location.startsWith(itemPath) && !hasFilteredSibling;
+  };
+
+  const handleSignOut = () => {
+    setMobileMenuOpen(false);
+    void signOut();
+  };
+
   return (
-    <div className="min-h-screen flex bg-muted/30 print:block print:bg-white">
-      <aside className="w-56 border-r bg-sidebar flex-shrink-0 flex flex-col print:hidden sticky top-0 h-screen self-start">
+    <div className="app-shell min-h-screen flex bg-muted/30 print:block print:bg-white">
+      <aside className="app-shell-sidebar w-56 border-r bg-sidebar flex-shrink-0 flex flex-col print:hidden sticky top-0 h-screen self-start">
         <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg text-sidebar-foreground">
             <span className="bg-primary text-primary-foreground w-8 h-8 rounded-md flex items-center justify-center">A</span>
@@ -68,29 +105,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <nav className="sidebar-nav flex-1 py-4 px-3 space-y-1 overflow-y-auto">
           {visibleNav.map((item) => {
-            const [itemPath, itemQuery] = item.href.split("?");
-            let isActive: boolean;
-            if (item.href === "/") {
-              isActive = location === "/" && !currentSearch;
-            } else if (itemQuery) {
-              // Filtered shortcut — must match path AND query exactly.
-              isActive = currentFull === item.href;
-            } else {
-              // Plain path — match prefix but NOT when a sibling shortcut
-              // (same path + query) is active.
-              const hasFilteredSibling = navItems.some(
-                (other) =>
-                  other.href !== item.href &&
-                  other.href.startsWith(itemPath + "?") &&
-                  currentFull === other.href,
-              );
-              isActive = location.startsWith(itemPath) && !hasFilteredSibling;
-            }
             return (
               <Link key={item.href} href={item.href}>
                 <div
                   className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium ${
-                    isActive
+                     isActive(item)
                       ? "bg-sidebar-primary text-sidebar-primary-foreground"
                       : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   }`}
@@ -111,22 +130,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               権限: <span className="text-sidebar-foreground/90">{roleLabel}</span>
             </div>
           </div>
-          <Link href="/profile">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-8 text-xs"
-              data-testid="button-profile"
-            >
-              <UserCog className="w-3.5 h-3.5 mr-2" />
-              プロフィール
-            </Button>
+           <Link
+             href="/profile"
+             className="flex w-full items-center justify-start rounded-md px-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-8 text-xs"
+             data-testid="button-profile"
+           >
+             <UserCog className="w-3.5 h-3.5 mr-2" />
+             プロフィール
           </Link>
           <Button
             variant="ghost"
             size="sm"
             className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-8 text-xs"
-            onClick={() => signOut()}
+             onClick={handleSignOut}
             data-testid="button-sign-out"
           >
             <LogOut className="w-3.5 h-3.5 mr-2" />
@@ -134,22 +150,124 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Button>
         </div>
       </aside>
-      <main className="flex-1 flex flex-col min-w-0">
-        <Button
-          variant="outline"
-          size="icon"
-          className="fixed top-4 right-4 z-50 bg-background/95 shadow-sm print:hidden"
-          onClick={() => window.location.reload()}
-          aria-label="画面を再読み込み"
-          title="画面を再読み込み"
-          data-testid="button-reload-page"
-        >
-          <RefreshCw className="w-4 h-4" />
-        </Button>
-        <div className="flex-1 p-8 print:p-0">
+       <main className="app-shell-main flex-1 flex flex-col min-w-0">
+         <header className="mobile-header print:hidden">
+           <Link href="/" className="mobile-header-brand" onClick={() => setMobileMenuOpen(false)}>
+             <span className="mobile-brand-mark">A</span>
+             <span className="mobile-brand-copy">
+               <strong>AMY</strong>
+               <span>施工管理</span>
+             </span>
+           </Link>
+           <div className="mobile-header-actions">
+             <Button
+               variant="outline"
+               size="icon"
+               className="app-shell-reload bg-background/95 shadow-sm"
+               onClick={() => window.location.reload()}
+               aria-label="画面を再読み込み"
+               title="画面を再読み込み"
+               data-testid="button-reload-page"
+             >
+               <RefreshCw className="w-4 h-4" />
+             </Button>
+             <Button
+               variant="outline"
+               size="icon"
+               className="mobile-menu-trigger"
+               onClick={() => setMobileMenuOpen(true)}
+               aria-label="メニューを開く"
+               aria-expanded={mobileMenuOpen}
+               aria-controls="amy-mobile-menu"
+               data-testid="button-mobile-menu"
+             >
+               <Menu className="w-5 h-5" />
+             </Button>
+           </div>
+         </header>
+         <div className="app-shell-content flex-1 p-8 print:p-0">
           {children}
         </div>
       </main>
+       {mobileMenuOpen && (
+         <div className="mobile-drawer-root print:hidden">
+           <button
+             type="button"
+             className="mobile-drawer-backdrop"
+             aria-label="メニューを閉じる"
+             onClick={() => setMobileMenuOpen(false)}
+           />
+           <aside
+             id="amy-mobile-menu"
+             className="mobile-drawer"
+             role="dialog"
+             aria-modal="true"
+             aria-label="AMYメニュー"
+           >
+             <div className="mobile-drawer-header">
+               <div className="mobile-drawer-title">
+                 <span className="mobile-brand-mark">A</span>
+                 <span>
+                   <strong>AMY</strong>
+                   <small>施工管理</small>
+                 </span>
+               </div>
+               <Button
+                 variant="ghost"
+                 size="icon"
+                 className="mobile-drawer-close"
+                 onClick={() => setMobileMenuOpen(false)}
+                 aria-label="メニューを閉じる"
+                 data-testid="button-mobile-menu-close"
+               >
+                 <X className="w-5 h-5" />
+               </Button>
+             </div>
+             <nav className="mobile-drawer-nav" aria-label="メインメニュー">
+               {visibleNav.map((item) => (
+                 <Link
+                   key={item.href}
+                   href={item.href}
+                   onClick={() => setMobileMenuOpen(false)}
+                   className={`mobile-nav-link ${
+                     isActive(item) ? "mobile-nav-link-active" : ""
+                   }`}
+                 >
+                   <item.icon className="w-[17px] h-[17px]" />
+                   <span>{item.name}</span>
+                 </Link>
+               ))}
+             </nav>
+             <div className="mobile-drawer-footer">
+               <div className="mobile-user-summary">
+                 <div className="mobile-user-label">{userLabel}</div>
+                 <div className="mobile-role-label">
+                   権限: <span>{roleLabel}</span>
+                 </div>
+               </div>
+               <Link
+                 href="/profile"
+                 onClick={() => setMobileMenuOpen(false)}
+                 className="mobile-drawer-action"
+                 data-testid="button-mobile-profile"
+               >
+                 <UserCog className="w-4 h-4" />
+                 プロフィール
+               </Link>
+               <Button
+                 variant="ghost"
+                 size="sm"
+                 className="mobile-drawer-action"
+                 onClick={handleSignOut}
+                 data-testid="button-mobile-sign-out"
+               >
+                 <LogOut className="w-4 h-4" />
+                 サインアウト
+               </Button>
+             </div>
+           </aside>
+         </div>
+       )}
     </div>
   );
 }
