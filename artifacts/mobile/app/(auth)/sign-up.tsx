@@ -26,11 +26,24 @@ export default function SignUpScreen() {
   const [emailAddress, setEmailAddress] = React.useState("");
   const [code, setCode] = React.useState("");
   const [generalError, setGeneralError] = React.useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
+  const [verificationSent, setVerificationSent] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isResending, setIsResending] = React.useState(false);
+  const [isVerifying, setIsVerifying] = React.useState(false);
 
   const handleSubmit = useCallback(async () => {
+    if (isSubmitting) return;
     setGeneralError(null);
+    setSuccessMessage(null);
+    const normalizedEmail = emailAddress.trim();
+    if (!normalizedEmail) {
+      setGeneralError("メールアドレスを入力してください。");
+      return;
+    }
+    setIsSubmitting(true);
     try {
-      const { error } = await signUp.create({ emailAddress });
+      const { error } = await signUp.create({ emailAddress: normalizedEmail });
       if (error) {
         setGeneralError(
           (error as { message?: string })?.message ||
@@ -38,40 +51,103 @@ export default function SignUpScreen() {
         );
         return;
       }
-      await signUp.verifications.sendEmailCode();
+      const sendResult = (await signUp.verifications.sendEmailCode()) as {
+        error?: { message?: string } | null;
+      };
+      if (sendResult?.error) {
+        setGeneralError(
+          sendResult.error.message || "認証コードの送信に失敗しました。",
+        );
+        return;
+      }
+      // APIの送信成功後だけ、ローカル状態を認証コード画面へ切り替える。
+      setVerificationSent(true);
+      setCode("");
+      setSuccessMessage("認証コードを送信しました。");
     } catch (err) {
       setGeneralError(
-        err instanceof Error ? err.message : "登録に失敗しました。",
+        err instanceof Error
+          ? err.message
+          : "認証コードの送信に失敗しました。",
       );
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [emailAddress, signUp]);
+  }, [emailAddress, isSubmitting, signUp]);
+
+  const handleResend = useCallback(async () => {
+    if (isResending || isSubmitting || isVerifying) return;
+    setGeneralError(null);
+    setSuccessMessage(null);
+    setIsResending(true);
+    try {
+      const sendResult = (await signUp.verifications.sendEmailCode()) as {
+        error?: { message?: string } | null;
+      };
+      if (sendResult?.error) {
+        setGeneralError(
+          sendResult.error.message || "認証コードの再送に失敗しました。",
+        );
+        return;
+      }
+      setSuccessMessage("認証コードを再送しました。");
+    } catch (err) {
+      setGeneralError(
+        err instanceof Error
+          ? err.message
+          : "認証コードの再送に失敗しました。",
+      );
+    } finally {
+      setIsResending(false);
+    }
+  }, [isResending, isSubmitting, isVerifying, signUp]);
 
   const handleVerify = useCallback(async () => {
+    if (isVerifying) return;
     setGeneralError(null);
+    setSuccessMessage(null);
+    if (!code.trim()) {
+      setGeneralError("認証コードを入力してください。");
+      return;
+    }
+    setIsVerifying(true);
     try {
-      await signUp.verifications.verifyEmailCode({ code });
-      if (signUp.status === "complete") {
-        await signUp.finalize({
-          navigate: ({ session }) => {
-            if (session?.currentTask) return;
-            router.replace("/(tabs)");
-          },
-        });
-      } else {
-        setGeneralError("認証が完了しませんでした。コードを確認してください。");
+      const verifyResult = (await signUp.verifications.verifyEmailCode({
+        code: code.trim(),
+      })) as { error?: { message?: string } | null };
+      if (verifyResult?.error) {
+        setGeneralError(
+          verifyResult.error.message || "認証に失敗しました。コードを確認してください。",
+        );
+        return;
       }
+      // verifyEmailCode()直後のsignUp.statusは古いスナップショットの場合が
+      // あるため、statusを確認せず成功後は直接finalizeする。
+      await signUp.finalize({
+        navigate: ({ session }) => {
+          if (session?.currentTask) return;
+          router.replace("/(tabs)");
+        },
+      });
     } catch (err) {
       setGeneralError(
-        err instanceof Error ? err.message : "認証に失敗しました。",
+        err instanceof Error ? err.message : "認証に失敗しました。コードを確認してください。",
       );
+    } finally {
+      setIsVerifying(false);
     }
-  }, [code, signUp, router]);
+  }, [code, isVerifying, signUp, router]);
+
+  const handleChangeEmail = useCallback(() => {
+    signUp.reset();
+    setVerificationSent(false);
+    setCode("");
+    setGeneralError(null);
+    setSuccessMessage(null);
+  }, [signUp]);
 
   const isFetching = fetchStatus === "fetching";
-  const needsVerify =
-    signUp.status === "missing_requirements" &&
-    signUp.unverifiedFields.includes("email_address") &&
-    signUp.missingFields.length === 0;
+  const needsVerify = verificationSent;
 
   return (
     <KeyboardAvoidingView
@@ -126,15 +202,31 @@ export default function SignUpScreen() {
               <PrimaryButton
                 title="認証する"
                 onPress={handleVerify}
-                disabled={!code}
-                loading={isFetching}
+                disabled={!code.trim() || isVerifying || isFetching}
+                loading={isVerifying || isFetching}
               />
             </View>
             <Pressable
-              onPress={() => signUp.verifications.sendEmailCode()}
+              onPress={handleResend}
+              disabled={isResending || isVerifying || isFetching}
+              style={{
+                marginTop: 12,
+                alignItems: "center",
+                opacity: isResending || isVerifying || isFetching ? 0.5 : 1,
+              }}
+            >
+              <Text style={{ color: c.primary }}>
+                {isResending ? "再送信中..." : "コードを再送する"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={handleChangeEmail}
+              disabled={isResending || isVerifying}
               style={{ marginTop: 12, alignItems: "center" }}
             >
-              <Text style={{ color: c.primary }}>コードを再送する</Text>
+              <Text style={{ color: c.mutedForeground }}>
+                メールアドレスを変更する
+              </Text>
             </Pressable>
           </>
         ) : (
@@ -161,8 +253,8 @@ export default function SignUpScreen() {
               <PrimaryButton
                 title="認証コードを送信"
                 onPress={handleSubmit}
-                disabled={!emailAddress}
-                loading={isFetching}
+                disabled={!emailAddress.trim() || isSubmitting || isFetching}
+                loading={isSubmitting || isFetching}
               />
             </View>
 
@@ -175,6 +267,11 @@ export default function SignUpScreen() {
           <View style={{ marginTop: 12 }}>
             <ErrorState message={generalError} />
           </View>
+        ) : null}
+        {successMessage ? (
+          <Text style={[styles.success, { color: c.primary }]}>
+            {successMessage}
+          </Text>
         ) : null}
 
         <View
@@ -215,5 +312,10 @@ const styles = StyleSheet.create({
   error: {
     fontSize: 12,
     marginTop: 4,
+  },
+  success: {
+    fontSize: 13,
+    marginTop: 12,
+    textAlign: "center",
   },
 });
