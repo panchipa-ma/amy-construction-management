@@ -59,14 +59,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-muted/30 print:block print:bg-white">
-      <aside className="w-64 border-r bg-sidebar flex-shrink-0 flex flex-col print:hidden sticky top-0 h-screen self-start">
+      <aside className="w-56 border-r bg-sidebar flex-shrink-0 flex flex-col print:hidden sticky top-0 h-screen self-start">
         <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg text-sidebar-foreground">
             <span className="bg-primary text-primary-foreground w-8 h-8 rounded-md flex items-center justify-center">A</span>
             AMY 施工管理
           </Link>
         </div>
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+        <nav className="sidebar-nav flex-1 py-4 px-3 space-y-1 overflow-y-auto">
           {visibleNav.map((item) => {
             const [itemPath, itemQuery] = item.href.split("?");
             let isActive: boolean;

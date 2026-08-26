@@ -196,6 +196,14 @@
 }
 
 @layer utilities {
+  .sidebar-nav {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .sidebar-nav::-webkit-scrollbar {
+    display: none;
+  }
+
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;
   }
