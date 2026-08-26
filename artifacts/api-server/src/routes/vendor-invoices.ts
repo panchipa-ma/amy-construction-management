@@ -24,7 +24,8 @@ import {
   MarkVendorInvoicePaidResponse,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime, n } from "../lib/serializers";
-import { getOrCreateAppUser } from "../lib/auth";
+import { getOrCreateAppUser, requireInternal } from "../lib/auth";
+import { externalUserCanAccessProject } from "../lib/externalProjectAccess";
 
 const router: IRouter = Router();
 
@@ -224,7 +225,15 @@ router.post("/vendor-invoices", async (req, res): Promise<void> => {
     }
   }
 
-  const matched = await findProjectByUnit(parsed.data.unitNumber);
+  const me = await getOrCreateAppUser(req);
+  let matched = await findProjectByUnit(parsed.data.unitNumber);
+  if (
+    matched &&
+    me.role === "external" &&
+    !(await externalUserCanAccessProject(me, matched.id))
+  ) {
+    matched = null;
+  }
   let costEntryId: string | null = null;
   if (matched) {
     costEntryId = await createCostEntryForInvoice({
@@ -236,7 +245,6 @@ router.post("/vendor-invoices", async (req, res): Promise<void> => {
       unitNumber: parsed.data.unitNumber,
     });
   }
-  const me = await getOrCreateAppUser(req);
   const [row] = await db
     .insert(vendorInvoicesTable)
     .values({
@@ -285,7 +293,7 @@ router.delete("/vendor-invoices/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
-router.post("/vendor-invoices/:id/match", async (req, res): Promise<void> => {
+router.post("/vendor-invoices/:id/match", requireInternal, async (req, res): Promise<void> => {
   const params = MatchVendorInvoiceParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -339,6 +347,7 @@ router.post("/vendor-invoices/:id/match", async (req, res): Promise<void> => {
 
 router.post(
   "/vendor-invoices/:id/assign-staff",
+  requireInternal,
   async (req, res): Promise<void> => {
     const params = AssignVendorInvoiceStaffParams.safeParse(req.params);
     if (!params.success) {
@@ -379,6 +388,7 @@ router.post(
 
 router.post(
   "/vendor-invoices/:id/mark-paid",
+  requireInternal,
   async (req, res): Promise<void> => {
     const params = MarkVendorInvoicePaidParams.safeParse(req.params);
     if (!params.success) {

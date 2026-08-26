@@ -22,6 +22,7 @@ import usersRouter from "./users";
 import reviewLoginRouter from "./review-login";
 import commissionsRouter from "./commissions";
 import printRouter from "./print";
+import externalProjectsRouter from "./external-projects";
 import { requireApproved, requireInternal } from "../lib/auth";
 
 const router: IRouter = Router();
@@ -46,6 +47,7 @@ router.use(reviewLoginRouter);
 router.use(requireAuth);
 router.use(usersRouter);
 router.use(requireApproved);
+router.use(externalProjectsRouter);
 // IMPORTANT: internal-only routers must gate requireInternal by PATH, not by
 // `router.use(requireInternal, xxxRouter)`. In Express, a bare middleware in
 // `use(mw, router)` is mounted at "/" and therefore runs for EVERY subsequent
@@ -65,6 +67,10 @@ router.use(dashboardRouter);
 // 顧客マスタは社内のみ。
 router.use("/customers", requireInternal);
 router.use(customersRouter);
+// 案件一覧・案件詳細・施工台帳は原価・利益などの社内情報を返すため社内のみ。
+// 職人書類で必要な担当案件の最小情報は externalProjectsRouter から提供する。
+router.use("/projects", requireInternal);
+router.use(projectsRouter);
 // 社員 (営業/現場監督/事務) は社内マスタなので社内のみ
 router.use("/employees", requireInternal);
 router.use(employeesRouter);
@@ -95,10 +101,9 @@ router.use("/commissions", requireInternal);
 router.use(commissionsRouter);
 
 // ── 社外(職人)も利用可 (承認済みのみ) ────────────────────────────────
-// 職人請求書/見積書の作成時に「案件を選ぶ」「職人を割り当てる」ため、案件一覧と
-// 職人一覧は社外にも必要。staff は external には email を落として返す。
-// schedule / vendor-* は created_by で本人分のみ、phases は overview のみ。
-router.use(projectsRouter);
+// 職人請求書/見積書の作成時に職人一覧は社外にも必要。staff は external には
+// email を落として返す。schedule / vendor-* は created_by で本人分のみ、
+// phases は overview のみ。
 router.use(staffRouter);
 router.use(scheduleRouter);
 router.use(vendorInvoicesRouter);

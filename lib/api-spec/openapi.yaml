@@ -169,6 +169,20 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ProjectLedger" }
 
+  /external/assigned-projects:
+    get:
+      operationId: listExternalAssignedProjects
+      tags: [external]
+      summary: Minimal project choices for an external user's assigned phases
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ExternalAssignedProject" }
+
   /customers:
     get:
       operationId: listCustomers
@@ -2148,6 +2162,14 @@ components:
         entries:
           type: array
           items: { $ref: "#/components/schemas/CostEntry" }
+
+    ExternalAssignedProject:
+      type: object
+      required: [id, name, unitNumber]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        unitNumber: { type: string, nullable: true }
 
     LedgerCategoryRow:
       type: object

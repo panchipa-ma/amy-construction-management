@@ -22,7 +22,8 @@ import {
   ConvertVendorQuoteToInvoiceResponse,
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime, n } from "../lib/serializers";
-import { getOrCreateAppUser } from "../lib/auth";
+import { getOrCreateAppUser, requireInternal } from "../lib/auth";
+import { externalUserCanAccessProject } from "../lib/externalProjectAccess";
 
 const router: IRouter = Router();
 
@@ -213,7 +214,15 @@ router.post("/vendor-quotes", async (req, res): Promise<void> => {
     staffName = staff.name;
   }
 
-  const matched = await findProjectByUnit(parsed.data.unitNumber);
+  const me = await getOrCreateAppUser(req);
+  let matched = await findProjectByUnit(parsed.data.unitNumber);
+  if (
+    matched &&
+    me.role === "external" &&
+    !(await externalUserCanAccessProject(me, matched.id))
+  ) {
+    matched = null;
+  }
   let costEntryId: string | null = null;
   if (matched) {
     costEntryId = await createCostEntryForQuote({
@@ -225,7 +234,6 @@ router.post("/vendor-quotes", async (req, res): Promise<void> => {
       unitNumber: parsed.data.unitNumber,
     });
   }
-  const me = await getOrCreateAppUser(req);
   const [row] = await db
     .insert(vendorQuotesTable)
     .values({
@@ -273,7 +281,7 @@ router.delete("/vendor-quotes/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
-router.post("/vendor-quotes/:id/match", async (req, res): Promise<void> => {
+router.post("/vendor-quotes/:id/match", requireInternal, async (req, res): Promise<void> => {
   const params = MatchVendorQuoteParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -364,10 +372,16 @@ router.post(
     const invoiceDate = parsed.data.invoiceDate as unknown as string;
     const amount = n(quote.amount);
 
+    const canUseQuoteProject =
+      !quote.projectId ||
+      me.role !== "external" ||
+      (await externalUserCanAccessProject(me, quote.projectId));
+    const projectId = canUseQuoteProject ? quote.projectId : null;
+
     let costEntryId: string | null = null;
-    if (quote.projectId) {
+    if (projectId) {
       costEntryId = await createCostEntryForInvoice({
-        projectId: quote.projectId,
+        projectId,
         staffId: quote.staffId,
         staffName,
         amount,
@@ -381,7 +395,7 @@ router.post(
       .values({
         staffId: quote.staffId,
         vendorName: quote.vendorName ?? "",
-        projectId: quote.projectId,
+        projectId,
         costEntryId,
         unitNumber: quote.unitNumber,
         amount: String(amount),
@@ -389,7 +403,7 @@ router.post(
         fileUrl: quote.fileUrl,
         fileName: quote.fileName.replace(/^見積書_/, "請求書_"),
         notes: `職人見積書から変換${quote.notes ? ` / ${quote.notes}` : ""}`,
-        status: quote.projectId ? "matched" : "unmatched",
+        status: projectId ? "matched" : "unmatched",
         createdBy: me.clerkUserId,
       })
       .returning();
