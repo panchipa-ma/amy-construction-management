@@ -11,11 +11,14 @@ import {
   useRequestUploadUrl,
   useExtractOcr,
   useListProjects,
+  useListExternalAssignedProjects,
   useListStaff,
   getListVendorInvoicesQueryKey,
   getGetProjectLedgerQueryKey,
   getGetProjectQueryKey,
   getListProjectsQueryKey,
+  getListExternalAssignedProjectsQueryKey,
+  getListStaffQueryKey,
 } from "@workspace/api-client-react";
 import { Switch } from "@/components/ui/switch";
 import { ObjectUploader } from "@workspace/object-storage-web";
@@ -67,6 +70,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { useBulkSelection } from "@/lib/use-bulk-selection";
 import { BulkDeleteBar, runBulkDelete } from "@/components/bulk-delete-bar";
+import { useRole } from "../lib/role";
 
 type PaidFilter = "paid" | "unpaid";
 
@@ -74,6 +78,8 @@ export default function VendorInvoicesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const search = useSearch();
+  const { role } = useRole();
+  const isInternal = role === "internal";
   const isPaidView =
     new URLSearchParams(search).get("paid") === "true";
   const initialFilter: PaidFilter = isPaidView ? "paid" : "unpaid";
@@ -84,8 +90,28 @@ export default function VendorInvoicesPage() {
   }, [search]);
 
   const listQ = useListVendorInvoices();
-  const projectsQ = useListProjects();
-  const staffQ = useListStaff();
+  const projectsQ = useListProjects(undefined, {
+    query: {
+      enabled: isInternal,
+      queryKey: getListProjectsQueryKey(),
+    },
+  });
+  const externalProjectsQ = useListExternalAssignedProjects({
+    query: {
+      enabled: role === "external",
+      queryKey: getListExternalAssignedProjectsQueryKey(),
+    },
+  });
+  const projects =
+    role === "internal"
+      ? (projectsQ.data ?? [])
+      : (externalProjectsQ.data ?? []);
+  const staffQ = useListStaff({
+    query: {
+      enabled: isInternal,
+      queryKey: getListStaffQueryKey(),
+    },
+  });
   const createMut = useCreateVendorInvoice();
   const deleteMut = useDeleteVendorInvoice();
   const matchMut = useMatchVendorInvoice();
@@ -109,10 +135,11 @@ export default function VendorInvoicesPage() {
 
   const baseRows = useMemo(() => {
     const all = listQ.data ?? [];
+    if (!isInternal) return all;
     return paidFilter === "paid"
       ? all.filter((v) => v.paid)
       : all.filter((v) => !v.paid);
-  }, [listQ.data, paidFilter]);
+  }, [isInternal, listQ.data, paidFilter]);
 
   // 振込済 view: optional month filter on paidAt
   const [paidMonth, setPaidMonth] = useState<string>("all");
@@ -134,17 +161,19 @@ export default function VendorInvoicesPage() {
       }));
   }, [baseRows, paidFilter]);
   const listRows = useMemo(() => {
-    if (paidFilter !== "paid" || paidMonth === "all") return baseRows;
+    if (!isInternal || paidFilter !== "paid" || paidMonth === "all")
+      return baseRows;
     return baseRows.filter(
       (v) => v.paidAt && String(v.paidAt).slice(0, 7) === paidMonth,
     );
-  }, [baseRows, paidFilter, paidMonth]);
+  }, [baseRows, isInternal, paidFilter, paidMonth]);
   const sel = useBulkSelection(listRows.map((v) => v.id));
 
   const togglePaid = async (
     id: string,
     current: boolean,
   ) => {
+    if (!isInternal) return;
     try {
       await markPaidMut.mutateAsync({ id, data: { paid: !current } });
       await queryClient.invalidateQueries({
@@ -301,6 +330,7 @@ export default function VendorInvoicesPage() {
   };
 
   const handleMatch = async () => {
+    if (!isInternal) return;
     if (!matchTarget) return;
     try {
       const updated = await matchMut.mutateAsync({
@@ -315,15 +345,33 @@ export default function VendorInvoicesPage() {
     }
   };
 
+  const handleAssign = async () => {
+    if (!isInternal || !assignTarget?.staffId) return;
+    try {
+      await assignMut.mutateAsync({
+        id: assignTarget.id,
+        data: { staffId: assignTarget.staffId },
+      });
+      await refresh();
+      toast({ title: "職人を割当てました" });
+      setAssignTarget(null);
+    } catch (e) {
+      toast({
+        title: apiErrorMessage(e),
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold">
-            {isPaidView ? "職人振込済" : "職人請求書"}
+            {isInternal && isPaidView ? "職人振込済" : "職人請求書"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
-            {isPaidView ? (
+            {isInternal && isPaidView ? (
               "職人へ振込済の請求書はこちらに自動で移動します。"
             ) : (
               <>
@@ -394,9 +442,13 @@ export default function VendorInvoicesPage() {
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">
-            {isPaidView ? "振込済の職人請求書" : "未振込の職人請求書"}
+             {isInternal && isPaidView
+               ? "振込済の職人請求書"
+               : isInternal
+                 ? "未振込の職人請求書"
+                 : "職人請求書一覧"}
           </CardTitle>
-          {isPaidView && (
+          {isInternal && isPaidView && (
             <Select value={paidMonth} onValueChange={setPaidMonth}>
               <SelectTrigger
                 className="w-44"
@@ -420,7 +472,7 @@ export default function VendorInvoicesPage() {
             <Skeleton className="h-40 w-full" />
           ) : listRows.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
-              {isPaidView
+              {isInternal && isPaidView
                 ? "振込済の請求書はまだありません。"
                 : "請求書はまだありません。右上のボタンからファイルをアップロードしてください。"}
             </p>
@@ -442,7 +494,7 @@ export default function VendorInvoicesPage() {
                   <TableHead className="text-right">金額</TableHead>
                   <TableHead>振分先案件</TableHead>
                   <TableHead>ファイル</TableHead>
-                  <TableHead>振込状態</TableHead>
+                  {isInternal && <TableHead>振込状態</TableHead>}
                   <TableHead className="w-32"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -468,7 +520,7 @@ export default function VendorInvoicesPage() {
                         <div className="text-[11px] text-emerald-600">
                           ✓ 職人「{v.staffName}」に一致
                         </div>
-                      ) : (
+                      ) : isInternal ? (
                         <button
                           onClick={() =>
                             setAssignTarget({ id: v.id, staffId: "" })
@@ -477,20 +529,28 @@ export default function VendorInvoicesPage() {
                         >
                           職人未一致 (割当)
                         </button>
-                      )}
+                      ) : null}
                     </TableCell>
                     <TableCell>{formatDate(v.invoiceDate)}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatCurrency(v.amount)}
                     </TableCell>
                     <TableCell>
-                      {v.status === "matched" && v.projectId ? (
-                        <Link
-                          href={`/projects/${v.projectId}`}
-                          className="text-primary hover:underline"
-                        >
-                          {v.projectName}
-                        </Link>
+                      {v.status === "matched" &&
+                      v.projectId &&
+                      projects.find((p) => p.id === v.projectId) ? (
+                        isInternal ? (
+                          <Link
+                            href={`/projects/${v.projectId}`}
+                            className="text-primary hover:underline"
+                          >
+                            {projects.find((p) => p.id === v.projectId)?.name}
+                          </Link>
+                        ) : (
+                          <span>
+                            {projects.find((p) => p.id === v.projectId)?.name}
+                          </span>
+                        )
                       ) : (
                         <Badge variant="outline" className="text-amber-700">
                           未振分
@@ -521,29 +581,31 @@ export default function VendorInvoicesPage() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={v.paid}
-                          onCheckedChange={() => togglePaid(v.id, v.paid)}
-                          aria-label="職人振込済"
-                          data-testid={`switch-vendor-paid-${v.id}`}
-                        />
-                        <Badge
-                          variant="outline"
-                          className={
-                            v.paid
-                              ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                              : "bg-amber-100 text-amber-800 border-amber-200"
-                          }
-                        >
-                          {v.paid ? "振込済" : "未振込"}
-                        </Badge>
-                      </div>
-                    </TableCell>
+                    {isInternal && (
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={v.paid}
+                            onCheckedChange={() => togglePaid(v.id, v.paid)}
+                            aria-label="職人振込済"
+                            data-testid={`switch-vendor-paid-${v.id}`}
+                          />
+                          <Badge
+                            variant="outline"
+                            className={
+                              v.paid
+                                ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                                : "bg-amber-100 text-amber-800 border-amber-200"
+                            }
+                          >
+                            {v.paid ? "振込済" : "未振込"}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="flex items-center gap-1 justify-end">
-                        {v.status === "unmatched" && (
+                        {isInternal && v.status === "unmatched" && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -574,7 +636,7 @@ export default function VendorInvoicesPage() {
         </CardContent>
       </Card>
 
-      <Dialog
+      {isInternal && <Dialog
         open={!!matchTarget}
         onOpenChange={(o) => !o && setMatchTarget(null)}
       >
@@ -596,7 +658,7 @@ export default function VendorInvoicesPage() {
                 <SelectValue placeholder="案件を選択" />
               </SelectTrigger>
               <SelectContent>
-                {(projectsQ.data ?? []).map((p) => (
+                {projects.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}
                     {p.unitNumber ? ` (${p.unitNumber})` : ""}
@@ -617,9 +679,9 @@ export default function VendorInvoicesPage() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
-      <Dialog
+      {isInternal && <Dialog
         open={!!assignTarget}
         onOpenChange={(o) => !o && setAssignTarget(null)}
       >
@@ -655,30 +717,14 @@ export default function VendorInvoicesPage() {
               キャンセル
             </Button>
             <Button
-              onClick={async () => {
-                if (!assignTarget?.staffId) return;
-                try {
-                  await assignMut.mutateAsync({
-                    id: assignTarget.id,
-                    data: { staffId: assignTarget.staffId },
-                  });
-                  await refresh();
-                  toast({ title: "職人を割当てました" });
-                  setAssignTarget(null);
-                } catch (e) {
-                  toast({
-                    title: apiErrorMessage(e),
-                    variant: "destructive",
-                  });
-                }
-              }}
+              onClick={handleAssign}
               disabled={!assignTarget?.staffId || assignMut.isPending}
             >
               割当てる
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
       <AlertDialog
         open={!!askDelete}

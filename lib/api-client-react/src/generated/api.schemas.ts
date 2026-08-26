@@ -874,6 +874,12 @@ export interface ProjectLedger {
   entries: CostEntry[];
 }
 
+export interface ExternalAssignedProject {
+  id: string;
+  name: string;
+  unitNumber: string | null;
+}
+
 export type DashboardSummaryStatusBreakdownItem = {
   status: string;
   count: number;

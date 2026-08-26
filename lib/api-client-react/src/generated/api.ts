@@ -43,6 +43,7 @@ import type {
   Customer,
   DashboardSummary,
   Employee,
+  ExternalAssignedProject,
   ExtractOcrBody,
   ExtractOcrResponse,
   GetCommissionsParams,
@@ -885,6 +886,86 @@ export function useGetProjectLedger<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetProjectLedgerQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Minimal project choices for an external user's assigned phases
+ */
+export const getListExternalAssignedProjectsUrl = () => {
+  return `/api/external/assigned-projects`;
+};
+
+export const listExternalAssignedProjects = async (
+  options?: RequestInit,
+): Promise<ExternalAssignedProject[]> => {
+  return customFetch<ExternalAssignedProject[]>(
+    getListExternalAssignedProjectsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListExternalAssignedProjectsQueryKey = () => {
+  return [`/api/external/assigned-projects`] as const;
+};
+
+export const getListExternalAssignedProjectsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listExternalAssignedProjects>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listExternalAssignedProjects>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListExternalAssignedProjectsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listExternalAssignedProjects>>
+  > = ({ signal }) =>
+    listExternalAssignedProjects({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listExternalAssignedProjects>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListExternalAssignedProjectsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listExternalAssignedProjects>>
+>;
+export type ListExternalAssignedProjectsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Minimal project choices for an external user's assigned phases
+ */
+
+export function useListExternalAssignedProjects<
+  TData = Awaited<ReturnType<typeof listExternalAssignedProjects>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listExternalAssignedProjects>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListExternalAssignedProjectsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

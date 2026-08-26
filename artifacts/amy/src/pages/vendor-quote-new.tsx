@@ -3,12 +3,14 @@ import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProjects,
+  useListExternalAssignedProjects,
   useCreateVendorQuote,
   useRequestUploadUrl,
   getListVendorQuotesQueryKey,
   getListProjectsQueryKey,
   getGetProjectLedgerQueryKey,
   getGetProjectQueryKey,
+  getListExternalAssignedProjectsQueryKey,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +39,7 @@ import {
 import { QUOTE_TERMS } from "@/lib/company-info";
 import { addCanvasToPdfWithRowBreaks } from "@/lib/pdf-row-breaks";
 import { freezeInputsForCapture } from "@/lib/pdf-freeze-inputs";
+import { useRole } from "../lib/role";
 
 // Per-quote form state (recipient + author). Issuer + bank info come from the
 // signed-in user's Clerk profile (same as 職人請求書).
@@ -135,7 +138,23 @@ export default function VendorQuoteNewPage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const projectsQ = useListProjects();
+  const { role } = useRole();
+  const projectsQ = useListProjects(undefined, {
+    query: {
+      enabled: role === "internal",
+      queryKey: getListProjectsQueryKey(),
+    },
+  });
+  const externalProjectsQ = useListExternalAssignedProjects({
+    query: {
+      enabled: role === "external",
+      queryKey: getListExternalAssignedProjectsQueryKey(),
+    },
+  });
+  const projects =
+    role === "internal"
+      ? (projectsQ.data ?? [])
+      : (externalProjectsQ.data ?? []);
   const createMut = useCreateVendorQuote();
   const requestUrlMut = useRequestUploadUrl();
 
@@ -177,8 +196,8 @@ export default function VendorQuoteNewPage() {
   };
 
   const project = useMemo(
-    () => (projectsQ.data ?? []).find((p) => p.id === projectId),
-    [projectsQ.data, projectId],
+    () => projects.find((p) => p.id === projectId),
+    [projects, projectId],
   );
 
   const subtotal = items.reduce(
@@ -337,7 +356,7 @@ export default function VendorQuoteNewPage() {
 
   const validate = (): string | null => {
     if (!defaults.companyName.trim()) return "会社名を入力してください";
-    if (!projectId) return "件名（案件）を選択してください";
+    if (!projectId || !project) return "件名（案件）を選択してください";
     const valid = items.filter(
       (it) => it.description.trim() && it.quantity > 0 && it.unitPrice > 0,
     );
@@ -559,11 +578,12 @@ export default function VendorQuoteNewPage() {
                   <SelectValue placeholder="案件を選択" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(projectsQ.data ?? [])
+                  {projects
                     .filter(
                       (p) =>
                         // 竣工・アーカイブ案件は職人見積書の対象外。
                         // 既に選択中の案件は表示を維持。
+                        !("status" in p) ||
                         (p.status !== "completed" && p.status !== "archived") ||
                         p.id === projectId,
                     )

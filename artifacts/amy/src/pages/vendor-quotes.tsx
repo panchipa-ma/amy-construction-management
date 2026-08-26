@@ -6,11 +6,13 @@ import {
   useDeleteVendorQuote,
   useMatchVendorQuote,
   useListProjects,
+  useListExternalAssignedProjects,
   getListVendorQuotesQueryKey,
   getListVendorInvoicesQueryKey,
   getGetProjectLedgerQueryKey,
   getGetProjectQueryKey,
   getListProjectsQueryKey,
+  getListExternalAssignedProjectsQueryKey,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,13 +63,31 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { useBulkSelection } from "@/lib/use-bulk-selection";
 import { BulkDeleteBar, runBulkDelete } from "@/components/bulk-delete-bar";
+import { useRole } from "../lib/role";
 
 export default function VendorQuotesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const { role } = useRole();
+  const isInternal = role === "internal";
   const listQ = useListVendorQuotes();
-  const projectsQ = useListProjects();
+  const projectsQ = useListProjects(undefined, {
+    query: {
+      enabled: isInternal,
+      queryKey: getListProjectsQueryKey(),
+    },
+  });
+  const externalProjectsQ = useListExternalAssignedProjects({
+    query: {
+      enabled: role === "external",
+      queryKey: getListExternalAssignedProjectsQueryKey(),
+    },
+  });
+  const projects =
+    role === "internal"
+      ? (projectsQ.data ?? [])
+      : (externalProjectsQ.data ?? []);
   const deleteMut = useDeleteVendorQuote();
   const matchMut = useMatchVendorQuote();
 
@@ -144,6 +164,7 @@ export default function VendorQuotesPage() {
   };
 
   const handleMatch = async () => {
+    if (!isInternal) return;
     if (!matchTarget) return;
     try {
       const updated = await matchMut.mutateAsync({
@@ -253,13 +274,21 @@ export default function VendorQuotesPage() {
                       {formatCurrency(v.amount)}
                     </TableCell>
                     <TableCell>
-                      {v.status === "matched" && v.projectId ? (
-                        <Link
-                          href={`/projects/${v.projectId}`}
-                          className="text-primary hover:underline"
-                        >
-                          {v.projectName}
-                        </Link>
+                      {v.status === "matched" &&
+                      v.projectId &&
+                      projects.find((p) => p.id === v.projectId) ? (
+                        isInternal ? (
+                          <Link
+                            href={`/projects/${v.projectId}`}
+                            className="text-primary hover:underline"
+                          >
+                            {projects.find((p) => p.id === v.projectId)?.name}
+                          </Link>
+                        ) : (
+                          <span>
+                            {projects.find((p) => p.id === v.projectId)?.name}
+                          </span>
+                        )
                       ) : (
                         <Badge variant="outline" className="text-amber-700">
                           未振分
@@ -278,7 +307,7 @@ export default function VendorQuotesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 justify-end">
-                        {v.status === "unmatched" && (
+                        {isInternal && v.status === "unmatched" && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -329,10 +358,11 @@ export default function VendorQuotesPage() {
         </CardContent>
       </Card>
 
-      <Dialog
-        open={!!matchTarget}
-        onOpenChange={(o) => !o && setMatchTarget(null)}
-      >
+      {isInternal && (
+        <Dialog
+          open={!!matchTarget}
+          onOpenChange={(o) => !o && setMatchTarget(null)}
+        >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>案件に紐付け</DialogTitle>
@@ -351,7 +381,7 @@ export default function VendorQuotesPage() {
                 <SelectValue placeholder="案件を選択" />
               </SelectTrigger>
               <SelectContent>
-                {(projectsQ.data ?? []).map((p) => (
+                {projects.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}
                     {p.unitNumber ? ` (${p.unitNumber})` : ""}
@@ -372,7 +402,8 @@ export default function VendorQuotesPage() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+        </Dialog>
+      )}
 
       <Dialog
         open={!!askConvert}

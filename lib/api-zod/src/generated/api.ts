@@ -466,6 +466,18 @@ export const GetProjectLedgerResponse = zod.object({
   ),
 });
 
+/**
+ * @summary Minimal project choices for an external user's assigned phases
+ */
+export const ListExternalAssignedProjectsResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  unitNumber: zod.string().nullable(),
+});
+export const ListExternalAssignedProjectsResponse = zod.array(
+  ListExternalAssignedProjectsResponseItem,
+);
+
 export const ListCustomersResponseItem = zod.object({
   id: zod.string(),
   name: zod.string(),

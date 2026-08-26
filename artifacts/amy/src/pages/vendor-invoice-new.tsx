@@ -3,6 +3,7 @@ import { Link, useLocation, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProjects,
+  useListExternalAssignedProjects,
   useListVendorQuotes,
   useCreateVendorInvoice,
   useDeleteVendorQuote,
@@ -12,6 +13,7 @@ import {
   getListProjectsQueryKey,
   getGetProjectLedgerQueryKey,
   getGetProjectQueryKey,
+  getListExternalAssignedProjectsQueryKey,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +35,7 @@ import { apiErrorMessage } from "@/lib/api-error";
 import { useUser } from "@clerk/react";
 import { readProfile } from "@/lib/profile";
 import { addCanvasToPdfWithRowBreaks } from "@/lib/pdf-row-breaks";
+import { useRole } from "../lib/role";
 
 // Per-invoice form state (recipient + author). Issuer + bank info are loaded
 // from the signed-in user's Clerk profile so each user sees only their own info.
@@ -150,7 +153,23 @@ export default function VendorInvoiceNewPage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const projectsQ = useListProjects();
+  const { role } = useRole();
+  const projectsQ = useListProjects(undefined, {
+    query: {
+      enabled: role === "internal",
+      queryKey: getListProjectsQueryKey(),
+    },
+  });
+  const externalProjectsQ = useListExternalAssignedProjects({
+    query: {
+      enabled: role === "external",
+      queryKey: getListExternalAssignedProjectsQueryKey(),
+    },
+  });
+  const projects =
+    role === "internal"
+      ? (projectsQ.data ?? [])
+      : (externalProjectsQ.data ?? []);
   const createMut = useCreateVendorInvoice();
   const deleteVendorQuoteMut = useDeleteVendorQuote();
   const requestUrlMut = useRequestUploadUrl();
@@ -230,6 +249,9 @@ export default function VendorInvoiceNewPage() {
   useEffect(() => {
     if (prefilledFromQuoteRef.current) return;
     if (!fromVendorQuoteId) return;
+    const projectsLoaded =
+      role === "internal" ? projectsQ.isFetched : externalProjectsQ.isFetched;
+    if (!projectsLoaded) return;
     if (!sourceQuote) {
       if (
         !vendorQuotesQ.isLoading &&
@@ -247,7 +269,12 @@ export default function VendorInvoiceNewPage() {
     }
     prefilledFromQuoteRef.current = true;
 
-    if (sourceQuote.projectId) setProjectId(sourceQuote.projectId);
+    const sourceProject = sourceQuote.projectId
+      ? projects.find((p) => p.id === sourceQuote.projectId)
+      : undefined;
+    if (sourceProject) {
+      setProjectId(sourceProject.id);
+    }
 
     const parsed = parseAuthorRecipient(sourceQuote.notes);
     setDefaults((d) => ({
@@ -262,7 +289,7 @@ export default function VendorInvoiceNewPage() {
     // Vendor quotes only store a single tax-included `amount`. Convert back to
     // a tax-excluded subtotal for the single summary line so total ≈ amount.
     const subtotalGuess = Math.round(sourceQuote.amount / 1.1);
-    const projName = sourceQuote.projectName || sourceQuote.vendorName || "工事一式";
+    const projName = sourceProject?.name || sourceQuote.vendorName || "工事一式";
     setItems([
       {
         description: `${projName} 工事一式`,
@@ -276,7 +303,15 @@ export default function VendorInvoiceNewPage() {
       description:
         "明細は1行にまとめています。必要に応じて編集し、請求日を確認してください。",
     });
-  }, [fromVendorQuoteId, sourceQuote, toast]);
+  }, [
+    externalProjectsQ.isFetched,
+    fromVendorQuoteId,
+    projects,
+    projectsQ.isFetched,
+    role,
+    sourceQuote,
+    toast,
+  ]);
 
   const updateDefault = <K extends keyof CreatorDefaults>(
     k: K,
@@ -286,8 +321,8 @@ export default function VendorInvoiceNewPage() {
   };
 
   const project = useMemo(
-    () => (projectsQ.data ?? []).find((p) => p.id === projectId),
-    [projectsQ.data, projectId],
+    () => projects.find((p) => p.id === projectId),
+    [projects, projectId],
   );
 
   const subtotal = items.reduce(
@@ -306,7 +341,7 @@ export default function VendorInvoiceNewPage() {
 
   const validate = (): string | null => {
     if (!defaults.companyName.trim()) return "会社名を入力してください";
-    if (!projectId) return "件名（案件）を選択してください";
+    if (!projectId || !project) return "件名（案件）を選択してください";
     const valid = items.filter((it) => it.description.trim() && it.unitPrice > 0);
     if (valid.length === 0) return "明細を1行以上入力してください";
     if (!issueDate) return "請求書発行日を入力してください";
@@ -531,7 +566,7 @@ export default function VendorInvoiceNewPage() {
                   <SelectValue placeholder="案件を選択" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(projectsQ.data ?? []).map((p) => (
+                  {projects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {projectLabel(p)}
                     </SelectItem>

@@ -44,6 +44,7 @@ export * from "./dashboardSummaryInvoicesWithoutDueDate";
 export * from "./dashboardSummaryMonthlyInvoiceTotalsItem";
 export * from "./dashboardSummaryStatusBreakdownItem";
 export * from "./employee";
+export * from "./externalAssignedProject";
 export * from "./extractOcrBody";
 export * from "./extractOcrBodyKind";
 export * from "./extractOcrResponse";
