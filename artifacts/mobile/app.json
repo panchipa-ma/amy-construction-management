@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "jp.amy.kanri",
-      "buildNumber": "1",
+      "buildNumber": "26",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "施工現場の進捗写真および経費の領収書を撮影するためにカメラを使用します。撮影した写真は案件の進捗報告や経費申請に添付されます。",
