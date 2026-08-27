@@ -71,3 +71,6 @@ packages = ["eas-cli"]
 [userenv.shared]
 REVIEW_DEMO_EMAIL = "review@amy-demo.app"
 REVIEW_DEMO_PASSWORD = "Amy-N5ckcVFst5XX"
+
+[objectStorage]
+defaultBucketID = "replit-objstore-7a0ea98d-9885-4408-a8e2-eca93680936a"
