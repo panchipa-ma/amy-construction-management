@@ -217,7 +217,7 @@ function renderSheet(
   const dayHeaderCells = days
     .map((date) => {
       const holiday = isProjectHoliday(date, project.saturdayWork ?? true);
-      return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${HEADER_ROW_H}px;font-size:${dayFontSize}px;background:${holiday ? WEEKEND_BG : "#fff"};color:${holiday ? "#fff" : "#000"};position:relative" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${holidayFillMarkup(holiday)}<span class="cell-content">${date.getDate()}</span></div>`;
+      return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${HEADER_ROW_H}px;font-size:${dayFontSize}px;background:${holiday ? WEEKEND_BG : "#fff"};color:#000;position:relative" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${holidayFillMarkup(holiday)}<span class="cell-content">${date.getDate()}</span></div>`;
     })
     .join("");
 
@@ -225,7 +225,7 @@ function renderSheet(
     .map((date) => {
       const dow = date.getDay();
       const holiday = isProjectHoliday(date, project.saturdayWork ?? true);
-      const color = holiday ? "#fff" : "#000";
+      const color = "#000";
       return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${HEADER_ROW_H}px;font-size:${dayFontSize}px;background:${holiday ? WEEKEND_BG : "#fff"};color:${color};position:relative" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${holidayFillMarkup(holiday)}<span class="cell-content">${DOW[dow]}</span></div>`;
     })
     .join("");
