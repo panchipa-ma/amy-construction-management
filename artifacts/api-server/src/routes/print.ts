@@ -208,7 +208,7 @@ router.get("/print/gantt/:projectId", async (req, res): Promise<void> => {
       .where(eq(employeesTable.name, project.siteSupervisor));
     supervisorPhone = emp?.phone ?? null;
   }
-  if (!supervisorPhone) supervisorPhone = COMPANY_INFO.tel;
+  if (!project.siteSupervisor) supervisorPhone = COMPANY_INFO.tel;
   const phases = await db
     .select()
     .from(projectPhasesTable)

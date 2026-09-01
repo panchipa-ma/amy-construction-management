@@ -226,8 +226,8 @@ function renderSheet(
     .join("");
 
   const headerBar =
-    project.companyName || project.siteSupervisor || project.supervisorPhone
-      ? `<div style="width:${totalWidth}px;display:flex;justify-content:flex-end;align-items:baseline;gap:20px;padding:2px 4px 6px;font-size:13px">${project.companyName ? `<span style="font-weight:600">${escapeHtml(project.companyName)}</span>` : ""}${project.siteSupervisor ? `<span>担当者: ${escapeHtml(project.siteSupervisor)}</span>` : ""}${project.supervisorPhone ? `<span>担当者電話番号: ${escapeHtml(project.supervisorPhone)}</span>` : ""}</div>`
+    project.companyName || project.supervisorPhone
+      ? `<div style="width:${totalWidth}px;display:flex;justify-content:flex-end;align-items:baseline;gap:20px;padding:2px 4px 6px;font-size:13px">${project.companyName ? `<span style="font-weight:600">${escapeHtml(project.companyName)}</span>` : ""}${project.siteSupervisor ? `<span>現場担当者：${escapeHtml(project.siteSupervisor)}</span>${project.supervisorPhone ? `<span>現場担当者電話番号：${escapeHtml(project.supervisorPhone)}</span>` : ""}` : project.supervisorPhone ? `<span>${escapeHtml(project.supervisorPhone)}</span>` : ""}</div>`
       : "";
 
   const breakStyle = isLast ? "" : "page-break-after:always;";
