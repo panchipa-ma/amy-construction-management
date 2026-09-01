@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useAuth } from "@clerk/react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -52,9 +53,11 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { apiErrorMessage } from "@/lib/api-error";
+import { openAuthenticatedPrintWindow } from "@/lib/print";
 import { CheckCircle2, ExternalLink, Printer, RotateCcw } from "lucide-react";
 
 export default function LedgerPage() {
+  const { getToken } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const projectsQ = useListProjects();
@@ -149,12 +152,16 @@ export default function LedgerPage() {
             <Button
               variant="outline"
               className="gap-2"
-              onClick={() =>
-                window.open(
-                  `/api/print/ledger/${selectedProject.id}?autoprint=1`,
-                  "_blank",
-                )
-              }
+              onClick={async () => {
+                try {
+                  await openAuthenticatedPrintWindow({
+                    url: `/api/print/ledger/${selectedProject.id}?autoprint=1`,
+                    getToken,
+                  });
+                } catch (err) {
+                  toast({ title: apiErrorMessage(err), variant: "destructive" });
+                }
+              }}
             >
               <Printer className="w-4 h-4" />
               PDF出力

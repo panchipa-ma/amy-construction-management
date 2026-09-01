@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProjectPhases,
@@ -41,6 +42,7 @@ import { Plus, Pencil, Trash2, FileDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage } from "@/lib/api-error";
 import { formatDate, todayLocalISO } from "@/lib/format";
+import { openAuthenticatedPrintWindow } from "@/lib/print";
 
 const STATUS_LABEL: Record<string, string> = {
   planned: "予定",
@@ -122,6 +124,7 @@ type DragState =
   | null;
 
 export function ProjectGantt({ projectId }: { projectId: string }) {
+  const { getToken } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const phasesQ = useListProjectPhases(projectId, {
@@ -351,14 +354,21 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
     }
   };
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     if (phases.length === 0) {
       toast({ title: "工程が登録されていません", variant: "destructive" });
       return;
     }
     // 共有テンプレート (`@workspace/print-html` renderGanttHtml) を `?autoprint=1`
     // で開いて印刷ダイアログを起動。Web/モバイル完全同一の出力を保証する。
-    window.open(`/api/print/gantt/${projectId}?autoprint=1`, "_blank");
+    try {
+      await openAuthenticatedPrintWindow({
+        url: `/api/print/gantt/${projectId}?autoprint=1`,
+        getToken,
+      });
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+    }
   };
 
   const handleDelete = async (id: string) => {
