@@ -5,6 +5,8 @@ import {
   useGetProject,
   useGetProjectLedger,
   useDeleteProject,
+  useListCustomers,
+  useListEmployees,
   useListQuotes,
   useListInvoices,
   useListScheduleEntries,
@@ -29,6 +31,7 @@ import {
   getListProgressLogsQueryKey,
   CostCategory,
   type CostEntry,
+  type UpdateProjectBody,
 } from "@workspace/api-client-react";
 import { ObjectUploader } from "@workspace/object-storage-web";
 import { Button } from "@/components/ui/button";
@@ -104,6 +107,7 @@ import {
   type CreateCostEntryDraft,
 } from "@/components/ledger-spreadsheet";
 import { ProjectGantt } from "@/components/project-gantt";
+import { ProjectEditDialog } from "@/components/project-edit-dialog";
 
 const COST_CATEGORY_LABEL: Record<string, string> = {
   material: "材料",
@@ -147,6 +151,8 @@ export default function ProjectDetailPage() {
   const invoicesQ = useListInvoices({ projectId: id });
   const schedulesQ = useListScheduleEntries({ projectId: id });
   const logsQ = useListProgressLogs({ projectId: id });
+  const customersQ = useListCustomers();
+  const employeesQ = useListEmployees();
 
   const updateProjectMut = useUpdateProject();
   const createCostMut = useCreateCostEntry();
@@ -174,6 +180,7 @@ export default function ProjectDetailPage() {
   const [askDeleteProject, setAskDeleteProject] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [logForm, setLogForm] = useState(emptyLog);
+  const [projectEditOpen, setProjectEditOpen] = useState(false);
 
   // Resync cache from server when the ledger refetches — but only for rows
   // without a pending writer (else we'd clobber optimistic state mid-flight).
@@ -324,6 +331,29 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const saveProject = async (data: UpdateProjectBody): Promise<boolean> => {
+    try {
+      await updateProjectMut.mutateAsync({ id, data });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: getGetProjectQueryKey(id),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetProjectLedgerQueryKey(id),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getListProjectsQueryKey(),
+        }),
+        invalidateDashboard(queryClient),
+      ]);
+      toast({ title: "案件情報を更新しました" });
+      return true;
+    } catch (err) {
+      toast({ title: apiErrorMessage(err), variant: "destructive" });
+      return false;
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-[1400px]">
       <Link
@@ -374,8 +404,17 @@ export default function ProjectDetailPage() {
 
         <TabsContent value="overview" className="space-y-4 mt-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base">案件情報</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => setProjectEditOpen(true)}
+              >
+                <Pencil className="w-4 h-4" />
+                編集
+              </Button>
             </CardHeader>
             <CardContent>
               <dl className="grid grid-cols-2 gap-4 text-sm">
@@ -413,6 +452,15 @@ export default function ProjectDetailPage() {
               </dl>
             </CardContent>
           </Card>
+          <ProjectEditDialog
+            open={projectEditOpen}
+            onOpenChange={setProjectEditOpen}
+            project={project}
+            customers={customersQ.data ?? []}
+            employees={employeesQ.data ?? []}
+            isPending={updateProjectMut.isPending}
+            onSave={saveProject}
+          />
           <Card>
             <CardHeader>
               <CardTitle className="text-base">工程表設定</CardTitle>
