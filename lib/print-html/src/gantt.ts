@@ -52,7 +52,10 @@ const HEADER_ROW_H = 28;
 const TOP_HEADER_H = 56;
 const HEADER_BAR_H = 23;
 const SHEET_PADDING_H = 24;
-const PRINT_SAFETY_H = 8;
+// Leave room for browser rounding, grid borders, and the print margin. The
+// mobile renderer measures the final DOM, so this buffer prevents the last
+// phase row from becoming a one-row second page.
+const PRINT_SAFETY_H = 48;
 const MIN_ROWS = 12;
 const MAX_MONTHS = 24;
 
@@ -207,7 +210,7 @@ function getCalendarLayout(
       dayWidths,
       dayFontSize: Math.max(5.5, Math.min(11, narrowestDay * 0.55)),
       rowHeight,
-      rowFontSize: Math.max(8, Math.min(12, rowHeight * 0.3)),
+      rowFontSize: Math.max(8, Math.min(11, rowHeight * 0.3)),
       barHeight: Math.max(12, Math.min(24, rowHeight - 6)),
       totalWidth,
     };
@@ -221,7 +224,7 @@ function getCalendarLayout(
     dayWidths,
     dayFontSize: 5.5,
     rowHeight: MIN_PRINT_ROW_H,
-    rowFontSize: Math.max(8, MIN_PRINT_ROW_H * 0.3),
+    rowFontSize: Math.max(8, Math.min(11, MIN_PRINT_ROW_H * 0.3)),
     barHeight: Math.max(12, MIN_PRINT_ROW_H - 6),
     totalWidth: LABEL_W + dayWidths.reduce((sum, width) => sum + width, 0),
   };
@@ -387,9 +390,9 @@ function renderSheet(
 
   return `<div class="gantt-sheet" style="width:${totalWidth + 24}px;margin:0 auto;background:#fff;color:#000;font-family:${FONT_FAMILY};padding:12px;box-sizing:border-box;page-break-after:auto;page-break-inside:avoid;break-inside:avoid">
 ${headerBar}
-<div style="display:grid;grid-template-columns:${LABEL_W}px 1fr 70px 140px 80px 150px;width:${totalWidth}px">
-  <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:14px;padding:6px">工事名</div>
-  <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:18px;font-weight:600;padding:6px 8px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2"><span>${escapeHtml(project.name)}</span><span style="font-size:11px;font-weight:400;margin-top:5px">工期：${periodLabel}</span></div>
+  <div style="display:grid;grid-template-columns:${LABEL_W}px 1fr 70px 140px 80px 150px;width:${totalWidth}px">
+  <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:13px;padding:6px">工事名</div>
+  <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:16px;font-weight:600;padding:6px 8px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2"><span>${escapeHtml(project.name)}</span><span style="font-size:10px;font-weight:400;margin-top:4px">工期：${periodLabel}</span></div>
   <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:13px">構造</div>
   <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:13px"></div>
   <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:13px">作成者</div>

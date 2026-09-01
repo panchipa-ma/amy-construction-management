@@ -168,54 +168,19 @@ async function renderPrintHtmlToPdfBlob(html: string): Promise<Blob> {
       orientation: "landscape",
     });
     const imageHeightMm = (canvas.height * pageWidthMm) / canvas.width;
-
-    if (imageHeightMm <= pageHeightMm) {
-      pdf.addImage(
-        canvas.toDataURL("image/jpeg", 0.95),
-        "JPEG",
-        0,
-        0,
-        pageWidthMm,
-        imageHeightMm,
-      );
-    } else {
-      const pixelsPerMm = canvas.width / pageWidthMm;
-      const pageCanvasHeight = Math.floor(pageHeightMm * pixelsPerMm);
-      let yOffset = 0;
-      let pageNumber = 0;
-      while (yOffset < canvas.height) {
-        const sliceHeight = Math.min(pageCanvasHeight, canvas.height - yOffset);
-        const slice = document.createElement("canvas");
-        slice.width = canvas.width;
-        slice.height = sliceHeight;
-        const context = slice.getContext("2d");
-        if (!context) throw new Error("PDF画像の描画に失敗しました");
-        context.fillStyle = "#ffffff";
-        context.fillRect(0, 0, slice.width, slice.height);
-        context.drawImage(
-          canvas,
-          0,
-          yOffset,
-          canvas.width,
-          sliceHeight,
-          0,
-          0,
-          canvas.width,
-          sliceHeight,
-        );
-        if (pageNumber > 0) pdf.addPage();
-        pdf.addImage(
-          slice.toDataURL("image/jpeg", 0.95),
-          "JPEG",
-          0,
-          0,
-          pageWidthMm,
-          (sliceHeight * pageWidthMm) / canvas.width,
-        );
-        yOffset += sliceHeight;
-        pageNumber += 1;
-      }
-    }
+    // The gantt is intentionally a one-page document. The shared HTML
+    // template already shrinks its rows to fit; this final guard handles
+    // browser rounding/border differences so the last row cannot be sliced
+    // onto a mostly empty second page.
+    const renderedHeightMm = Math.min(imageHeightMm, pageHeightMm);
+    pdf.addImage(
+      canvas.toDataURL("image/jpeg", 0.95),
+      "JPEG",
+      0,
+      0,
+      pageWidthMm,
+      renderedHeightMm,
+    );
 
     return pdf.output("blob");
   } finally {
