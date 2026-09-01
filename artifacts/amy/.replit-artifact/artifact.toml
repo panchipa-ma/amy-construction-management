@@ -10,6 +10,7 @@ name = "react-vite"
 version = "1.0.0"
 
 [[services]]
+ensurePreviewReachable = "/"
 name = "web"
 paths = [ "/" ]
 localPort = 21459
