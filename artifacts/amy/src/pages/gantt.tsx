@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useListProjects } from "@workspace/api-client-react";
 import { ProjectGantt } from "@/components/project-gantt";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,52 +20,46 @@ export default function GanttPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
-  const selectedRef = useRef<HTMLDivElement | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
 
   const allProjects = projectsQ.data ?? [];
+  const activeProjects = useMemo(
+    () =>
+      allProjects.filter(
+        (p) => p.status !== "completed" && p.customerId && p.customerName.trim(),
+      ),
+    [allProjects],
+  );
+  const customerOptions = useMemo(() => {
+    const byId = new Map<string, string>();
+    for (const project of activeProjects) {
+      if (!byId.has(project.customerId)) {
+        byId.set(project.customerId, project.customerName);
+      }
+    }
+    return Array.from(byId, ([id, name]) => ({ id, name })).sort((a, b) =>
+      a.name.localeCompare(b.name, "ja"),
+    );
+  }, [activeProjects]);
 
   const projects = useMemo(() => {
-    let list = allProjects;
-    if (statusFilter === "active") {
-      list = list.filter(
-        (p) =>
-          p.status === "in_progress" ||
-          p.status === "contracted" ||
-          p.id === selectedProjectId,
-      );
-    } else if (statusFilter !== "all") {
-      list = list.filter(
-        (p) => p.status === statusFilter || p.id === selectedProjectId,
-      );
+    let list = activeProjects;
+    if (selectedCustomerId) {
+      list = list.filter((p) => p.customerId === selectedCustomerId);
+    }
+    if (statusFilter !== "all") {
+      list = list.filter((p) => p.status === statusFilter);
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
-          (p.customerName ?? "").toLowerCase().includes(q) ||
-          p.id === selectedProjectId,
+          p.customerName.toLowerCase().includes(q),
       );
     }
     return list;
-  }, [allProjects, statusFilter, search, selectedProjectId]);
-
-  const handleSelectProject = (id: string) => {
-    setSelectedProjectId(id);
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-    setTimeout(() => {
-      selectedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
-  };
-
-  const clearSelectedProject = () => {
-    setSelectedProjectId("");
-  };
+  }, [activeProjects, statusFilter, search, selectedCustomerId]);
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
@@ -94,7 +88,7 @@ export default function GanttPage() {
         <div>
           <h1 className="text-2xl font-bold">工程表</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            案件を選択して工程表を作成・編集できます。
+            元請を選択して工程表を作成・編集できます。
           </p>
         </div>
         <Link href="/projects/new">
@@ -106,52 +100,44 @@ export default function GanttPage() {
       </div>
 
       <div className="border rounded-lg bg-card p-4 space-y-3">
-        <label className="text-sm font-medium">案件を選択して工程表を作成</label>
-          <div className="flex items-center gap-3 flex-wrap">
-            <Select
-              value={selectedProjectId}
-              onValueChange={handleSelectProject}
-            >
-              <SelectTrigger className="w-96">
-              <SelectValue placeholder="案件名を選択してください" />
+        <label className="text-sm font-medium">元請を選択して工程表を表示</label>
+        <div className="flex items-center gap-3 flex-wrap">
+          <Select
+            value={selectedCustomerId}
+            onValueChange={setSelectedCustomerId}
+          >
+            <SelectTrigger className="w-96">
+              <SelectValue placeholder="元請を選択してください" />
             </SelectTrigger>
             <SelectContent>
-              {allProjects.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                  {p.customerName ? ` (${p.customerName})` : ""}
+              {customerOptions.map((customer) => (
+                <SelectItem key={customer.id} value={customer.id}>
+                  {customer.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          {selectedProjectId && (
+          {selectedCustomerId && (
             <Button
               type="button"
               variant="ghost"
               size="sm"
               className="gap-1 text-muted-foreground"
-              onClick={clearSelectedProject}
-              aria-label="案件選択を解除"
+              onClick={() => setSelectedCustomerId("")}
+              aria-label="元請選択を解除"
             >
               <X className="w-4 h-4" />
               選択を解除
             </Button>
           )}
-          {selectedProjectId && (
-            <Link href={`/projects/${selectedProjectId}`}>
-              <Button variant="outline" size="sm">
-                案件詳細
-              </Button>
-            </Link>
-          )}
         </div>
-        {selectedProjectId ? (
+        {selectedCustomerId ? (
           <p className="text-xs text-muted-foreground">
-            下の一覧で選択した案件の工程表が展開されています。工程の追加・編集・ドラッグ操作ができます。
+            選択した元請の案件だけを表示しています。工程の追加・編集・ドラッグ操作ができます。
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">
-            案件を選択していないため、工程表一覧を表示しています。
+            元請を選択していないため、竣工以外の工程表一覧を表示しています。
           </p>
         )}
       </div>
@@ -160,7 +146,7 @@ export default function GanttPage() {
         <div className="relative w-64">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="案件名・顧客名で検索"
+            placeholder="案件名・元請名で検索"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -173,8 +159,8 @@ export default function GanttPage() {
           <SelectContent>
             <SelectItem value="all">すべて</SelectItem>
             <SelectItem value="estimating">見積中</SelectItem>
+            <SelectItem value="contracted">契約済</SelectItem>
             <SelectItem value="in_progress">施工中</SelectItem>
-            <SelectItem value="completed">竣工</SelectItem>
           </SelectContent>
         </Select>
         <div className="flex gap-1 ml-auto">
@@ -197,20 +183,18 @@ export default function GanttPage() {
 
       {projects.length === 0 ? (
         <div className="border rounded-md py-16 text-center text-sm text-muted-foreground">
-          {statusFilter === "active"
-            ? "施工中・契約済の案件がありません。"
-            : "該当する案件がありません。"}
+          {selectedCustomerId
+            ? "選択した元請に該当する工程表がありません。"
+            : "該当する工程表がありません。"}
         </div>
       ) : (
         <div className="space-y-2">
           {projects.map((p) => {
             const expanded = expandedIds.has(p.id);
-            const isSelected = p.id === selectedProjectId;
             return (
               <div
                 key={p.id}
-                ref={isSelected ? selectedRef : undefined}
-                className={`border rounded-md bg-card ${isSelected ? "ring-2 ring-primary" : ""}`}
+                className="border rounded-md bg-card"
               >
                 <button
                   type="button"

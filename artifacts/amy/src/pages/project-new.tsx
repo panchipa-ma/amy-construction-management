@@ -68,8 +68,8 @@ export default function ProjectNewPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.customerId) {
-      toast({ title: "案件名と顧客は必須です", variant: "destructive" });
+    if (!form.name.trim() || !form.customerId) {
+      toast({ title: "案件名と元請は必須です", variant: "destructive" });
       return;
     }
     try {
@@ -175,7 +175,7 @@ export default function ProjectNewPage() {
                 </Select>
               </div>
               <div className="col-span-2">
-                <Label>顧客 *</Label>
+                 <Label>元請 *</Label>
                 <Select
                   value={form.customerId}
                   onValueChange={(v) => {
@@ -209,7 +209,7 @@ export default function ProjectNewPage() {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="顧客を選択" />
+                     <SelectValue placeholder="元請を選択" />
                   </SelectTrigger>
                   <SelectContent>
                     {(customersQ.data ?? []).map((c) => (

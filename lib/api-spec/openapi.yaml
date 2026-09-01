@@ -1543,7 +1543,7 @@ components:
         name: { type: string }
         code: { type: string, nullable: true, description: "案件番号" }
         status: { $ref: "#/components/schemas/ProjectStatus" }
-        customerId: { type: string }
+         customerId: { type: string, minLength: 1 }
         customerName: { type: string }
         siteAddress: { type: string, nullable: true }
         unitNumber: { type: string, nullable: true, description: "マンション号室 (自動振分けキー)" }
@@ -1571,7 +1571,7 @@ components:
         name: { type: string }
         code: { type: string, nullable: true }
         status: { $ref: "#/components/schemas/ProjectStatus" }
-        customerId: { type: string }
+         customerId: { type: string, minLength: 1 }
         siteAddress: { type: string, nullable: true }
         unitNumber: { type: string, nullable: true }
         startDate: { type: string, format: date, nullable: true }
@@ -1593,7 +1593,7 @@ components:
         name: { type: string }
         code: { type: string, nullable: true }
         status: { $ref: "#/components/schemas/ProjectStatus" }
-        customerId: { type: string }
+         customerId: { type: string, minLength: 1 }
         siteAddress: { type: string, nullable: true }
         unitNumber: { type: string, nullable: true }
         startDate: { type: string, format: date, nullable: true }

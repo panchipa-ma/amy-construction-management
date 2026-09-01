@@ -108,7 +108,7 @@ export function ProjectEditDialog({
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!form.name.trim() || !form.customerId) {
-      setValidationError("案件名と顧客は必須です");
+      setValidationError("案件名と元請は必須です");
       return;
     }
     setValidationError("");
@@ -190,13 +190,13 @@ export function ProjectEditDialog({
               </Select>
             </div>
             <div className="col-span-2">
-              <Label>顧客 *</Label>
+               <Label>元請 *</Label>
               <Select
                 value={form.customerId}
                 onValueChange={(value) => set("customerId", value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="顧客を選択" />
+                 <SelectValue placeholder="元請を選択" />
                 </SelectTrigger>
                 <SelectContent>
                   {customers.map((customer) => (
