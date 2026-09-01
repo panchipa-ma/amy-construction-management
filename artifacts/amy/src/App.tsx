@@ -12,11 +12,9 @@ import {
   SignIn,
   SignUp,
   Show,
-  useAuth,
   useClerk,
   useUser,
 } from "@clerk/react";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
@@ -154,38 +152,6 @@ function SignUpPage() {
       />
     </div>
   );
-}
-
-/**
- * Bridges Clerk's session token into the API client's Bearer auth getter.
- *
- * Web apps normally rely on Clerk's session cookie being sent automatically
- * with same-site requests. However, when the app runs inside an iframe
- * (Replit's workspace preview, embedded canvas, etc.), browsers like iOS
- * Safari and iOS Chrome treat the session cookie as a third-party cookie
- * and block it via ITP — causing every /api/* call to return 401 even
- * after a successful sign-in. To work around that, we register a bearer
- * token getter that pulls a short-lived JWT from Clerk on demand. The
- * backend's `clerkMiddleware` accepts both cookies and `Authorization:
- * Bearer` headers, so this is purely additive: cookies still work where
- * available, and the bearer header takes over when they don't.
- */
-function ClerkBearerTokenBridge() {
-  const { getToken, isLoaded } = useAuth();
-  useEffect(() => {
-    if (!isLoaded) return;
-    setAuthTokenGetter(async () => {
-      try {
-        return (await getToken()) ?? null;
-      } catch {
-        return null;
-      }
-    });
-    return () => {
-      setAuthTokenGetter(null);
-    };
-  }, [getToken, isLoaded]);
-  return null;
 }
 
 function ClerkQueryClientCacheInvalidator() {
@@ -351,7 +317,6 @@ function ClerkProviderWithRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
-        <ClerkBearerTokenBridge />
         <TooltipProvider>
           <AppRoutes />
           <div className="print:hidden">

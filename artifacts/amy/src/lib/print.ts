@@ -1,7 +1,3 @@
-type TokenGetter = (options?: {
-  skipCache?: boolean;
-}) => Promise<string | null>;
-
 /**
  * Fetch an authenticated print document before navigating a new tab.
  *
@@ -12,10 +8,8 @@ type TokenGetter = (options?: {
  */
 export async function openAuthenticatedPrintWindow({
   url,
-  getToken,
 }: {
   url: string;
-  getToken: TokenGetter;
 }): Promise<void> {
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
@@ -27,7 +21,7 @@ export async function openAuthenticatedPrintWindow({
     '<p style="font-family:sans-serif;padding:24px">PDFを準備しています…</p>';
 
   try {
-    const html = await fetchAuthenticatedPrintHtml(url, getToken);
+    const html = await fetchAuthenticatedPrintHtml(url);
 
     const blobUrl = URL.createObjectURL(
       new Blob([html], { type: "text/html;charset=utf-8" }),
@@ -49,13 +43,11 @@ export async function openAuthenticatedPrintWindow({
 export async function shareAuthenticatedPrintPdf({
   url,
   fileName,
-  getToken,
 }: {
   url: string;
   fileName: string;
-  getToken: TokenGetter;
 }): Promise<void> {
-  const html = await fetchAuthenticatedPrintHtml(url, getToken);
+  const html = await fetchAuthenticatedPrintHtml(url);
   const pdfBlob = await renderPrintHtmlToPdfBlob(html);
   const nav = typeof navigator !== "undefined" ? navigator : undefined;
 
@@ -86,25 +78,11 @@ export async function shareAuthenticatedPrintPdf({
 
 async function fetchAuthenticatedPrintHtml(
   url: string,
-  getToken: TokenGetter,
 ): Promise<string> {
-  const token = await getToken();
-  const request = (authToken: string | null) => {
-    const headers = new Headers({ Accept: "text/html" });
-    if (authToken) headers.set("Authorization", `Bearer ${authToken}`);
-    return fetch(url, {
-      credentials: "include",
-      headers,
-    });
-  };
-
-  let response = await request(token);
-  // A Clerk session can rotate while the page remains open. Retry once with
-  // a freshly issued token so PDF export does not fail with a false 401.
-  if (response.status === 401) {
-    const freshToken = await getToken({ skipCache: true });
-    if (freshToken) response = await request(freshToken);
-  }
+  const response = await fetch(url, {
+    credentials: "include",
+    headers: new Headers({ Accept: "text/html" }),
+  });
   const html = await response.text();
 
   if (!response.ok) {

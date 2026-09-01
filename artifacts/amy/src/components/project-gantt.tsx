@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useAuth } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProjectPhases,
@@ -127,7 +126,6 @@ type DragState =
   | null;
 
 export function ProjectGantt({ projectId }: { projectId: string }) {
-  const { getToken } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const phasesQ = useListProjectPhases(projectId, {
@@ -381,13 +379,11 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
         await shareAuthenticatedPrintPdf({
           url: printUrl,
           fileName,
-          getToken,
         });
       } else {
         // Desktop keeps the browser print dialog workflow.
         await openAuthenticatedPrintWindow({
           url: `${printUrl}?autoprint=1`,
-          getToken,
         });
       }
     } catch (err) {

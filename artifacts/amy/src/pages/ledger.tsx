@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { useAuth } from "@clerk/react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -57,7 +56,6 @@ import { openAuthenticatedPrintWindow } from "@/lib/print";
 import { CheckCircle2, ExternalLink, Printer, RotateCcw } from "lucide-react";
 
 export default function LedgerPage() {
-  const { getToken } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const projectsQ = useListProjects();
@@ -156,7 +154,6 @@ export default function LedgerPage() {
                 try {
                   await openAuthenticatedPrintWindow({
                     url: `/api/print/ledger/${selectedProject.id}?autoprint=1`,
-                    getToken,
                   });
                 } catch (err) {
                   toast({ title: apiErrorMessage(err), variant: "destructive" });
