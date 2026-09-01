@@ -4,7 +4,7 @@ import { isProjectHoliday, japaneseHolidayName } from "./calendar";
 /**
  * 工程表 (gantt) PDF テンプレート。
  * Web 版 `PrintGanttSheet` (React) と完全に同一の見た目を生成する HTML を返す。
- * A4 横、月ごとに 1 ページ。
+ * A4 横、案件の全工程期間を 1 ページ。
  *
  * Web は従来 React + html2canvas + jsPDF で 1 月 1 ページの画像を貼り付けていたが、
  * このテンプレートに切り替えることで Web/モバイル両方が同じ HTML を共有する。
@@ -36,7 +36,10 @@ export type GanttForPrint = {
 
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 
-const DAY_W = 26;
+const PAGE_CONTENT_W = 1050;
+const MAX_COMFORTABLE_DAYS = 60;
+const MAX_DAY_W = 26;
+const MIN_DAY_W = 8;
 const LABEL_W = 190;
 const ROW_H = 40;
 const HEADER_ROW_H = 28;
@@ -63,18 +66,69 @@ function holidayFillMarkup(isHoliday: boolean): string {
   return `<svg class="holiday-fill" aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none"><rect width="100" height="100" fill="${WEEKEND_BG}"></rect></svg>`;
 }
 
+function diffDays(a: Date, b: Date): number {
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
+}
+
+function getPhaseRange(phases: GanttPhase[]): { start: Date; end: Date } | null {
+  if (phases.length === 0) return null;
+  let start = dateOnly(phases[0].startDate);
+  let end = dateOnly(phases[0].endDate);
+  for (const phase of phases) {
+    const phaseStart = dateOnly(phase.startDate);
+    const phaseEnd = dateOnly(phase.endDate);
+    if (phaseStart < start) start = phaseStart;
+    if (phaseEnd > end) end = phaseEnd;
+  }
+  return { start, end };
+}
+
+function formatPeriodDate(date: Date): string {
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+function getDayWidth(dayCount: number): number {
+  const availableWidth = PAGE_CONTENT_W - LABEL_W;
+  // 60日まではA4横で日付を読みやすく保てる範囲。60日を超える案件も
+  // 横幅を増やさず、可能な限り同じページ内に収める。
+  return Math.max(
+    MIN_DAY_W,
+    Math.min(MAX_DAY_W, availableWidth / Math.max(dayCount, 1)),
+  );
+}
+
+function getMonthSegments(
+  rangeStart: Date,
+  rangeEnd: Date,
+): { startOffset: number; days: number; label: string }[] {
+  const segments: { startOffset: number; days: number; label: string }[] = [];
+  let cursor = new Date(rangeStart);
+  while (cursor <= rangeEnd) {
+    const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+    const segmentEnd = monthEnd < rangeEnd ? monthEnd : rangeEnd;
+    segments.push({
+      startOffset: diffDays(rangeStart, cursor),
+      days: diffDays(cursor, segmentEnd) + 1,
+      label: `令和${cursor.getFullYear() - 2018}年${cursor.getMonth() + 1}月`,
+    });
+    cursor = new Date(segmentEnd);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return segments;
+}
+
 function getWorkingSegments(
   start: Date,
   end: Date,
   project: GanttProject,
-  monthStart: Date,
-  monthEnd: Date,
-): { startDay: number; endDay: number }[] {
-  const visibleStart = start < monthStart ? monthStart : start;
-  const visibleEnd = end > monthEnd ? monthEnd : end;
+  rangeStart: Date,
+  rangeEnd: Date,
+): { startOffset: number; endOffset: number }[] {
+  const visibleStart = start < rangeStart ? rangeStart : start;
+  const visibleEnd = end > rangeEnd ? rangeEnd : end;
   if (visibleStart > visibleEnd) return [];
 
-  const segments: { startDay: number; endDay: number }[] = [];
+  const segments: { startOffset: number; endOffset: number }[] = [];
   let segmentStart: Date | null = null;
   const cursor = new Date(visibleStart);
   while (cursor <= visibleEnd) {
@@ -86,8 +140,8 @@ function getWorkingSegments(
       const segmentEnd = isHoliday ? new Date(cursor) : new Date(cursor);
       if (isHoliday) segmentEnd.setDate(segmentEnd.getDate() - 1);
       segments.push({
-        startDay: segmentStart.getDate(),
-        endDay: segmentEnd.getDate(),
+        startOffset: diffDays(rangeStart, segmentStart),
+        endOffset: diffDays(rangeStart, segmentEnd),
       });
       segmentStart = null;
     }
@@ -127,59 +181,54 @@ export function getMonthsForPhases(
 function renderSheet(
   project: GanttProject,
   phases: GanttPhase[],
-  year: number,
-  month: number,
-  isLast: boolean,
+  rangeStart: Date,
+  rangeEnd: Date,
 ): string {
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const reiwa = year - 2018;
-  const monthLabel = `令和${reiwa}年${month + 1}月`;
-  const totalWidth = LABEL_W + daysInMonth * DAY_W;
-
-  const monthStart = new Date(year, month, 1);
-  const monthEndDate = new Date(year, month + 1, 0);
-  const phasesInMonth = phases
-    .filter((p) => {
-      const s = dateOnly(p.startDate);
-      const e = dateOnly(p.endDate);
-      return e >= monthStart && s <= monthEndDate;
-    })
-    .slice()
-    .sort(
-      (a, b) =>
-        dateOnly(a.startDate).getTime() - dateOnly(b.startDate).getTime(),
-    );
-  const rowsToShow = Math.max(phasesInMonth.length, MIN_ROWS);
+  const dayCount = diffDays(rangeStart, rangeEnd) + 1;
+  const dayWidth = getDayWidth(dayCount);
+  const dayFontSize = dayCount <= MAX_COMFORTABLE_DAYS ? 11 : 9;
+  const totalWidth = LABEL_W + dayCount * dayWidth;
+  const periodLabel = `${formatPeriodDate(rangeStart)}〜${formatPeriodDate(rangeEnd)}`;
+  const monthSegments = getMonthSegments(rangeStart, rangeEnd);
+  const rowsToShow = Math.max(phases.length, MIN_ROWS);
   const gridHeaderH = HEADER_ROW_H * 2;
   const gridTotalH = gridHeaderH + rowsToShow * ROW_H;
 
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const days = Array.from({ length: dayCount }, (_, i) => {
+    const date = new Date(rangeStart);
+    date.setDate(date.getDate() + i);
+    return date;
+  });
+
+  const monthHeaderCells = monthSegments
+    .map(
+      (segment) =>
+        `<div class="g-cell" style="grid-column:span ${segment.days};height:${HEADER_ROW_H}px;font-size:12px;font-weight:600;background:#f8fafc">${segment.label}</div>`,
+    )
+    .join("");
 
   const dayHeaderCells = days
-    .map((d) => {
-      const date = new Date(year, month, d);
+    .map((date) => {
       const holiday = isProjectHoliday(date, project.saturdayWork ?? true);
-      return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${HEADER_ROW_H}px;font-size:11px;background:${holiday ? WEEKEND_BG : "#fff"};color:${holiday ? "#b91c1c" : "#000"};position:relative" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${holidayFillMarkup(holiday)}<span class="cell-content">${d}</span></div>`;
+      return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${HEADER_ROW_H}px;font-size:${dayFontSize}px;background:${holiday ? WEEKEND_BG : "#fff"};color:${holiday ? "#b91c1c" : "#000"};position:relative" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${holidayFillMarkup(holiday)}<span class="cell-content">${date.getDate()}</span></div>`;
     })
     .join("");
 
   const dowCells = days
-    .map((d) => {
-      const dow = new Date(year, month, d).getDay();
-      const date = new Date(year, month, d);
+    .map((date) => {
+      const dow = date.getDay();
       const holiday = isProjectHoliday(date, project.saturdayWork ?? true);
       const color = holiday ? "#b91c1c" : "#000";
-      return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${HEADER_ROW_H}px;font-size:11px;background:${holiday ? WEEKEND_BG : "#fff"};color:${color};position:relative" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${holidayFillMarkup(holiday)}<span class="cell-content">${DOW[dow]}</span></div>`;
+      return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${HEADER_ROW_H}px;font-size:${dayFontSize}px;background:${holiday ? WEEKEND_BG : "#fff"};color:${color};position:relative" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${holidayFillMarkup(holiday)}<span class="cell-content">${DOW[dow]}</span></div>`;
     })
     .join("");
 
   const rows = Array.from({ length: rowsToShow })
     .map((_, idx) => {
-      const phase = phasesInMonth[idx];
+      const phase = phases[idx];
       const label = `<div class="g-cell" style="height:${ROW_H}px;font-size:12px;padding:4px 6px;justify-content:flex-start;text-align:left;line-height:1.25;overflow-wrap:anywhere">${escapeHtml(phase?.name ?? "")}</div>`;
       const cells = days
-        .map((d) => {
-          const date = new Date(year, month, d);
+        .map((date) => {
           const holiday = isProjectHoliday(date, project.saturdayWork ?? true);
           return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${ROW_H}px;background:${holiday ? WEEKEND_BG : "#fff"};position:relative">${holidayFillMarkup(holiday)}</div>`;
         })
@@ -188,40 +237,34 @@ function renderSheet(
     })
     .join("");
 
-   const arrows = phasesInMonth
-     .map((p, idx) => {
+  const arrows = phases
+    .map((p, idx) => {
       const ps = dateOnly(p.startDate);
       const pe = dateOnly(p.endDate);
-       const segments = getWorkingSegments(
-         ps,
-         pe,
-         project,
-         monthStart,
-         monthEndDate,
-       );
-       if (segments.length === 0) return "";
-       const labelSegmentIndex = segments.reduce(
-         (best, segment, segmentIndex, all) =>
-           segment.endDay - segment.startDay >
-           all[best].endDay - all[best].startDay
-             ? segmentIndex
-             : best,
-         0,
-       );
-       return segments
-         .map((segment, segmentIndex) => {
-           const left = LABEL_W + (segment.startDay - 1) * DAY_W + 2;
-           const right = LABEL_W + segment.endDay * DAY_W - 2;
-           const width = Math.max(12, right - left);
-           const barHeight = 24;
-           const top = gridHeaderH + idx * ROW_H + (ROW_H - barHeight) / 2;
-           const label =
-             segmentIndex === labelSegmentIndex
-               ? `<span style="position:relative;z-index:1;display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 5px;font-size:12px;font-weight:600;color:#0f172a">${escapeHtml(p.name)}</span>`
-               : "";
-            return `<div style="position:absolute;left:${left}px;top:${top}px;width:${width}px;height:${barHeight}px;background:${BAR_COLOR};border:1px solid ${BAR_BORDER};border-radius:3px;box-sizing:border-box;display:flex;align-items:center;overflow:hidden">${label}</div>`;
-         })
-         .join("");
+      const segments = getWorkingSegments(ps, pe, project, rangeStart, rangeEnd);
+      if (segments.length === 0) return "";
+      const labelSegmentIndex = segments.reduce(
+        (best, segment, segmentIndex, all) =>
+          segment.endOffset - segment.startOffset >
+          all[best].endOffset - all[best].startOffset
+            ? segmentIndex
+            : best,
+        0,
+      );
+      return segments
+        .map((segment, segmentIndex) => {
+          const left = LABEL_W + segment.startOffset * dayWidth + 2;
+          const right = LABEL_W + (segment.endOffset + 1) * dayWidth - 2;
+          const width = Math.max(8, right - left);
+          const barHeight = 24;
+          const top = gridHeaderH + idx * ROW_H + (ROW_H - barHeight) / 2;
+          const label =
+            segmentIndex === labelSegmentIndex
+              ? `<span style="position:relative;z-index:1;display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 5px;font-size:12px;font-weight:600;color:#0f172a">${escapeHtml(p.name)}</span>`
+              : "";
+          return `<div style="position:absolute;left:${left}px;top:${top}px;width:${width}px;height:${barHeight}px;background:${BAR_COLOR};border:1px solid ${BAR_BORDER};border-radius:3px;box-sizing:border-box;display:flex;align-items:center;overflow:hidden">${label}</div>`;
+        })
+        .join("");
     })
     .join("");
 
@@ -230,21 +273,20 @@ function renderSheet(
       ? `<div style="width:${totalWidth}px;display:flex;justify-content:flex-end;align-items:baseline;gap:20px;padding:2px 4px 6px;font-size:13px">${project.companyName ? `<span style="font-weight:600">${escapeHtml(project.companyName)}</span>` : ""}${project.siteSupervisor ? `<span>現場担当者：${escapeHtml(project.siteSupervisor)}</span>${project.supervisorPhone ? `<span>現場担当者電話番号：${escapeHtml(project.supervisorPhone)}</span>` : ""}` : project.supervisorPhone ? `<span>${escapeHtml(project.supervisorPhone)}</span>` : ""}</div>`
       : "";
 
-  const breakStyle = isLast ? "" : "page-break-after:always;";
-
-  return `<div class="gantt-sheet" style="width:${totalWidth + 24}px;margin:0 auto;background:#fff;color:#000;font-family:${FONT_FAMILY};padding:12px;box-sizing:border-box;${breakStyle}">
+  return `<div class="gantt-sheet" style="width:${totalWidth + 24}px;margin:0 auto;background:#fff;color:#000;font-family:${FONT_FAMILY};padding:12px;box-sizing:border-box;page-break-after:auto">
 ${headerBar}
 <div style="display:grid;grid-template-columns:${LABEL_W}px 1fr 70px 140px 80px 150px;width:${totalWidth}px">
   <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:14px;padding:6px">工事名</div>
-  <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:18px;font-weight:600;padding:8px">${escapeHtml(project.name)}</div>
+  <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:18px;font-weight:600;padding:6px 8px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;line-height:1.2"><span>${escapeHtml(project.name)}</span><span style="font-size:11px;font-weight:400;margin-top:5px">工期：${periodLabel}</span></div>
   <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:13px">構造</div>
   <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:13px"></div>
   <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:13px">作成者</div>
   <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:14px">${escapeHtml(project.siteSupervisor ?? "")}</div>
 </div>
 <div style="position:relative;width:${totalWidth}px">
-  <div style="display:grid;grid-template-columns:${LABEL_W}px repeat(${daysInMonth}, ${DAY_W}px);grid-auto-rows:max-content;width:${totalWidth}px">
-    <div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:12px">${monthLabel}</div>
+  <div style="display:grid;grid-template-columns:${LABEL_W}px repeat(${dayCount}, ${dayWidth}px);grid-auto-rows:max-content;width:${totalWidth}px">
+    <div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:12px">年月</div>
+    ${monthHeaderCells}
     ${dayHeaderCells}
     <div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:12px">工事項目</div>
     ${dowCells}
@@ -256,21 +298,11 @@ ${headerBar}
 }
 
 export function renderGanttHtml(data: GanttForPrint): string {
-  const months = getMonthsForPhases(data.phases);
+  const range = getPhaseRange(data.phases);
   const sheets =
-    months.length === 0
+    !range
       ? `<div style="padding:40px;font-family:${FONT_FAMILY};color:#666">工程が登録されていません。</div>`
-      : months
-          .map((m, i) =>
-            renderSheet(
-              data.project,
-              data.phases,
-              m.year,
-              m.month,
-              i === months.length - 1,
-            ),
-          )
-          .join("\n");
+      : renderSheet(data.project, data.phases, range.start, range.end);
 
   return `<!DOCTYPE html>
 <html lang="ja">
