@@ -36,7 +36,10 @@ export type GanttForPrint = {
 
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 
-const PAGE_CONTENT_W = 1050;
+// A4 landscape printable width with the page margin and the sheet padding
+// already reserved. Keeping a small safety margin avoids Chromium clipping
+// the rightmost columns depending on its print scale.
+const PAGE_CONTENT_W = 1000;
 const MAX_COMFORTABLE_DAYS = 60;
 const MAX_DAY_W = 26;
 const MIN_DAY_W = 8;
@@ -106,10 +109,14 @@ function getMonthSegments(
   while (cursor <= rangeEnd) {
     const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
     const segmentEnd = monthEnd < rangeEnd ? monthEnd : rangeEnd;
+    const segmentDays = diffDays(cursor, segmentEnd) + 1;
     segments.push({
       startOffset: diffDays(rangeStart, cursor),
-      days: diffDays(cursor, segmentEnd) + 1,
-      label: `令和${cursor.getFullYear() - 2018}年${cursor.getMonth() + 1}月`,
+      days: segmentDays,
+      label:
+        segmentDays <= 4
+          ? `${cursor.getMonth() + 1}月`
+          : `令和${cursor.getFullYear() - 2018}年${cursor.getMonth() + 1}月`,
     });
     cursor = new Date(segmentEnd);
     cursor.setDate(cursor.getDate() + 1);
@@ -186,7 +193,7 @@ function renderSheet(
 ): string {
   const dayCount = diffDays(rangeStart, rangeEnd) + 1;
   const dayWidth = getDayWidth(dayCount);
-  const dayFontSize = dayCount <= MAX_COMFORTABLE_DAYS ? 11 : 9;
+  const dayFontSize = dayCount <= 45 ? 11 : 10;
   const totalWidth = LABEL_W + dayCount * dayWidth;
   const periodLabel = `${formatPeriodDate(rangeStart)}〜${formatPeriodDate(rangeEnd)}`;
   const monthSegments = getMonthSegments(rangeStart, rangeEnd);
@@ -203,7 +210,7 @@ function renderSheet(
   const monthHeaderCells = monthSegments
     .map(
       (segment) =>
-        `<div class="g-cell" style="grid-column:span ${segment.days};height:${HEADER_ROW_H}px;font-size:12px;font-weight:600;background:#f8fafc">${segment.label}</div>`,
+        `<div class="g-cell" style="grid-column:span ${segment.days};height:${HEADER_ROW_H}px;font-size:12px;font-weight:600;background:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${segment.label}</div>`,
     )
     .join("");
 
