@@ -51,7 +51,7 @@ const MIN_ROWS = 12;
 const MAX_MONTHS = 24;
 
 const GRID_BORDER = "1px solid #334155";
-const WEEKEND_BG = "#fff";
+const WEEKEND_BG = "#ef4444";
 const BAR_COLOR = "#dbeafe";
 const BAR_BORDER = "#64748b";
 
@@ -121,6 +121,39 @@ function getMonthSegments(
   return segments;
 }
 
+function getWorkingSegments(
+  start: Date,
+  end: Date,
+  project: GanttProject,
+  rangeStart: Date,
+  rangeEnd: Date,
+): { startOffset: number; endOffset: number }[] {
+  const visibleStart = start < rangeStart ? rangeStart : start;
+  const visibleEnd = end > rangeEnd ? rangeEnd : end;
+  if (visibleStart > visibleEnd) return [];
+
+  const segments: { startOffset: number; endOffset: number }[] = [];
+  let segmentStart: Date | null = null;
+  const cursor = new Date(visibleStart);
+  while (cursor <= visibleEnd) {
+    const isHoliday = isProjectHoliday(cursor, project.saturdayWork ?? true);
+    if (!isHoliday && !segmentStart) {
+      segmentStart = new Date(cursor);
+    }
+    if ((isHoliday || cursor.getTime() === visibleEnd.getTime()) && segmentStart) {
+      const segmentEnd = new Date(cursor);
+      if (isHoliday) segmentEnd.setDate(segmentEnd.getDate() - 1);
+      segments.push({
+        startOffset: diffDays(rangeStart, segmentStart),
+        endOffset: diffDays(rangeStart, segmentEnd),
+      });
+      segmentStart = null;
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return segments;
+}
+
 export function getMonthsForPhases(
   phases: { startDate: string; endDate: string }[],
 ): { year: number; month: number }[] {
@@ -174,15 +207,17 @@ function renderSheet(
 
   const monthHeaderCells = monthSegments
     .map(
-      (segment) =>
-        `<div class="g-cell" style="grid-column:span ${segment.days};height:${HEADER_ROW_H}px;font-size:12px;font-weight:600;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${segment.label}</div>`,
+      (segment) => {
+        const fontSize = segment.days <= 1 ? 8 : segment.days <= 3 ? 10 : 12;
+        return `<div class="g-cell" style="grid-column:span ${segment.days};height:${HEADER_ROW_H}px;font-size:${fontSize}px;font-weight:600;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.4px">${segment.label}</div>`;
+      },
     )
     .join("");
 
   const dayHeaderCells = days
     .map((date) => {
       const holiday = isProjectHoliday(date, project.saturdayWork ?? true);
-      return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${HEADER_ROW_H}px;font-size:${dayFontSize}px;background:${holiday ? WEEKEND_BG : "#fff"};color:${holiday ? "#b91c1c" : "#000"};position:relative" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${holidayFillMarkup(holiday)}<span class="cell-content">${date.getDate()}</span></div>`;
+      return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${HEADER_ROW_H}px;font-size:${dayFontSize}px;background:${holiday ? WEEKEND_BG : "#fff"};color:${holiday ? "#fff" : "#000"};position:relative" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${holidayFillMarkup(holiday)}<span class="cell-content">${date.getDate()}</span></div>`;
     })
     .join("");
 
@@ -190,7 +225,7 @@ function renderSheet(
     .map((date) => {
       const dow = date.getDay();
       const holiday = isProjectHoliday(date, project.saturdayWork ?? true);
-      const color = holiday ? "#b91c1c" : "#000";
+      const color = holiday ? "#fff" : "#000";
       return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${HEADER_ROW_H}px;font-size:${dayFontSize}px;background:${holiday ? WEEKEND_BG : "#fff"};color:${color};position:relative" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${holidayFillMarkup(holiday)}<span class="cell-content">${DOW[dow]}</span></div>`;
     })
     .join("");
@@ -213,15 +248,30 @@ function renderSheet(
     .map((p, idx) => {
       const ps = dateOnly(p.startDate);
       const pe = dateOnly(p.endDate);
-      const startOffset = diffDays(rangeStart, ps);
-      const endOffset = diffDays(rangeStart, pe);
-      const left = LABEL_W + startOffset * dayWidth + 2;
-      const right = LABEL_W + (endOffset + 1) * dayWidth - 2;
-      const width = Math.max(8, right - left);
-      const barHeight = 24;
-      const top = gridHeaderH + idx * ROW_H + (ROW_H - barHeight) / 2;
-      const label = `<span style="position:relative;z-index:1;display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 5px;font-size:12px;font-weight:600;color:#0f172a">${escapeHtml(p.name)}</span>`;
-      return `<div style="position:absolute;left:${left}px;top:${top}px;width:${width}px;height:${barHeight}px;background:${BAR_COLOR};border:1px solid ${BAR_BORDER};border-radius:5px;box-sizing:border-box;display:flex;align-items:center;overflow:hidden">${label}</div>`;
+      const segments = getWorkingSegments(ps, pe, project, rangeStart, rangeEnd);
+      if (segments.length === 0) return "";
+      const labelSegmentIndex = segments.reduce(
+        (best, segment, segmentIndex, all) =>
+          segment.endOffset - segment.startOffset >
+          all[best].endOffset - all[best].startOffset
+            ? segmentIndex
+            : best,
+        0,
+      );
+      return segments
+        .map((segment, segmentIndex) => {
+          const left = LABEL_W + segment.startOffset * dayWidth + 2;
+          const right = LABEL_W + (segment.endOffset + 1) * dayWidth - 2;
+          const width = Math.max(8, right - left);
+          const barHeight = 24;
+          const top = gridHeaderH + idx * ROW_H + (ROW_H - barHeight) / 2;
+          const label =
+            segmentIndex === labelSegmentIndex
+              ? `<span style="position:relative;z-index:1;display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 5px;font-size:12px;font-weight:600;color:#0f172a">${escapeHtml(p.name)}</span>`
+              : "";
+          return `<div style="position:absolute;left:${left}px;top:${top}px;width:${width}px;height:${barHeight}px;background:${BAR_COLOR};border:1px solid ${BAR_BORDER};border-radius:5px;box-sizing:border-box;display:flex;align-items:center;overflow:hidden">${label}</div>`;
+        })
+        .join("");
     })
     .join("");
 
