@@ -1,10 +1,9 @@
 /**
- * Fetch an authenticated print document before navigating a new tab.
+ * Fetch a same-origin print document before navigating a new tab.
  *
- * A direct window.open() navigation cannot include the Clerk bearer token
- * that the API client attaches to fetch requests. Opening a blank tab first
- * keeps the browser's popup rules happy, then the authenticated response is
- * loaded from a blob URL.
+ * Opening a blank tab first keeps the browser's popup rules happy, then the
+ * response is loaded from a blob URL after the browser sends its Clerk session
+ * cookie with the authenticated fetch.
  */
 export async function openAuthenticatedPrintWindow({
   url,

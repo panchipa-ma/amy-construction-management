@@ -47,8 +47,12 @@ const MONTH_LABEL_FONT_SIZE = 10;
 const MONTH_LABEL_PADDING_W = 6;
 const LABEL_W = 190;
 const ROW_H = 40;
+const MIN_PRINT_ROW_H = 18;
 const HEADER_ROW_H = 28;
 const TOP_HEADER_H = 56;
+const HEADER_BAR_H = 23;
+const SHEET_PADDING_H = 24;
+const PRINT_SAFETY_H = 8;
 const MIN_ROWS = 12;
 const MAX_MONTHS = 24;
 
@@ -159,10 +163,14 @@ function getDayWidthsForPaper(
 function getCalendarLayout(
   dayCount: number,
   monthSegments: { startOffset: number; days: number; label: string }[],
+  rowsToShow = MIN_ROWS,
 ): {
   paper: "A4" | "A3";
   dayWidths: number[];
   dayFontSize: number;
+  rowHeight: number;
+  rowFontSize: number;
+  barHeight: number;
   totalWidth: number;
 } {
   for (const option of [
@@ -177,10 +185,30 @@ function getCalendarLayout(
     if (!dayWidths) continue;
     const totalWidth = LABEL_W + dayWidths.reduce((sum, width) => sum + width, 0);
     const narrowestDay = Math.min(...dayWidths);
+    const pageAspect =
+      option.paper === "A3" ? 297 / 420 : 210 / 297;
+    // The mobile PDF path rasterizes the complete HTML sheet and places it
+    // at the page width. Reserve the fixed header height so every phase row
+    // remains on that same page instead of spilling into a second slice.
+    const maxSheetHeight =
+      (totalWidth + SHEET_PADDING_H) * pageAspect - PRINT_SAFETY_H;
+    const fixedHeight =
+      SHEET_PADDING_H + HEADER_BAR_H + TOP_HEADER_H + HEADER_ROW_H * 3;
+    const rowHeightCandidate = (maxSheetHeight - fixedHeight) / rowsToShow;
+    if (option.paper === "A4" && rowHeightCandidate < MIN_PRINT_ROW_H) {
+      continue;
+    }
+    const rowHeight = Math.min(
+      ROW_H,
+      Math.max(MIN_PRINT_ROW_H, rowHeightCandidate),
+    );
     return {
       paper: option.paper,
       dayWidths,
       dayFontSize: Math.max(5.5, Math.min(11, narrowestDay * 0.55)),
+      rowHeight,
+      rowFontSize: Math.max(8, Math.min(12, rowHeight * 0.3)),
+      barHeight: Math.max(12, Math.min(24, rowHeight - 6)),
       totalWidth,
     };
   }
@@ -192,6 +220,9 @@ function getCalendarLayout(
     paper: "A3",
     dayWidths,
     dayFontSize: 5.5,
+    rowHeight: MIN_PRINT_ROW_H,
+    rowFontSize: Math.max(8, MIN_PRINT_ROW_H * 0.3),
+    barHeight: Math.max(12, MIN_PRINT_ROW_H - 6),
     totalWidth: LABEL_W + dayWidths.reduce((sum, width) => sum + width, 0),
   };
 }
@@ -266,17 +297,15 @@ function renderSheet(
   const dayCount = diffDays(rangeStart, rangeEnd) + 1;
   const periodLabel = `${rangeStart.getFullYear()}/${formatPeriodDate(rangeStart)}〜${rangeEnd.getFullYear()}/${formatPeriodDate(rangeEnd)}`;
   const monthSegments = getMonthSegments(rangeStart, rangeEnd);
-  const { paper, dayWidths, dayFontSize, totalWidth } = getCalendarLayout(
-    dayCount,
-    monthSegments,
-  );
+  const rowsToShow = Math.max(phases.length, MIN_ROWS);
+  const layout = getCalendarLayout(dayCount, monthSegments, rowsToShow);
+  const { paper, dayWidths, dayFontSize, totalWidth } = layout;
   const dayOffsets = [0];
   for (const width of dayWidths) {
     dayOffsets.push(dayOffsets[dayOffsets.length - 1] + width);
   }
-  const rowsToShow = Math.max(phases.length, MIN_ROWS);
   const gridHeaderH = HEADER_ROW_H * 3;
-  const gridTotalH = gridHeaderH + rowsToShow * ROW_H;
+  const gridTotalH = gridHeaderH + rowsToShow * layout.rowHeight;
 
   const days = Array.from({ length: dayCount }, (_, i) => {
     const date = new Date(rangeStart);
@@ -318,11 +347,11 @@ function renderSheet(
   const rows = Array.from({ length: rowsToShow })
     .map((_, idx) => {
       const phase = phases[idx];
-      const label = `<div class="g-cell" style="height:${ROW_H}px;font-size:12px;padding:4px 6px;justify-content:flex-start;text-align:left;line-height:1.25;overflow-wrap:anywhere">${escapeHtml(phase?.name ?? "")}</div>`;
+      const label = `<div class="g-cell" style="height:${layout.rowHeight}px;font-size:${layout.rowFontSize}px;padding:3px 6px;justify-content:flex-start;text-align:left;line-height:1.2;overflow-wrap:anywhere">${escapeHtml(phase?.name ?? "")}</div>`;
       const cells = days
         .map((date) => {
           const holiday = isProjectHoliday(date, project.saturdayWork ?? true);
-          return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${ROW_H}px;background:${holiday ? WEEKEND_BG : "#fff"};position:relative">${holidayFillMarkup(holiday)}</div>`;
+          return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${layout.rowHeight}px;background:${holiday ? WEEKEND_BG : "#fff"};position:relative">${holidayFillMarkup(holiday)}</div>`;
         })
         .join("");
       return label + cells;
@@ -340,8 +369,11 @@ function renderSheet(
           const left = LABEL_W + dayOffsets[segment.startOffset] + 2;
           const right = LABEL_W + dayOffsets[segment.endOffset + 1] - 2;
           const width = Math.max(8, right - left);
-          const barHeight = 24;
-          const top = gridHeaderH + idx * ROW_H + (ROW_H - barHeight) / 2;
+          const barHeight = layout.barHeight;
+          const top =
+            gridHeaderH +
+            idx * layout.rowHeight +
+            (layout.rowHeight - barHeight) / 2;
           return `<div style="position:absolute;left:${left}px;top:${top}px;width:${width}px;height:${barHeight}px;background:${BAR_COLOR};border:1px solid ${BAR_BORDER};border-radius:5px;box-sizing:border-box"></div>`;
         })
         .join("");
@@ -350,10 +382,10 @@ function renderSheet(
 
   const headerBar =
     project.companyName || project.supervisorPhone
-      ? `<div style="width:${totalWidth}px;display:flex;justify-content:flex-end;align-items:baseline;gap:20px;padding:2px 4px 6px;font-size:13px">${project.companyName ? `<span style="font-weight:600">${escapeHtml(project.companyName)}</span>` : ""}${project.siteSupervisor ? `<span>現場担当者：${escapeHtml(project.siteSupervisor)}</span>${project.supervisorPhone ? `<span>現場担当者電話番号：${escapeHtml(project.supervisorPhone)}</span>` : ""}` : project.supervisorPhone ? `<span>${escapeHtml(project.supervisorPhone)}</span>` : ""}</div>`
+      ? `<div style="width:${totalWidth}px;height:${HEADER_BAR_H}px;display:flex;justify-content:flex-end;align-items:baseline;gap:20px;padding:2px 4px 6px;font-size:13px;box-sizing:border-box">${project.companyName ? `<span style="font-weight:600">${escapeHtml(project.companyName)}</span>` : ""}${project.siteSupervisor ? `<span>現場担当者：${escapeHtml(project.siteSupervisor)}</span>${project.supervisorPhone ? `<span>現場担当者電話番号：${escapeHtml(project.supervisorPhone)}</span>` : ""}` : project.supervisorPhone ? `<span>${escapeHtml(project.supervisorPhone)}</span>` : ""}</div>`
       : "";
 
-  return `<div class="gantt-sheet" style="width:${totalWidth + 24}px;margin:0 auto;background:#fff;color:#000;font-family:${FONT_FAMILY};padding:12px;box-sizing:border-box;page-break-after:auto">
+  return `<div class="gantt-sheet" style="width:${totalWidth + 24}px;margin:0 auto;background:#fff;color:#000;font-family:${FONT_FAMILY};padding:12px;box-sizing:border-box;page-break-after:auto;page-break-inside:avoid;break-inside:avoid">
 ${headerBar}
 <div style="display:grid;grid-template-columns:${LABEL_W}px 1fr 70px 140px 80px 150px;width:${totalWidth}px">
   <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:14px;padding:6px">工事名</div>
@@ -380,10 +412,12 @@ ${headerBar}
 
 export function renderGanttHtml(data: GanttForPrint): string {
   const range = getPhaseRange(data.phases);
+  const rowsToShow = Math.max(data.phases.length, MIN_ROWS);
   const paper = range
     ? getCalendarLayout(
         diffDays(range.start, range.end) + 1,
         getMonthSegments(range.start, range.end),
+        rowsToShow,
       ).paper
     : "A4";
   const sheets =
@@ -410,6 +444,10 @@ export function renderGanttHtml(data: GanttForPrint): string {
     background: #fff;
     color: #000;
     overflow: hidden;
+  }
+  .gantt-sheet {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
   .holiday-cell {
     border-color: #e11d48;
