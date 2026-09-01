@@ -11,14 +11,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, Search, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, Plus, X } from "lucide-react";
 import { Link } from "wouter";
 import { ProjectStatusBadge } from "@/components/status-badge";
 
 export default function GanttPage() {
   const projectsQ = useListProjects();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("in_progress");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const selectedRef = useRef<HTMLDivElement | null>(null);
@@ -63,6 +63,10 @@ export default function GanttPage() {
     }, 100);
   };
 
+  const clearSelectedProject = () => {
+    setSelectedProjectId("");
+  };
+
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -103,9 +107,12 @@ export default function GanttPage() {
 
       <div className="border rounded-lg bg-card p-4 space-y-3">
         <label className="text-sm font-medium">案件を選択して工程表を作成</label>
-        <div className="flex items-center gap-3">
-          <Select value={selectedProjectId} onValueChange={handleSelectProject}>
-            <SelectTrigger className="w-96">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Select
+              value={selectedProjectId}
+              onValueChange={handleSelectProject}
+            >
+              <SelectTrigger className="w-96">
               <SelectValue placeholder="案件名を選択してください" />
             </SelectTrigger>
             <SelectContent>
@@ -118,6 +125,19 @@ export default function GanttPage() {
             </SelectContent>
           </Select>
           {selectedProjectId && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-muted-foreground"
+              onClick={clearSelectedProject}
+              aria-label="案件選択を解除"
+            >
+              <X className="w-4 h-4" />
+              選択を解除
+            </Button>
+          )}
+          {selectedProjectId && (
             <Link href={`/projects/${selectedProjectId}`}>
               <Button variant="outline" size="sm">
                 案件詳細
@@ -125,9 +145,13 @@ export default function GanttPage() {
             </Link>
           )}
         </div>
-        {selectedProjectId && (
+        {selectedProjectId ? (
           <p className="text-xs text-muted-foreground">
             下の一覧で選択した案件の工程表が展開されています。工程の追加・編集・ドラッグ操作ができます。
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            案件を選択していないため、工程表一覧を表示しています。
           </p>
         )}
       </div>
