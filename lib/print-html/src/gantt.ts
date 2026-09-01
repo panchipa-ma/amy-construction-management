@@ -51,9 +51,9 @@ const MIN_ROWS = 12;
 const MAX_MONTHS = 24;
 
 const GRID_BORDER = "1px solid #334155";
-const WEEKEND_BG = "#ffe4e6";
-const BAR_COLOR = "#94a3b8";
-const BAR_BORDER = "#334155";
+const WEEKEND_BG = "#fff";
+const BAR_COLOR = "#dbeafe";
+const BAR_BORDER = "#64748b";
 
 const FONT_FAMILY =
   '"Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif';
@@ -113,45 +113,9 @@ function getMonthSegments(
     segments.push({
       startOffset: diffDays(rangeStart, cursor),
       days: segmentDays,
-      label:
-        segmentDays <= 4
-          ? `${cursor.getMonth() + 1}月`
-          : `令和${cursor.getFullYear() - 2018}年${cursor.getMonth() + 1}月`,
+      label: `${cursor.getMonth() + 1}月`,
     });
     cursor = new Date(segmentEnd);
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return segments;
-}
-
-function getWorkingSegments(
-  start: Date,
-  end: Date,
-  project: GanttProject,
-  rangeStart: Date,
-  rangeEnd: Date,
-): { startOffset: number; endOffset: number }[] {
-  const visibleStart = start < rangeStart ? rangeStart : start;
-  const visibleEnd = end > rangeEnd ? rangeEnd : end;
-  if (visibleStart > visibleEnd) return [];
-
-  const segments: { startOffset: number; endOffset: number }[] = [];
-  let segmentStart: Date | null = null;
-  const cursor = new Date(visibleStart);
-  while (cursor <= visibleEnd) {
-    const isHoliday = isProjectHoliday(cursor, project.saturdayWork ?? true);
-    if (!isHoliday && !segmentStart) {
-      segmentStart = new Date(cursor);
-    }
-    if ((isHoliday || cursor.getTime() === visibleEnd.getTime()) && segmentStart) {
-      const segmentEnd = isHoliday ? new Date(cursor) : new Date(cursor);
-      if (isHoliday) segmentEnd.setDate(segmentEnd.getDate() - 1);
-      segments.push({
-        startOffset: diffDays(rangeStart, segmentStart),
-        endOffset: diffDays(rangeStart, segmentEnd),
-      });
-      segmentStart = null;
-    }
     cursor.setDate(cursor.getDate() + 1);
   }
   return segments;
@@ -193,12 +157,13 @@ function renderSheet(
 ): string {
   const dayCount = diffDays(rangeStart, rangeEnd) + 1;
   const dayWidth = getDayWidth(dayCount);
-  const dayFontSize = dayCount <= 45 ? 11 : 10;
+  const dayFontSize =
+    dayCount <= 45 ? 11 : dayCount <= MAX_COMFORTABLE_DAYS ? 10 : 9;
   const totalWidth = LABEL_W + dayCount * dayWidth;
-  const periodLabel = `${formatPeriodDate(rangeStart)}〜${formatPeriodDate(rangeEnd)}`;
+  const periodLabel = `${rangeStart.getFullYear()}/${formatPeriodDate(rangeStart)}〜${rangeEnd.getFullYear()}/${formatPeriodDate(rangeEnd)}`;
   const monthSegments = getMonthSegments(rangeStart, rangeEnd);
   const rowsToShow = Math.max(phases.length, MIN_ROWS);
-  const gridHeaderH = HEADER_ROW_H * 2;
+  const gridHeaderH = HEADER_ROW_H * 3;
   const gridTotalH = gridHeaderH + rowsToShow * ROW_H;
 
   const days = Array.from({ length: dayCount }, (_, i) => {
@@ -210,7 +175,7 @@ function renderSheet(
   const monthHeaderCells = monthSegments
     .map(
       (segment) =>
-        `<div class="g-cell" style="grid-column:span ${segment.days};height:${HEADER_ROW_H}px;font-size:12px;font-weight:600;background:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${segment.label}</div>`,
+        `<div class="g-cell" style="grid-column:span ${segment.days};height:${HEADER_ROW_H}px;font-size:12px;font-weight:600;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${segment.label}</div>`,
     )
     .join("");
 
@@ -244,34 +209,19 @@ function renderSheet(
     })
     .join("");
 
-  const arrows = phases
+  const bars = phases
     .map((p, idx) => {
       const ps = dateOnly(p.startDate);
       const pe = dateOnly(p.endDate);
-      const segments = getWorkingSegments(ps, pe, project, rangeStart, rangeEnd);
-      if (segments.length === 0) return "";
-      const labelSegmentIndex = segments.reduce(
-        (best, segment, segmentIndex, all) =>
-          segment.endOffset - segment.startOffset >
-          all[best].endOffset - all[best].startOffset
-            ? segmentIndex
-            : best,
-        0,
-      );
-      return segments
-        .map((segment, segmentIndex) => {
-          const left = LABEL_W + segment.startOffset * dayWidth + 2;
-          const right = LABEL_W + (segment.endOffset + 1) * dayWidth - 2;
-          const width = Math.max(8, right - left);
-          const barHeight = 24;
-          const top = gridHeaderH + idx * ROW_H + (ROW_H - barHeight) / 2;
-          const label =
-            segmentIndex === labelSegmentIndex
-              ? `<span style="position:relative;z-index:1;display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 5px;font-size:12px;font-weight:600;color:#0f172a">${escapeHtml(p.name)}</span>`
-              : "";
-          return `<div style="position:absolute;left:${left}px;top:${top}px;width:${width}px;height:${barHeight}px;background:${BAR_COLOR};border:1px solid ${BAR_BORDER};border-radius:3px;box-sizing:border-box;display:flex;align-items:center;overflow:hidden">${label}</div>`;
-        })
-        .join("");
+      const startOffset = diffDays(rangeStart, ps);
+      const endOffset = diffDays(rangeStart, pe);
+      const left = LABEL_W + startOffset * dayWidth + 2;
+      const right = LABEL_W + (endOffset + 1) * dayWidth - 2;
+      const width = Math.max(8, right - left);
+      const barHeight = 24;
+      const top = gridHeaderH + idx * ROW_H + (ROW_H - barHeight) / 2;
+      const label = `<span style="position:relative;z-index:1;display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 5px;font-size:12px;font-weight:600;color:#0f172a">${escapeHtml(p.name)}</span>`;
+      return `<div style="position:absolute;left:${left}px;top:${top}px;width:${width}px;height:${barHeight}px;background:${BAR_COLOR};border:1px solid ${BAR_BORDER};border-radius:5px;box-sizing:border-box;display:flex;align-items:center;overflow:hidden">${label}</div>`;
     })
     .join("");
 
@@ -292,14 +242,15 @@ ${headerBar}
 </div>
 <div style="position:relative;width:${totalWidth}px">
   <div style="display:grid;grid-template-columns:${LABEL_W}px repeat(${dayCount}, ${dayWidth}px);grid-auto-rows:max-content;width:${totalWidth}px">
-    <div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:12px">年月</div>
+    <div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:12px;font-weight:600">月</div>
     ${monthHeaderCells}
+    <div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:12px;font-weight:600">日</div>
     ${dayHeaderCells}
-    <div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:12px">工事項目</div>
+    <div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:12px;font-weight:600">曜日</div>
     ${dowCells}
     ${rows}
   </div>
-  <div style="position:absolute;left:0;top:0;width:${totalWidth}px;height:${gridTotalH}px;pointer-events:none">${arrows}</div>
+  <div style="position:absolute;left:0;top:0;width:${totalWidth}px;height:${gridTotalH}px;pointer-events:none">${bars}</div>
 </div>
 </div>`;
 }
