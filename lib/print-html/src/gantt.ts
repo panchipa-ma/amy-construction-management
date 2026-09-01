@@ -40,7 +40,6 @@ const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 // already reserved. Keeping a small safety margin avoids Chromium clipping
 // the rightmost columns depending on its print scale.
 const PAGE_CONTENT_W = 1000;
-const MAX_COMFORTABLE_DAYS = 60;
 const MAX_DAY_W = 26;
 const MIN_DAY_W = 8;
 const LABEL_W = 190;
@@ -190,8 +189,10 @@ function renderSheet(
 ): string {
   const dayCount = diffDays(rangeStart, rangeEnd) + 1;
   const dayWidth = getDayWidth(dayCount);
-  const dayFontSize =
-    dayCount <= 45 ? 11 : dayCount <= MAX_COMFORTABLE_DAYS ? 10 : 9;
+  // Two-digit dates need to fit inside each cell without spilling into the
+  // neighboring date. Scale the header text from the actual cell width so
+  // longer periods such as 9/1-11/4 remain readable and non-overlapping.
+  const dayFontSize = Math.max(5.5, Math.min(11, dayWidth * 0.55));
   const totalWidth = LABEL_W + dayCount * dayWidth;
   const periodLabel = `${rangeStart.getFullYear()}/${formatPeriodDate(rangeStart)}〜${rangeEnd.getFullYear()}/${formatPeriodDate(rangeEnd)}`;
   const monthSegments = getMonthSegments(rangeStart, rangeEnd);
@@ -250,26 +251,14 @@ function renderSheet(
       const pe = dateOnly(p.endDate);
       const segments = getWorkingSegments(ps, pe, project, rangeStart, rangeEnd);
       if (segments.length === 0) return "";
-      const labelSegmentIndex = segments.reduce(
-        (best, segment, segmentIndex, all) =>
-          segment.endOffset - segment.startOffset >
-          all[best].endOffset - all[best].startOffset
-            ? segmentIndex
-            : best,
-        0,
-      );
       return segments
-        .map((segment, segmentIndex) => {
+        .map((segment) => {
           const left = LABEL_W + segment.startOffset * dayWidth + 2;
           const right = LABEL_W + (segment.endOffset + 1) * dayWidth - 2;
           const width = Math.max(8, right - left);
           const barHeight = 24;
           const top = gridHeaderH + idx * ROW_H + (ROW_H - barHeight) / 2;
-          const label =
-            segmentIndex === labelSegmentIndex
-              ? `<span style="position:relative;z-index:1;display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 5px;font-size:12px;font-weight:600;color:#0f172a">${escapeHtml(p.name)}</span>`
-              : "";
-          return `<div style="position:absolute;left:${left}px;top:${top}px;width:${width}px;height:${barHeight}px;background:${BAR_COLOR};border:1px solid ${BAR_BORDER};border-radius:5px;box-sizing:border-box;display:flex;align-items:center;overflow:hidden">${label}</div>`;
+          return `<div style="position:absolute;left:${left}px;top:${top}px;width:${width}px;height:${barHeight}px;background:${BAR_COLOR};border:1px solid ${BAR_BORDER};border-radius:5px;box-sizing:border-box"></div>`;
         })
         .join("");
     })
