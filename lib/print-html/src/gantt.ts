@@ -44,15 +44,57 @@ const TOP_HEADER_H = 56;
 const MIN_ROWS = 12;
 const MAX_MONTHS = 24;
 
-const GRID_BORDER = "1px solid #444";
+const GRID_BORDER = "1px solid #334155";
 const WEEKEND_BG = "#ffe4e6";
 const ARROW_COLOR = "#0f172a";
+const BAR_COLOR = "#94a3b8";
+const BAR_BORDER = "#334155";
 
 const FONT_FAMILY =
   '"Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif';
 
 function dateOnly(s: string): Date {
   return new Date(s.slice(0, 10) + "T00:00:00");
+}
+
+function holidayFillMarkup(isHoliday: boolean): string {
+  if (!isHoliday) return "";
+  // SVG is a foreground graphic rather than a CSS background, so Chromium
+  // still prints it when "Background graphics" is disabled.
+  return `<svg class="holiday-fill" aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none"><rect width="100" height="100" fill="${WEEKEND_BG}"></rect></svg>`;
+}
+
+function getWorkingSegments(
+  start: Date,
+  end: Date,
+  project: GanttProject,
+  monthStart: Date,
+  monthEnd: Date,
+): { startDay: number; endDay: number }[] {
+  const visibleStart = start < monthStart ? monthStart : start;
+  const visibleEnd = end > monthEnd ? monthEnd : end;
+  if (visibleStart > visibleEnd) return [];
+
+  const segments: { startDay: number; endDay: number }[] = [];
+  let segmentStart: Date | null = null;
+  const cursor = new Date(visibleStart);
+  while (cursor <= visibleEnd) {
+    const isHoliday = isProjectHoliday(cursor, project.saturdayWork ?? true);
+    if (!isHoliday && !segmentStart) {
+      segmentStart = new Date(cursor);
+    }
+    if ((isHoliday || cursor.getTime() === visibleEnd.getTime()) && segmentStart) {
+      const segmentEnd = isHoliday ? new Date(cursor) : new Date(cursor);
+      if (isHoliday) segmentEnd.setDate(segmentEnd.getDate() - 1);
+      segments.push({
+        startDay: segmentStart.getDate(),
+        endDay: segmentEnd.getDate(),
+      });
+      segmentStart = null;
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return segments;
 }
 
 export function getMonthsForPhases(
@@ -118,7 +160,7 @@ function renderSheet(
     .map((d) => {
       const date = new Date(year, month, d);
       const holiday = isProjectHoliday(date, project.saturdayWork ?? true);
-      return `<div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:11px;background:${holiday ? WEEKEND_BG : "#fff"};color:${holiday ? "#b91c1c" : "#000"}" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${d}</div>`;
+      return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${HEADER_ROW_H}px;font-size:11px;background:${holiday ? WEEKEND_BG : "#fff"};color:${holiday ? "#b91c1c" : "#000"};position:relative" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${holidayFillMarkup(holiday)}<span class="cell-content">${d}</span></div>`;
     })
     .join("");
 
@@ -128,7 +170,7 @@ function renderSheet(
       const date = new Date(year, month, d);
       const holiday = isProjectHoliday(date, project.saturdayWork ?? true);
       const color = holiday ? "#b91c1c" : "#000";
-      return `<div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:11px;background:${holiday ? WEEKEND_BG : "#fff"};color:${color}" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${DOW[dow]}</div>`;
+      return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${HEADER_ROW_H}px;font-size:11px;background:${holiday ? WEEKEND_BG : "#fff"};color:${color};position:relative" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${holidayFillMarkup(holiday)}<span class="cell-content">${DOW[dow]}</span></div>`;
     })
     .join("");
 
@@ -140,32 +182,53 @@ function renderSheet(
         .map((d) => {
           const date = new Date(year, month, d);
           const holiday = isProjectHoliday(date, project.saturdayWork ?? true);
-          return `<div style="border:${GRID_BORDER};box-sizing:border-box;background:${holiday ? WEEKEND_BG : "#fff"};height:${ROW_H}px"></div>`;
+          return `<div class="g-cell${holiday ? " holiday-cell" : ""}" style="height:${ROW_H}px;background:${holiday ? WEEKEND_BG : "#fff"};position:relative">${holidayFillMarkup(holiday)}</div>`;
         })
         .join("");
       return label + cells;
     })
     .join("");
 
-  const arrows = phasesInMonth
-    .map((p, idx) => {
+   const arrows = phasesInMonth
+     .map((p, idx) => {
       const ps = dateOnly(p.startDate);
       const pe = dateOnly(p.endDate);
-      const visStart = ps < monthStart ? monthStart : ps;
-      const visEnd = pe > monthEndDate ? monthEndDate : pe;
-      const startDay = visStart.getDate();
-      const endDay = visEnd.getDate();
-      const left = LABEL_W + (startDay - 1) * DAY_W + DAY_W * 0.25;
-      const right = LABEL_W + (endDay - 1) * DAY_W + DAY_W * 0.75;
-      const width = Math.max(10, right - left);
-      const top = gridHeaderH + idx * ROW_H + ROW_H / 2;
-      const lineH = 3;
+       const segments = getWorkingSegments(
+         ps,
+         pe,
+         project,
+         monthStart,
+         monthEndDate,
+       );
+       if (segments.length === 0) return "";
+       const labelSegmentIndex = segments.reduce(
+         (best, segment, segmentIndex, all) =>
+           segment.endDay - segment.startDay >
+           all[best].endDay - all[best].startDay
+             ? segmentIndex
+             : best,
+         0,
+       );
       const arrowSize = 7;
-      const showArrowHead = pe <= monthEndDate;
-      const head = showArrowHead
-        ? `<div style="position:absolute;right:-${arrowSize}px;top:${-arrowSize + lineH / 2}px;width:0;height:0;border-left:${arrowSize}px solid ${ARROW_COLOR};border-top:${arrowSize}px solid transparent;border-bottom:${arrowSize}px solid transparent"></div>`
-        : "";
-      return `<div style="position:absolute;left:${left}px;top:${top - lineH / 2}px;width:${width}px;height:${lineH}px"><div style="width:100%;height:${lineH}px;background:${ARROW_COLOR};border-radius:1px"></div>${head}</div>`;
+       return segments
+         .map((segment, segmentIndex) => {
+           const left = LABEL_W + (segment.startDay - 1) * DAY_W + 2;
+           const right = LABEL_W + segment.endDay * DAY_W - 2;
+           const width = Math.max(12, right - left);
+           const barHeight = 24;
+           const top = gridHeaderH + idx * ROW_H + (ROW_H - barHeight) / 2;
+           const showArrowHead =
+             segmentIndex === segments.length - 1 && pe <= monthEndDate;
+           const head = showArrowHead
+             ? `<div style="position:absolute;right:-${arrowSize}px;top:${barHeight / 2 - arrowSize}px;width:0;height:0;border-left:${arrowSize}px solid ${ARROW_COLOR};border-top:${arrowSize}px solid transparent;border-bottom:${arrowSize}px solid transparent"></div>`
+             : "";
+           const label =
+             segmentIndex === labelSegmentIndex
+               ? `<span style="position:relative;z-index:1;display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 5px;font-size:12px;font-weight:600;color:#0f172a">${escapeHtml(p.name)}</span>`
+               : "";
+           return `<div style="position:absolute;left:${left}px;top:${top}px;width:${width}px;height:${barHeight}px;background:${BAR_COLOR};border:1px solid ${BAR_BORDER};border-radius:3px;box-sizing:border-box;display:flex;align-items:center;overflow:visible">${label}${head}</div>`;
+         })
+         .join("");
     })
     .join("");
 
@@ -176,7 +239,7 @@ function renderSheet(
 
   const breakStyle = isLast ? "" : "page-break-after:always;";
 
-  return `<div class="gantt-sheet" style="width:${totalWidth + 24}px;background:#fff;color:#000;font-family:${FONT_FAMILY};padding:12px;box-sizing:border-box;${breakStyle}">
+  return `<div class="gantt-sheet" style="width:${totalWidth + 24}px;margin:0 auto;background:#fff;color:#000;font-family:${FONT_FAMILY};padding:12px;box-sizing:border-box;${breakStyle}">
 ${headerBar}
 <div style="display:grid;grid-template-columns:${LABEL_W}px 1fr 70px 140px 80px 150px;width:${totalWidth}px">
   <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:14px;padding:6px">工事名</div>
@@ -225,6 +288,7 @@ export function renderGanttHtml(data: GanttForPrint): string {
   @page { size: A4 landscape; margin: 6mm; }
   html, body { margin: 0; padding: 0; background: #fff; }
   body { font-family: ${FONT_FAMILY}; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .g-cell {
     border: ${GRID_BORDER};
     display: flex;
@@ -233,6 +297,22 @@ export function renderGanttHtml(data: GanttForPrint): string {
     box-sizing: border-box;
     background: #fff;
     color: #000;
+    overflow: hidden;
+  }
+  .holiday-cell {
+    border-color: #e11d48;
+  }
+  .holiday-fill {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .cell-content {
+    position: relative;
+    z-index: 1;
   }
 </style>
 </head>
