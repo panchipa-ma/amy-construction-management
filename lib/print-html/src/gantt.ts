@@ -4,7 +4,7 @@ import { isProjectHoliday, japaneseHolidayName } from "./calendar";
 /**
  * 工程表 (gantt) PDF テンプレート。
  * Web 版 `PrintGanttSheet` (React) と完全に同一の見た目を生成する HTML を返す。
- * A4 横、案件の全工程期間を 1 ページ。
+ * A4/A3 横、案件の全工程期間を 1 ページ。
  *
  * Web は従来 React + html2canvas + jsPDF で 1 月 1 ページの画像を貼り付けていたが、
  * このテンプレートに切り替えることで Web/モバイル両方が同じ HTML を共有する。
@@ -39,9 +39,12 @@ const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 // A4 landscape printable width with the page margin and the sheet padding
 // already reserved. Keeping a small safety margin avoids Chromium clipping
 // the rightmost columns depending on its print scale.
-const PAGE_CONTENT_W = 1000;
+const A4_CONTENT_W = 1000;
+const A3_CONTENT_W = 1414;
 const MAX_DAY_W = 26;
 const MIN_DAY_W = 8;
+const MONTH_LABEL_FONT_SIZE = 10;
+const MONTH_LABEL_PADDING_W = 6;
 const LABEL_W = 190;
 const ROW_H = 40;
 const HEADER_ROW_H = 28;
@@ -89,16 +92,6 @@ function formatPeriodDate(date: Date): string {
   return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
-function getDayWidth(dayCount: number): number {
-  const availableWidth = PAGE_CONTENT_W - LABEL_W;
-  // 60日まではA4横で日付を読みやすく保てる範囲。60日を超える案件も
-  // 横幅を増やさず、可能な限り同じページ内に収める。
-  return Math.max(
-    MIN_DAY_W,
-    Math.min(MAX_DAY_W, availableWidth / Math.max(dayCount, 1)),
-  );
-}
-
 function getMonthSegments(
   rangeStart: Date,
   rangeEnd: Date,
@@ -118,6 +111,89 @@ function getMonthSegments(
     cursor.setDate(cursor.getDate() + 1);
   }
   return segments;
+}
+
+function monthLabelMinWidth(label: string): number {
+  return label.length * MONTH_LABEL_FONT_SIZE + MONTH_LABEL_PADDING_W;
+}
+
+function getDayWidthsForPaper(
+  dayCount: number,
+  monthSegments: { startOffset: number; days: number; label: string }[],
+  pageContentWidth: number,
+): number[] | null {
+  const availableWidth = pageContentWidth - LABEL_W;
+  const baseWidth = Math.min(MAX_DAY_W, availableWidth / Math.max(dayCount, 1));
+  const dayWidths = Array.from({ length: dayCount }, () => baseWidth);
+  const protectedDays = new Set<number>();
+
+  // Reserve enough width for short month segments (for example, a one-day
+  // "7月" segment) before shrinking the ordinary date cells.
+  for (const segment of monthSegments) {
+    const segmentWidth = segment.days * baseWidth;
+    const minimumWidth = monthLabelMinWidth(segment.label);
+    if (segmentWidth < minimumWidth) {
+      dayWidths[segment.startOffset] += minimumWidth - segmentWidth;
+      protectedDays.add(segment.startOffset);
+    }
+  }
+
+  const currentTotal = dayWidths.reduce((sum, width) => sum + width, 0);
+  if (currentTotal <= availableWidth + 0.01) return dayWidths;
+
+  const flexibleIndexes = dayWidths
+    .map((_, index) => index)
+    .filter((index) => !protectedDays.has(index));
+  if (flexibleIndexes.length === 0) return null;
+
+  const protectedWidth = dayWidths.reduce(
+    (sum, width, index) => sum + (protectedDays.has(index) ? width : 0),
+    0,
+  );
+  const flexibleWidth = (availableWidth - protectedWidth) / flexibleIndexes.length;
+  if (flexibleWidth < MIN_DAY_W) return null;
+  for (const index of flexibleIndexes) dayWidths[index] = flexibleWidth;
+  return dayWidths;
+}
+
+function getCalendarLayout(
+  dayCount: number,
+  monthSegments: { startOffset: number; days: number; label: string }[],
+): {
+  paper: "A4" | "A3";
+  dayWidths: number[];
+  dayFontSize: number;
+  totalWidth: number;
+} {
+  for (const option of [
+    { paper: "A4" as const, contentWidth: A4_CONTENT_W },
+    { paper: "A3" as const, contentWidth: A3_CONTENT_W },
+  ]) {
+    const dayWidths = getDayWidthsForPaper(
+      dayCount,
+      monthSegments,
+      option.contentWidth,
+    );
+    if (!dayWidths) continue;
+    const totalWidth = LABEL_W + dayWidths.reduce((sum, width) => sum + width, 0);
+    const narrowestDay = Math.min(...dayWidths);
+    return {
+      paper: option.paper,
+      dayWidths,
+      dayFontSize: Math.max(5.5, Math.min(11, narrowestDay * 0.55)),
+      totalWidth,
+    };
+  }
+
+  // Extremely long periods still get an A3 document rather than overflowing
+  // the browser viewport. The date text remains at the safe minimum size.
+  const dayWidths = Array.from({ length: dayCount }, () => MIN_DAY_W);
+  return {
+    paper: "A3",
+    dayWidths,
+    dayFontSize: 5.5,
+    totalWidth: LABEL_W + dayWidths.reduce((sum, width) => sum + width, 0),
+  };
 }
 
 function getWorkingSegments(
@@ -188,14 +264,16 @@ function renderSheet(
   rangeEnd: Date,
 ): string {
   const dayCount = diffDays(rangeStart, rangeEnd) + 1;
-  const dayWidth = getDayWidth(dayCount);
-  // Two-digit dates need to fit inside each cell without spilling into the
-  // neighboring date. Scale the header text from the actual cell width so
-  // longer periods such as 9/1-11/4 remain readable and non-overlapping.
-  const dayFontSize = Math.max(5.5, Math.min(11, dayWidth * 0.55));
-  const totalWidth = LABEL_W + dayCount * dayWidth;
   const periodLabel = `${rangeStart.getFullYear()}/${formatPeriodDate(rangeStart)}〜${rangeEnd.getFullYear()}/${formatPeriodDate(rangeEnd)}`;
   const monthSegments = getMonthSegments(rangeStart, rangeEnd);
+  const { paper, dayWidths, dayFontSize, totalWidth } = getCalendarLayout(
+    dayCount,
+    monthSegments,
+  );
+  const dayOffsets = [0];
+  for (const width of dayWidths) {
+    dayOffsets.push(dayOffsets[dayOffsets.length - 1] + width);
+  }
   const rowsToShow = Math.max(phases.length, MIN_ROWS);
   const gridHeaderH = HEADER_ROW_H * 3;
   const gridTotalH = gridHeaderH + rowsToShow * ROW_H;
@@ -209,7 +287,13 @@ function renderSheet(
   const monthHeaderCells = monthSegments
     .map(
       (segment) => {
-        const fontSize = segment.days <= 1 ? 8 : segment.days <= 3 ? 10 : 12;
+        const segmentWidth =
+          dayOffsets[segment.startOffset + segment.days] -
+          dayOffsets[segment.startOffset];
+        const fontSize =
+          segmentWidth <= monthLabelMinWidth(segment.label) * 1.35
+            ? MONTH_LABEL_FONT_SIZE
+            : 12;
         return `<div class="g-cell" style="grid-column:span ${segment.days};height:${HEADER_ROW_H}px;font-size:${fontSize}px;font-weight:600;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.4px">${segment.label}</div>`;
       },
     )
@@ -253,8 +337,8 @@ function renderSheet(
       if (segments.length === 0) return "";
       return segments
         .map((segment) => {
-          const left = LABEL_W + segment.startOffset * dayWidth + 2;
-          const right = LABEL_W + (segment.endOffset + 1) * dayWidth - 2;
+          const left = LABEL_W + dayOffsets[segment.startOffset] + 2;
+          const right = LABEL_W + dayOffsets[segment.endOffset + 1] - 2;
           const width = Math.max(8, right - left);
           const barHeight = 24;
           const top = gridHeaderH + idx * ROW_H + (ROW_H - barHeight) / 2;
@@ -280,7 +364,7 @@ ${headerBar}
   <div class="g-cell" style="height:${TOP_HEADER_H}px;font-size:14px">${escapeHtml(project.siteSupervisor ?? "")}</div>
 </div>
 <div style="position:relative;width:${totalWidth}px">
-  <div style="display:grid;grid-template-columns:${LABEL_W}px repeat(${dayCount}, ${dayWidth}px);grid-auto-rows:max-content;width:${totalWidth}px">
+   <div style="display:grid;grid-template-columns:${LABEL_W}px ${dayWidths.map((width) => `${width}px`).join(" ")};grid-auto-rows:max-content;width:${totalWidth}px">
     <div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:12px;font-weight:600">月</div>
     ${monthHeaderCells}
     <div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:12px;font-weight:600">日</div>
@@ -296,6 +380,12 @@ ${headerBar}
 
 export function renderGanttHtml(data: GanttForPrint): string {
   const range = getPhaseRange(data.phases);
+  const paper = range
+    ? getCalendarLayout(
+        diffDays(range.start, range.end) + 1,
+        getMonthSegments(range.start, range.end),
+      ).paper
+    : "A4";
   const sheets =
     !range
       ? `<div style="padding:40px;font-family:${FONT_FAMILY};color:#666">工程が登録されていません。</div>`
@@ -307,7 +397,7 @@ export function renderGanttHtml(data: GanttForPrint): string {
 <meta charset="utf-8">
 <title>工程表 ${escapeHtml(data.project.name)}</title>
 <style>
-  @page { size: A4 landscape; margin: 6mm; }
+  @page { size: ${paper} landscape; margin: 6mm; }
   html, body { margin: 0; padding: 0; background: #fff; }
   body { font-family: ${FONT_FAMILY}; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

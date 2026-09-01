@@ -42,7 +42,10 @@ import { FileDown, GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage } from "@/lib/api-error";
 import { formatDate, todayLocalISO } from "@/lib/format";
-import { openAuthenticatedPrintWindow } from "@/lib/print";
+import {
+  openAuthenticatedPrintWindow,
+  shareAuthenticatedPrintPdf,
+} from "@/lib/print";
 
 const STATUS_LABEL: Record<string, string> = {
   planned: "予定",
@@ -360,13 +363,33 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
       toast({ title: "工程が登録されていません", variant: "destructive" });
       return;
     }
-    // 共有テンプレート (`@workspace/print-html` renderGanttHtml) を `?autoprint=1`
-    // で開いて印刷ダイアログを起動。Web/モバイル完全同一の出力を保証する。
+    const safeProjectName = (project?.name || "project").replace(
+      /[\\/:*?"<>|]/g,
+      "_",
+    );
+    const printUrl = `/api/print/gantt/${projectId}`;
+    const fileName = `工程表_${safeProjectName}.pdf`;
+    const userAgent = navigator.userAgent;
+    const isMobileBrowser =
+      /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent) ||
+      (navigator.maxTouchPoints > 1 && /Macintosh/i.test(userAgent));
+
     try {
-      await openAuthenticatedPrintWindow({
-        url: `/api/print/gantt/${projectId}?autoprint=1`,
-        getToken,
-      });
+      if (isMobileBrowser) {
+        // Mobile browsers should share the generated PDF file, not the
+        // authenticated HTML endpoint URL.
+        await shareAuthenticatedPrintPdf({
+          url: printUrl,
+          fileName,
+          getToken,
+        });
+      } else {
+        // Desktop keeps the browser print dialog workflow.
+        await openAuthenticatedPrintWindow({
+          url: `${printUrl}?autoprint=1`,
+          getToken,
+        });
+      }
     } catch (err) {
       toast({ title: apiErrorMessage(err), variant: "destructive" });
     }
