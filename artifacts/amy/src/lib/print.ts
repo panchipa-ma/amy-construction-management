@@ -6,7 +6,8 @@ type TokenGetter = () => Promise<string | null>;
  * A direct window.open() navigation cannot include the Clerk bearer token
  * that the API client attaches to fetch requests. Opening a blank tab first
  * keeps the browser's popup rules happy, then the authenticated response is
- * loaded from a blob URL.
+ * written directly into that tab. Direct document writing is more reliable
+ * than navigating a popup to a blob URL inside an embedded preview.
  */
 export async function openAuthenticatedPrintWindow({
   url,
@@ -50,17 +51,9 @@ export async function openAuthenticatedPrintWindow({
       throw new Error(message);
     }
 
-    const blobUrl = URL.createObjectURL(
-      new Blob([html], { type: "text/html;charset=utf-8" }),
-    );
-    printWindow.addEventListener(
-      "load",
-      () => {
-        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
-      },
-      { once: true },
-    );
-    printWindow.location.replace(blobUrl);
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
   } catch (error) {
     printWindow.close();
     throw error;
