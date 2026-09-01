@@ -13,8 +13,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
+  Animated,
   Alert,
   FlatList,
+  PanResponder,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -80,6 +82,7 @@ function ProjectGanttCard({
   onAddPhase,
   onEditPhase,
   onChangeStatus,
+  onReorder,
   onPrintPdf,
   hasPhases,
 }: {
@@ -93,6 +96,7 @@ function ProjectGanttCard({
   onAddPhase: (projectId: string) => void;
   onEditPhase: (phase: Phase) => void;
   onChangeStatus: (phase: Phase) => void;
+  onReorder: (fromIndex: number, toIndex: number) => void;
   onPrintPdf: (projectId: string, projectName: string) => void;
   hasPhases: boolean;
 }) {
@@ -251,66 +255,17 @@ function ProjectGanttCard({
             >
               <Muted style={{ fontSize: 11, fontWeight: "600" }}>工程</Muted>
             </View>
-            {phases.map((p) => {
-              const days =
-                diffDays(dateOnly(p.startDate), dateOnly(p.endDate)) + 1;
-              return (
-                <View
-                  key={p.id}
-                  style={{
-                    height: ROW_H,
-                    borderBottomWidth: 1,
-                    borderBottomColor: c.border,
-                    paddingHorizontal: 8,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <Pressable
-                    onPress={() => onEditPhase(p)}
-                    style={({ pressed }) => [
-                      { flex: 1, justifyContent: "center" },
-                      pressed && { opacity: 0.6 },
-                    ]}
-                  >
-                    <Body
-                      numberOfLines={1}
-                      style={{ fontSize: 12, fontWeight: "600" }}
-                    >
-                      {p.name ?? p.phaseName}
-                    </Body>
-                    <Muted style={{ fontSize: 10 }} numberOfLines={1}>
-                      {p.staffName ? `${p.staffName} · ` : ""}
-                      {days}日
-                    </Muted>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => onChangeStatus(p)}
-                    hitSlop={6}
-                    style={({ pressed }) => [
-                      {
-                        paddingHorizontal: 6,
-                        paddingVertical: 3,
-                        borderRadius: 4,
-                        backgroundColor: statusColor(p.status, c),
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 2,
-                      },
-                      pressed && { opacity: 0.7 },
-                    ]}
-                  >
-                    <Body
-                      style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}
-                    >
-                      {PHASE_STATUS_LABEL[p.status]}
-                    </Body>
-                    <Feather name="chevron-down" size={9} color="#fff" />
-                  </Pressable>
-                </View>
-              );
-            })}
+            {phases.map((p, index) => (
+              <SortablePhaseRow
+                key={p.id}
+                phase={p}
+                index={index}
+                totalCount={phases.length}
+                onEdit={() => onEditPhase(p)}
+                onChangeStatus={() => onChangeStatus(p)}
+                onReorder={onReorder}
+              />
+            ))}
           </View>
 
           {/* Scrollable timeline */}
@@ -529,6 +484,120 @@ function ProjectGanttCard({
   );
 }
 
+function SortablePhaseRow({
+  phase,
+  index,
+  totalCount,
+  onEdit,
+  onChangeStatus,
+  onReorder,
+}: {
+  phase: Phase;
+  index: number;
+  totalCount: number;
+  onEdit: () => void;
+  onChangeStatus: () => void;
+  onReorder: (fromIndex: number, toIndex: number) => void;
+}) {
+  const c = useColors();
+  const translationY = React.useRef(new Animated.Value(0)).current;
+  const days = diffDays(dateOnly(phase.startDate), dateOnly(phase.endDate)) + 1;
+
+  const panResponder = React.useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          Math.abs(gesture.dy) > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+        onPanResponderGrant: () => {
+          translationY.setValue(0);
+        },
+        onPanResponderMove: (_, gesture) => {
+          translationY.setValue(gesture.dy);
+        },
+        onPanResponderRelease: (_, gesture) => {
+          const offset = Math.round(gesture.dy / ROW_H);
+          const targetIndex = Math.max(
+            0,
+            Math.min(totalCount - 1, index + offset),
+          );
+          Animated.spring(translationY, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+          if (targetIndex !== index) onReorder(index, targetIndex);
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(translationY, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        },
+      }),
+    [index, onReorder, totalCount, translationY],
+  );
+
+  return (
+    <Animated.View
+      style={{
+        height: ROW_H,
+        borderBottomWidth: 1,
+        borderBottomColor: c.border,
+        paddingHorizontal: 8,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        transform: [{ translateY: translationY }],
+      }}
+    >
+      <View {...panResponder.panHandlers}>
+        <Feather
+          name="menu"
+          size={18}
+          color={c.mutedForeground}
+          accessibilityLabel="工程の順番を変更"
+        />
+      </View>
+      <Pressable
+        onPress={onEdit}
+        style={({ pressed }) => [
+          { flex: 1, justifyContent: "center" },
+          pressed && { opacity: 0.6 },
+        ]}
+      >
+        <Body numberOfLines={1} style={{ fontSize: 12, fontWeight: "600" }}>
+          {phase.name ?? phase.phaseName}
+        </Body>
+        <Muted style={{ fontSize: 10 }} numberOfLines={1}>
+          {phase.staffName ? `${phase.staffName} · ` : ""}
+          {days}日
+        </Muted>
+      </Pressable>
+      <Pressable
+        onPress={onChangeStatus}
+        hitSlop={6}
+        style={({ pressed }) => [
+          {
+            paddingHorizontal: 6,
+            paddingVertical: 3,
+            borderRadius: 4,
+            backgroundColor: statusColor(phase.status, c),
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 2,
+          },
+          pressed && { opacity: 0.7 },
+        ]}
+      >
+        <Body style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}>
+          {PHASE_STATUS_LABEL[phase.status]}
+        </Body>
+        <Feather name="chevron-down" size={9} color="#fff" />
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export default function GanttScreenGuarded() {
   return (
     <InternalOnly>
@@ -601,9 +670,7 @@ function GanttScreen() {
     );
     return list.map((p) => ({
       project: p,
-      phases: (byProject.get(p.id) ?? []).sort((a, b) =>
-        a.startDate.localeCompare(b.startDate),
-      ),
+      phases: byProject.get(p.id) ?? [],
     }));
   }, [projectsQ.data, phasesQ.data, search]);
 
@@ -630,6 +697,36 @@ function GanttScreen() {
       ]);
     } catch (e) {
       Alert.alert("更新失敗", e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const reorderPhases = async (
+    projectId: string,
+    phases: Phase[],
+    fromIndex: number,
+    toIndex: number,
+  ) => {
+    if (fromIndex === toIndex) return;
+    const next = [...phases];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    try {
+      await Promise.all(
+        next.map((phase, sortOrder) =>
+          updatePhase.mutateAsync({
+            id: phase.id,
+            data: { sortOrder },
+          }),
+        ),
+      );
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: getListAllProjectPhasesQueryKey() }),
+        qc.invalidateQueries({
+          queryKey: getListProjectPhasesQueryKey(projectId),
+        }),
+      ]);
+    } catch (e) {
+      Alert.alert("並べ替えに失敗しました", e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -703,6 +800,9 @@ function GanttScreen() {
             }
             onAddPhase={(pid) => setPhaseModal({ projectId: pid, editing: null })}
             onChangeStatus={setStatusTarget}
+            onReorder={(fromIndex, toIndex) =>
+              reorderPhases(item.project.id, item.phases, fromIndex, toIndex)
+            }
             hasPhases={item.phases.length > 0}
             onPrintPdf={(pid, pname) => printGantt(pid, pname)}
             onEditPhase={(p) =>

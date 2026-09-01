@@ -38,7 +38,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, FileDown } from "lucide-react";
+import { FileDown, GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage } from "@/lib/api-error";
 import { formatDate, todayLocalISO } from "@/lib/format";
@@ -110,7 +110,7 @@ function makeEmptyForm() {
     nameSelect: PRESETS[0],
     customMode: false,
     startDate: today,
-    endDate: today,
+    endDate: toISO(addDays(dateOnly(today), 1)),
     status: "planned" as "planned" | "in_progress" | "done",
     staffId: NO_STAFF,
     notes: "",
@@ -140,6 +140,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
   const [editing, setEditing] = useState<ProjectPhase | null>(null);
   const [form, setForm] = useState(makeEmptyForm);
   const [drag, setDrag] = useState<DragState>(null);
+  const [orderDragId, setOrderDragId] = useState<string | null>(null);
   // optimistic overrides (id -> {startDate,endDate})
   const [override, setOverride] = useState<Record<string, { s: string; e: string }>>(
     {},
@@ -315,8 +316,8 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
       toast({ title: "開始日・終了日は必須です", variant: "destructive" });
       return;
     }
-    if (form.endDate < form.startDate) {
-      toast({ title: "終了日は開始日以降にしてください", variant: "destructive" });
+    if (form.endDate <= form.startDate) {
+      toast({ title: "終了日は開始日より後の日付にしてください", variant: "destructive" });
       return;
     }
     const staffIdVal = form.staffId === NO_STAFF ? null : form.staffId;
@@ -382,6 +383,32 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
     }
   };
 
+  const reorderPhases = async (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    const sourceIndex = phases.findIndex((phase) => phase.id === sourceId);
+    const targetIndex = phases.findIndex((phase) => phase.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const next = [...phases];
+    const [moved] = next.splice(sourceIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    try {
+      await Promise.all(
+        next.map((phase, sortOrder) =>
+          updateMut.mutateAsync({
+            id: phase.id,
+            data: { sortOrder },
+          }),
+        ),
+      );
+      await refresh();
+    } catch (err) {
+      toast({ title: "工程の並べ替えに失敗しました", variant: "destructive" });
+    } finally {
+      setOrderDragId(null);
+    }
+  };
+
   const startDrag = (
     e: React.PointerEvent,
     kind: "move" | "resize-l" | "resize-r",
@@ -405,7 +432,8 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
         <div>
           <CardTitle className="text-base">工程表</CardTitle>
           <CardDescription>
-            工程バーをドラッグで移動、左右の端をドラッグで日数変更ができます。
+              左のハンドルをドラッグで工程順を変更できます。工程バーをドラッグで移動、
+              左右の端をドラッグで日数変更ができます。
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
@@ -450,9 +478,30 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                 return (
                   <div
                     key={p.id}
-                    className={`${ROW_H} border-b flex flex-col justify-center px-3 group`}
+                    draggable
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", p.id);
+                      setOrderDragId(p.id);
+                    }}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const sourceId =
+                        event.dataTransfer.getData("text/plain") || orderDragId;
+                      if (sourceId) void reorderPhases(sourceId, p.id);
+                    }}
+                    onDragEnd={() => setOrderDragId(null)}
+                    className={`${ROW_H} border-b flex flex-col justify-center px-2 group cursor-grab active:cursor-grabbing ${orderDragId === p.id ? "opacity-50" : ""}`}
                   >
                     <div className="flex items-start gap-2 min-w-0">
+                      <GripVertical
+                        className="w-4 h-4 mt-0.5 text-muted-foreground/70 shrink-0"
+                        aria-label="工程の順番を変更"
+                      />
                       <span className="font-medium text-sm leading-tight max-h-8 overflow-hidden break-words min-w-0 flex-1">
                         {p.name}
                         {p.staffName && (
@@ -669,17 +718,30 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                   id="phStart"
                   type="date"
                   value={form.startDate}
-                  onChange={(e) =>
-                    setForm({ ...form, startDate: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const startDate = e.target.value;
+                    setForm({
+                      ...form,
+                      startDate,
+                      endDate:
+                        form.endDate <= startDate
+                          ? toISO(addDays(dateOnly(startDate), 1))
+                          : form.endDate,
+                    });
+                  }}
                 />
               </div>
               <div>
-                <Label htmlFor="phEnd">終了日 *</Label>
+                <Label htmlFor="phEnd">完了日 *</Label>
                 <Input
                   id="phEnd"
                   type="date"
                   value={form.endDate}
+                  min={
+                    form.startDate
+                      ? toISO(addDays(dateOnly(form.startDate), 1))
+                      : undefined
+                  }
                   onChange={(e) =>
                     setForm({ ...form, endDate: e.target.value })
                   }

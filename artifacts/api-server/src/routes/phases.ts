@@ -132,11 +132,19 @@ router.post(
       res.status(400).json({ error: "Invalid date (expected YYYY-MM-DD)" });
       return;
     }
-    if (sd > ed) {
+    if (sd >= ed) {
       res
         .status(400)
-        .json({ error: "startDate must be on or before endDate" });
+        .json({ error: "startDate must be before endDate" });
       return;
+    }
+    let sortOrder = body.data.sortOrder;
+    if (sortOrder === undefined) {
+      const [last] = await db
+        .select({ sortOrder: max(projectPhasesTable.sortOrder) })
+        .from(projectPhasesTable)
+        .where(eq(projectPhasesTable.projectId, params.data.projectId));
+      sortOrder = last?.sortOrder == null ? 0 : n(last.sortOrder) + 1;
     }
     const [row] = await db
       .insert(projectPhasesTable)
@@ -148,7 +156,7 @@ router.post(
         status: body.data.status ?? "planned",
         staffId: body.data.staffId ?? null,
         color: body.data.color ?? null,
-        sortOrder: String(body.data.sortOrder ?? 0),
+        sortOrder: String(sortOrder),
         notes: body.data.notes ?? null,
       })
       .returning();
@@ -219,7 +227,10 @@ router.get("/project-phases/overview", async (req, res): Promise<void> => {
     .innerJoin(projectsTable, eq(projectPhasesTable.projectId, projectsTable.id))
     .leftJoin(staffTable, eq(projectPhasesTable.staffId, staffTable.id))
     .where(conds.length > 0 ? and(...conds) : undefined)
-    .orderBy(asc(projectPhasesTable.startDate));
+    .orderBy(
+      asc(projectPhasesTable.sortOrder),
+      asc(projectPhasesTable.startDate),
+    );
   const result = rows.map((r) => ({
     phaseId: r.phaseId,
     projectId: r.projectId,
@@ -276,11 +287,11 @@ router.patch("/project-phases/:id", requireInternal, async (req, res): Promise<v
   if (
     typeof update.startDate === "string" &&
     typeof update.endDate === "string" &&
-    update.startDate > update.endDate
+    update.startDate >= update.endDate
   ) {
     res
       .status(400)
-      .json({ error: "startDate must be on or before endDate" });
+      .json({ error: "startDate must be before endDate" });
     return;
   }
   if (typeof update.startDate === "string" || typeof update.endDate === "string") {
@@ -295,10 +306,10 @@ router.patch("/project-phases/:id", requireInternal, async (req, res): Promise<v
     const finalStart =
       (update.startDate as string | undefined) ?? existing.startDate;
     const finalEnd = (update.endDate as string | undefined) ?? existing.endDate;
-    if (finalStart > finalEnd) {
+    if (finalStart >= finalEnd) {
       res
         .status(400)
-        .json({ error: "startDate must be on or before endDate" });
+        .json({ error: "startDate must be before endDate" });
       return;
     }
   }

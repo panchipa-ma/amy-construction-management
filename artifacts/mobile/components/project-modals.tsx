@@ -52,6 +52,14 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function nextDayStr(s: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return s;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 const CATEGORY_OPTIONS: SelectOption<CostCategory>[] = [
   { value: "material", label: "材料" },
   { value: "subcontract", label: "外注" },
@@ -333,7 +341,7 @@ export function PhaseSheet({
 
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState(todayStr());
-  const [endDate, setEndDate] = useState(todayStr());
+  const [endDate, setEndDate] = useState(nextDayStr(todayStr()));
   const [status, setStatus] = useState<CreateProjectPhaseBodyStatus>("planned");
   const [staffId, setStaffId] = useState("");
   const [notes, setNotes] = useState("");
@@ -364,7 +372,7 @@ export function PhaseSheet({
     } else {
       setName("");
       setStartDate(todayStr());
-      setEndDate(todayStr());
+      setEndDate(nextDayStr(todayStr()));
       setStatus("planned");
       setStaffId("");
       setNotes("");
@@ -389,6 +397,10 @@ export function PhaseSheet({
     if (!name.trim()) return;
     if (!effectiveProjectId) {
       notify("案件未選択", "案件を選択してください");
+      return;
+    }
+    if (!startDate || !endDate || endDate <= startDate) {
+      notify("日付エラー", "終了日は開始日より後の日付にしてください");
       return;
     }
     const body = {
@@ -449,10 +461,22 @@ export function PhaseSheet({
           <Input value={name} onChangeText={setName} placeholder="例: 解体" />
         </Field>
         <Field label="開始日" required>
-          <DateInput value={startDate} onChangeText={setStartDate} />
+          <DateInput
+            value={startDate}
+            onChangeText={(value) => {
+              setStartDate(value);
+              if (value && endDate && endDate <= value) {
+                setEndDate(nextDayStr(value));
+              }
+            }}
+          />
         </Field>
-        <Field label="終了日" required>
-          <DateInput value={endDate} onChangeText={setEndDate} />
+        <Field label="完了日" required>
+          <DateInput
+            value={endDate}
+            minimumDate={startDate ? nextDayStr(startDate) : undefined}
+            onChangeText={setEndDate}
+          />
         </Field>
         <Field label="ステータス">
           <Select

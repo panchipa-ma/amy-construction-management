@@ -249,29 +249,36 @@ export function DateInput({
   onChangeText,
   placeholder = "日付を選択",
   allowClear = true,
+  minimumDate,
 }: {
   value: string;
   onChangeText: (v: string) => void;
   placeholder?: string;
   allowClear?: boolean;
+  minimumDate?: string;
 }) {
   const c = useColors();
   const inputBorder = useInputBorder();
   const clearError = useContext(ClearErrorContext);
   const setValue = useCallback(
     (v: string) => {
+      const safeValue =
+        minimumDate && v && v < minimumDate ? minimumDate : v;
       if (clearError) clearError();
-      onChangeText(v);
+      onChangeText(safeValue);
     },
-    [clearError, onChangeText],
+    [clearError, minimumDate, onChangeText],
   );
   const [iosOpen, setIosOpen] = useState(false);
-  const [iosDraft, setIosDraft] = useState<Date>(parseISODate(value) ?? new Date());
+  const [iosDraft, setIosDraft] = useState<Date>(
+    parseISODate(value) ?? parseISODate(minimumDate ?? "") ?? new Date(),
+  );
 
   if (Platform.OS === "web") {
     return React.createElement("input" as unknown as React.ComponentType<Record<string, unknown>>, {
       type: "date",
       value: value || "",
+      min: minimumDate || undefined,
       onChange: (e: { target: { value: string } }) => setValue(e.target.value),
       style: {
         ...inputBorder,
@@ -286,11 +293,17 @@ export function DateInput({
   }
 
   const openPicker = () => {
-    const initial = parseISODate(value) ?? new Date();
+    const minimum = parseISODate(minimumDate ?? "");
+    const valueDate = parseISODate(value);
+    const initial =
+      valueDate && (!minimum || valueDate >= minimum)
+        ? valueDate
+        : minimum ?? new Date();
     if (Platform.OS === "android") {
       DateTimePickerAndroid.open({
         value: initial,
         mode: "date",
+        minimumDate: minimum ?? undefined,
         onChange: (event, selected) => {
           if (event.type === "set" && selected) setValue(fmtISO(selected));
         },
@@ -413,6 +426,7 @@ export function DateInput({
                 onChange={(_, selected) => {
                   if (selected) setIosDraft(selected);
                 }}
+                 minimumDate={parseISODate(minimumDate ?? "") ?? undefined}
                 locale="ja-JP"
                 themeVariant="light"
               />
