@@ -102,6 +102,8 @@ export const projectsTable = pgTable("projects", {
   unitNumber: text("unit_number"),
   startDate: date("start_date"),
   endDate: date("end_date"),
+  // 工程表の休日表示用。初期値は土曜稼働、日曜・祝日休み。
+  saturdayWork: boolean("saturday_work").notNull().default(true),
   contractAmount: numeric("contract_amount").notNull().default("0"),
   salesCommissionRate: numeric("sales_commission_rate").notNull().default("5"),
   // 規定利率 (%) — 施工台帳の規定粗利額算出に使用。NULL時は顧客の defaultProfitRate にフォールバック。

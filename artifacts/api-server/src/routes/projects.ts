@@ -61,6 +61,7 @@ async function serializeProject(p: ProjectRow) {
     unitNumber: p.unitNumber,
     startDate: isoDate(p.startDate),
     endDate: isoDate(p.endDate),
+    saturdayWork: p.saturdayWork,
     contractAmount: n(p.contractAmount),
     plannedCost: planned,
     actualCost: actual,
@@ -122,6 +123,7 @@ router.post("/projects", requireInternal, async (req, res): Promise<void> => {
       unitNumber: parsed.data.unitNumber ?? null,
       startDate: isoDate(parsed.data.startDate),
       endDate: isoDate(parsed.data.endDate),
+      saturdayWork: parsed.data.saturdayWork ?? true,
       contractAmount:
         parsed.data.contractAmount == null
           ? "0"

@@ -413,6 +413,52 @@ export default function ProjectDetailPage() {
               </dl>
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">工程表設定</CardTitle>
+              <CardDescription>
+                工程表の日付セルとPDF出力の休日表示に反映されます。
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 accent-primary"
+                  checked={project.saturdayWork}
+                  disabled={updateProjectMut.isPending}
+                  onChange={async (e) => {
+                    try {
+                      await updateProjectMut.mutateAsync({
+                        id,
+                        data: { saturdayWork: e.target.checked },
+                      });
+                      await queryClient.invalidateQueries({
+                        queryKey: getGetProjectQueryKey(id),
+                      });
+                      await queryClient.invalidateQueries({
+                        queryKey: getListProjectsQueryKey(),
+                      });
+                      toast({ title: "工程表設定を更新しました" });
+                    } catch (err) {
+                      toast({
+                        title: apiErrorMessage(err),
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                />
+                <span>
+                  <span className="block text-sm font-medium">
+                    土曜日を稼働日にする
+                  </span>
+                  <span className="block text-xs text-muted-foreground mt-1">
+                    オフにすると土曜日も工程表で休日（赤色）として表示されます。
+                  </span>
+                </span>
+              </label>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="ledger" className="space-y-6 mt-4">

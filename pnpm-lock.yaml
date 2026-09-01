@@ -311,6 +311,9 @@ importers:
       '@workspace/object-storage-web':
         specifier: workspace:*
         version: link:../../lib/object-storage-web
+      '@workspace/print-html':
+        specifier: workspace:*
+        version: link:../../lib/print-html
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1

@@ -1537,7 +1537,7 @@ components:
 
     Project:
       type: object
-      required: [id, name, status, customerId, customerName, contractAmount, plannedCost, actualCost, createdAt]
+      required: [id, name, status, customerId, customerName, contractAmount, plannedCost, actualCost, saturdayWork, createdAt]
       properties:
         id: { type: string }
         name: { type: string }
@@ -1549,6 +1549,7 @@ components:
         unitNumber: { type: string, nullable: true, description: "マンション号室 (自動振分けキー)" }
         startDate: { type: string, format: date, nullable: true }
         endDate: { type: string, format: date, nullable: true }
+        saturdayWork: { type: boolean, description: "土曜日を稼働日にするか。初期値は true" }
         contractAmount: { type: number, description: "契約金額 (税抜, 円)" }
         plannedCost: { type: number, description: "予算原価合計" }
         actualCost: { type: number, description: "実績原価合計" }
@@ -1575,6 +1576,7 @@ components:
         unitNumber: { type: string, nullable: true }
         startDate: { type: string, format: date, nullable: true }
         endDate: { type: string, format: date, nullable: true }
+        saturdayWork: { type: boolean, default: true, description: "土曜日を稼働日にするか" }
         contractAmount: { type: number }
         salesCommissionRate: { type: number, nullable: true }
         standardProfitRate: { type: number, nullable: true }
@@ -1596,6 +1598,7 @@ components:
         unitNumber: { type: string, nullable: true }
         startDate: { type: string, format: date, nullable: true }
         endDate: { type: string, format: date, nullable: true }
+        saturdayWork: { type: boolean, description: "土曜日を稼働日にするか" }
         contractAmount: { type: number }
         salesCommissionRate: { type: number, nullable: true }
         standardProfitRate: { type: number, nullable: true }

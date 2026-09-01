@@ -16,6 +16,8 @@ export interface CreateProjectBody {
   unitNumber?: string | null;
   startDate?: Date | null;
   endDate?: Date | null;
+  /** 土曜日を稼働日にするか */
+  saturdayWork?: boolean;
   contractAmount?: number;
   salesCommissionRate?: number | null;
   standardProfitRate?: number | null;

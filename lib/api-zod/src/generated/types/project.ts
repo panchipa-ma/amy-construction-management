@@ -20,6 +20,8 @@ export interface Project {
   unitNumber?: string | null;
   startDate?: Date | null;
   endDate?: Date | null;
+  /** 土曜日を稼働日にするか。初期値は true */
+  saturdayWork: boolean;
   /** 契約金額 (税抜, 円) */
   contractAmount: number;
   /** 予算原価合計 */

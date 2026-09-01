@@ -158,6 +158,7 @@ export const ListProjectsResponseItem = zod.object({
     .describe("マンション号室 (自動振分けキー)"),
   startDate: zod.coerce.date().nullish(),
   endDate: zod.coerce.date().nullish(),
+  saturdayWork: zod.boolean().describe("土曜日を稼働日にするか。初期値は true"),
   contractAmount: zod.number().describe("契約金額 (税抜, 円)"),
   plannedCost: zod.number().describe("予算原価合計"),
   actualCost: zod.number().describe("実績原価合計"),
@@ -192,6 +193,8 @@ export const ListProjectsResponseItem = zod.object({
 });
 export const ListProjectsResponse = zod.array(ListProjectsResponseItem);
 
+export const createProjectBodySaturdayWorkDefault = true;
+
 export const CreateProjectBody = zod.object({
   name: zod.string(),
   code: zod.string().nullish(),
@@ -207,6 +210,10 @@ export const CreateProjectBody = zod.object({
   unitNumber: zod.string().nullish(),
   startDate: zod.coerce.date().nullish(),
   endDate: zod.coerce.date().nullish(),
+  saturdayWork: zod
+    .boolean()
+    .default(createProjectBodySaturdayWorkDefault)
+    .describe("土曜日を稼働日にするか"),
   contractAmount: zod.number().optional(),
   salesCommissionRate: zod.number().nullish(),
   standardProfitRate: zod.number().nullish(),
@@ -238,6 +245,7 @@ export const CreateProjectResponse = zod.object({
     .describe("マンション号室 (自動振分けキー)"),
   startDate: zod.coerce.date().nullish(),
   endDate: zod.coerce.date().nullish(),
+  saturdayWork: zod.boolean().describe("土曜日を稼働日にするか。初期値は true"),
   contractAmount: zod.number().describe("契約金額 (税抜, 円)"),
   plannedCost: zod.number().describe("予算原価合計"),
   actualCost: zod.number().describe("実績原価合計"),
@@ -295,6 +303,7 @@ export const GetProjectResponse = zod.object({
     .describe("マンション号室 (自動振分けキー)"),
   startDate: zod.coerce.date().nullish(),
   endDate: zod.coerce.date().nullish(),
+  saturdayWork: zod.boolean().describe("土曜日を稼働日にするか。初期値は true"),
   contractAmount: zod.number().describe("契約金額 (税抜, 円)"),
   plannedCost: zod.number().describe("予算原価合計"),
   actualCost: zod.number().describe("実績原価合計"),
@@ -343,6 +352,7 @@ export const UpdateProjectBody = zod.object({
   unitNumber: zod.string().nullish(),
   startDate: zod.coerce.date().nullish(),
   endDate: zod.coerce.date().nullish(),
+  saturdayWork: zod.boolean().optional().describe("土曜日を稼働日にするか"),
   contractAmount: zod.number().optional(),
   salesCommissionRate: zod.number().nullish(),
   standardProfitRate: zod.number().nullish(),
@@ -378,6 +388,7 @@ export const UpdateProjectResponse = zod.object({
     .describe("マンション号室 (自動振分けキー)"),
   startDate: zod.coerce.date().nullish(),
   endDate: zod.coerce.date().nullish(),
+  saturdayWork: zod.boolean().describe("土曜日を稼働日にするか。初期値は true"),
   contractAmount: zod.number().describe("契約金額 (税抜, 円)"),
   plannedCost: zod.number().describe("予算原価合計"),
   actualCost: zod.number().describe("実績原価合計"),

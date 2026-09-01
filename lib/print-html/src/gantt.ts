@@ -1,4 +1,5 @@
 import { escapeHtml } from "./util";
+import { isProjectHoliday, japaneseHolidayName } from "./calendar";
 
 /**
  * 工程表 (gantt) PDF テンプレート。
@@ -25,6 +26,7 @@ export type GanttProject = {
   siteSupervisor?: string | null;
   supervisorPhone?: string | null;
   companyName?: string | null;
+  saturdayWork?: boolean | null;
 };
 
 export type GanttForPrint = {
@@ -35,16 +37,16 @@ export type GanttForPrint = {
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 
 const DAY_W = 26;
-const LABEL_W = 140;
-const ROW_H = 34;
+const LABEL_W = 190;
+const ROW_H = 40;
 const HEADER_ROW_H = 28;
 const TOP_HEADER_H = 56;
 const MIN_ROWS = 12;
 const MAX_MONTHS = 24;
 
 const GRID_BORDER = "1px solid #444";
-const WEEKEND_BG = "#e8e8e8";
-const ARROW_RED = "#d92020";
+const WEEKEND_BG = "#ffe4e6";
+const ARROW_COLOR = "#0f172a";
 
 const FONT_FAMILY =
   '"Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif';
@@ -114,30 +116,31 @@ function renderSheet(
 
   const dayHeaderCells = days
     .map((d) => {
-      const dow = new Date(year, month, d).getDay();
-      const wknd = dow === 0 || dow === 6;
-      return `<div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:11px;background:${wknd ? WEEKEND_BG : "#fff"}">${d}</div>`;
+      const date = new Date(year, month, d);
+      const holiday = isProjectHoliday(date, project.saturdayWork ?? true);
+      return `<div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:11px;background:${holiday ? WEEKEND_BG : "#fff"};color:${holiday ? "#b91c1c" : "#000"}" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${d}</div>`;
     })
     .join("");
 
   const dowCells = days
     .map((d) => {
       const dow = new Date(year, month, d).getDay();
-      const wknd = dow === 0 || dow === 6;
-      const color = dow === 0 ? "#cc0000" : dow === 6 ? "#0066cc" : "#000";
-      return `<div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:11px;background:${wknd ? WEEKEND_BG : "#fff"};color:${color}">${DOW[dow]}</div>`;
+      const date = new Date(year, month, d);
+      const holiday = isProjectHoliday(date, project.saturdayWork ?? true);
+      const color = holiday ? "#b91c1c" : "#000";
+      return `<div class="g-cell" style="height:${HEADER_ROW_H}px;font-size:11px;background:${holiday ? WEEKEND_BG : "#fff"};color:${color}" title="${escapeHtml(japaneseHolidayName(date) ?? "")}">${DOW[dow]}</div>`;
     })
     .join("");
 
   const rows = Array.from({ length: rowsToShow })
     .map((_, idx) => {
       const phase = phasesInMonth[idx];
-      const label = `<div class="g-cell" style="height:${ROW_H}px;font-size:13px;padding:0 6px;justify-content:flex-start">${escapeHtml(phase?.name ?? "")}</div>`;
+      const label = `<div class="g-cell" style="height:${ROW_H}px;font-size:12px;padding:4px 6px;justify-content:flex-start;text-align:left;line-height:1.25;overflow-wrap:anywhere">${escapeHtml(phase?.name ?? "")}</div>`;
       const cells = days
         .map((d) => {
-          const dow = new Date(year, month, d).getDay();
-          const wknd = dow === 0 || dow === 6;
-          return `<div style="border:${GRID_BORDER};box-sizing:border-box;background:${wknd ? WEEKEND_BG : "#fff"};height:${ROW_H}px"></div>`;
+          const date = new Date(year, month, d);
+          const holiday = isProjectHoliday(date, project.saturdayWork ?? true);
+          return `<div style="border:${GRID_BORDER};box-sizing:border-box;background:${holiday ? WEEKEND_BG : "#fff"};height:${ROW_H}px"></div>`;
         })
         .join("");
       return label + cells;
@@ -160,9 +163,9 @@ function renderSheet(
       const arrowSize = 7;
       const showArrowHead = pe <= monthEndDate;
       const head = showArrowHead
-        ? `<div style="position:absolute;right:-${arrowSize}px;top:${-arrowSize + lineH / 2}px;width:0;height:0;border-left:${arrowSize}px solid ${ARROW_RED};border-top:${arrowSize}px solid transparent;border-bottom:${arrowSize}px solid transparent"></div>`
+        ? `<div style="position:absolute;right:-${arrowSize}px;top:${-arrowSize + lineH / 2}px;width:0;height:0;border-left:${arrowSize}px solid ${ARROW_COLOR};border-top:${arrowSize}px solid transparent;border-bottom:${arrowSize}px solid transparent"></div>`
         : "";
-      return `<div style="position:absolute;left:${left}px;top:${top - lineH / 2}px;width:${width}px;height:${lineH}px"><div style="width:100%;height:${lineH}px;background:${ARROW_RED};border-radius:1px"></div>${head}</div>`;
+      return `<div style="position:absolute;left:${left}px;top:${top - lineH / 2}px;width:${width}px;height:${lineH}px"><div style="width:100%;height:${lineH}px;background:${ARROW_COLOR};border-radius:1px"></div>${head}</div>`;
     })
     .join("");
 

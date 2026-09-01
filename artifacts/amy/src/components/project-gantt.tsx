@@ -11,6 +11,7 @@ import {
   getGetProjectQueryKey,
   type ProjectPhase,
 } from "@workspace/api-client-react";
+import { isProjectHoliday, japaneseHolidayName } from "@workspace/print-html";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,6 +77,7 @@ const PRESETS = [
 const CUSTOM = "__custom__";
 
 const DAY_PX = 28; // base day width
+const ROW_H = "h-14";
 function dateOnly(s: string): Date {
   return new Date(s.slice(0, 10) + "T00:00:00");
 }
@@ -426,7 +428,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
         ) : (
           <div className="flex border rounded-md overflow-hidden">
             {/* fixed left column */}
-            <div className="w-56 flex-shrink-0 border-r bg-card">
+            <div className="w-72 flex-shrink-0 border-r bg-card">
               <div className="h-12 border-b bg-muted/30 flex items-end px-3 pb-1.5 text-xs font-semibold text-muted-foreground">
                 工程
               </div>
@@ -438,10 +440,10 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                 return (
                   <div
                     key={p.id}
-                    className="h-12 border-b flex flex-col justify-center px-3 group"
+                    className={`${ROW_H} border-b flex flex-col justify-center px-3 group`}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm truncate">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <span className="font-medium text-sm leading-tight max-h-8 overflow-hidden break-words min-w-0 flex-1">
                         {p.name}
                         {p.staffName && (
                           <span className="ml-1 text-xs text-muted-foreground font-normal">
@@ -449,7 +451,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                           </span>
                         )}
                       </span>
-                      <Badge variant="outline" className="text-[10px] py-0">
+                      <Badge variant="outline" className="text-[10px] py-0 shrink-0">
                         {STATUS_LABEL[p.status]}
                       </Badge>
                     </div>
@@ -469,15 +471,17 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                 style={{ width: (range.totalDays + 1) * DAY_PX }}
               >
                 {/* day header */}
-                <div className="h-12 border-b bg-muted/30 relative">
+                <div className={`${ROW_H} border-b bg-muted/30 relative`}>
                   {dayMarkers.map((m, i) => {
                     const left = i * DAY_PX;
-                    const isWeekend =
-                      m.date.getDay() === 0 || m.date.getDay() === 6;
+                    const isHoliday = isProjectHoliday(
+                      m.date,
+                      project?.saturdayWork ?? true,
+                    );
                     return (
                       <div
                         key={i}
-                        className={`absolute top-0 bottom-0 border-l ${m.isMonthStart ? "border-foreground/30" : "border-border/40"} ${isWeekend ? "bg-muted/40" : ""}`}
+                        className={`absolute top-0 bottom-0 border-l ${m.isMonthStart ? "border-foreground/30" : "border-border/40"} ${isHoliday ? "bg-rose-100/80" : ""}`}
                         style={{ left, width: DAY_PX }}
                       >
                         {m.isMonthStart && (
@@ -486,7 +490,8 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                           </div>
                         )}
                         <div
-                          className={`absolute bottom-1 left-0 right-0 text-center text-[10px] tabular-nums ${m.date.getDay() === 0 ? "text-destructive" : m.date.getDay() === 6 ? "text-blue-600" : "text-muted-foreground"}`}
+                          className={`absolute bottom-1 left-0 right-0 text-center text-[10px] tabular-nums ${isHoliday ? "text-rose-700 font-semibold" : "text-muted-foreground"}`}
+                          title={japaneseHolidayName(m.date) ?? undefined}
                         >
                           {m.date.getDate()}
                         </div>
@@ -508,16 +513,18 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                   return (
                     <div
                       key={p.id}
-                      className="h-12 border-b relative group"
+                      className={`${ROW_H} border-b relative group`}
                     >
                       {/* day grid stripes */}
                       {dayMarkers.map((m, i) => {
-                        const isWeekend =
-                          m.date.getDay() === 0 || m.date.getDay() === 6;
+                        const isHoliday = isProjectHoliday(
+                          m.date,
+                          project?.saturdayWork ?? true,
+                        );
                         return (
                           <div
                             key={i}
-                            className={`absolute top-0 bottom-0 border-l ${m.isMonthStart ? "border-foreground/20" : "border-border/30"} ${isWeekend ? "bg-muted/30" : ""}`}
+                            className={`absolute top-0 bottom-0 border-l ${m.isMonthStart ? "border-foreground/20" : "border-border/30"} ${isHoliday ? "bg-rose-100/70" : ""}`}
                             style={{ left: i * DAY_PX, width: DAY_PX }}
                           />
                         );
@@ -530,7 +537,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                       )}
                       {/* the bar */}
                       <div
-                        className={`absolute top-1/2 -translate-y-1/2 h-7 rounded ${STATUS_CLR[p.status]} text-white text-xs flex items-center shadow-sm select-none ${dragging ? "ring-2 ring-primary opacity-90" : ""}`}
+                        className={`absolute top-1/2 -translate-y-1/2 h-8 rounded ${STATUS_CLR[p.status]} text-white text-xs flex items-center shadow-sm select-none border border-black/20 ${dragging ? "ring-2 ring-primary opacity-90" : ""}`}
                         style={{ left, width: Math.max(width, 12) }}
                         title={`${p.name}: ${formatDate(sIso)} 〜 ${formatDate(eIso)}`}
                       >
@@ -541,7 +548,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                         />
                         {/* body */}
                         <div
-                          className="flex-1 px-1 truncate cursor-grab active:cursor-grabbing"
+                           className="flex-1 px-1 truncate cursor-grab active:cursor-grabbing"
                           onPointerDown={(ev) => startDrag(ev, "move", p)}
                           onDoubleClick={() => openEdit(p)}
                         >

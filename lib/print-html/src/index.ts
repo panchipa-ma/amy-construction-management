@@ -9,6 +9,11 @@ export {
   type GanttProject,
 } from "./gantt";
 export {
+  isProjectHoliday,
+  japaneseHolidayName,
+  japaneseHolidays,
+} from "./calendar";
+export {
   renderLedgerHtml,
   type LedgerForPrint,
   type LedgerEntryForPrint,

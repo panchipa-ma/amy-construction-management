@@ -224,6 +224,7 @@ router.get("/print/gantt/:projectId", async (req, res): Promise<void> => {
       unitNumber: project.unitNumber ?? null,
       startDate: isoDate(project.startDate),
       endDate: isoDate(project.endDate),
+      saturdayWork: project.saturdayWork,
       siteSupervisor: project.siteSupervisor ?? null,
       supervisorPhone,
       companyName: COMPANY_INFO.name,

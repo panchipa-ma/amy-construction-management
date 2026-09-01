@@ -54,6 +54,7 @@ export default function ProjectNewPage() {
     unitNumber: "",
     startDate: "",
     endDate: "",
+    saturdayWork: true,
     contractAmount: "0",
     standardProfitRate: "20",
     salesCommissionRate: "5",
@@ -82,6 +83,7 @@ export default function ProjectNewPage() {
           unitNumber: form.unitNumber || null,
           startDate: form.startDate || null,
           endDate: form.endDate || null,
+          saturdayWork: form.saturdayWork,
           contractAmount: Number(form.contractAmount) || 0,
           standardProfitRate:
             form.standardProfitRate === ""
@@ -255,6 +257,26 @@ export default function ProjectNewPage() {
                   着工日・竣工予定日は工程表で工程を登録すると自動反映されます (施工台帳でも編集可)。<br />
                   契約金額は見積書を作成すると最新の見積合計 (税込) が自動反映されます。
                 </p>
+              </div>
+              <div className="col-span-2 rounded-md border bg-muted/20 px-3 py-3">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 accent-primary"
+                    checked={form.saturdayWork}
+                    onChange={(e) =>
+                      setForm({ ...form, saturdayWork: e.target.checked })
+                    }
+                  />
+                  <span>
+                    <span className="block text-sm font-medium">
+                      土曜日を稼働日にする
+                    </span>
+                    <span className="block text-xs text-muted-foreground mt-1">
+                      日曜日・祝日は固定休です。初期設定は土曜稼働です。
+                    </span>
+                  </span>
+                </label>
               </div>
               <div className="col-span-2">
                 <Label htmlFor="standardProfitRate">

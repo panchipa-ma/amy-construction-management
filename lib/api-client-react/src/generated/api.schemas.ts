@@ -210,6 +210,8 @@ export interface Project {
   unitNumber?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  /** 土曜日を稼働日にするか。初期値は true */
+  saturdayWork: boolean;
   /** 契約金額 (税抜, 円) */
   contractAmount: number;
   /** 予算原価合計 */
@@ -245,6 +247,8 @@ export interface CreateProjectBody {
   unitNumber?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  /** 土曜日を稼働日にするか */
+  saturdayWork?: boolean;
   contractAmount?: number;
   salesCommissionRate?: number | null;
   standardProfitRate?: number | null;
@@ -265,6 +269,8 @@ export interface UpdateProjectBody {
   unitNumber?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  /** 土曜日を稼働日にするか */
+  saturdayWork?: boolean;
   contractAmount?: number;
   salesCommissionRate?: number | null;
   standardProfitRate?: number | null;
