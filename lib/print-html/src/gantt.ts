@@ -46,7 +46,6 @@ const MAX_MONTHS = 24;
 
 const GRID_BORDER = "1px solid #334155";
 const WEEKEND_BG = "#ffe4e6";
-const ARROW_COLOR = "#0f172a";
 const BAR_COLOR = "#94a3b8";
 const BAR_BORDER = "#334155";
 
@@ -209,7 +208,6 @@ function renderSheet(
              : best,
          0,
        );
-      const arrowSize = 7;
        return segments
          .map((segment, segmentIndex) => {
            const left = LABEL_W + (segment.startDay - 1) * DAY_W + 2;
@@ -217,24 +215,19 @@ function renderSheet(
            const width = Math.max(12, right - left);
            const barHeight = 24;
            const top = gridHeaderH + idx * ROW_H + (ROW_H - barHeight) / 2;
-           const showArrowHead =
-             segmentIndex === segments.length - 1 && pe <= monthEndDate;
-           const head = showArrowHead
-             ? `<div style="position:absolute;right:-${arrowSize}px;top:${barHeight / 2 - arrowSize}px;width:0;height:0;border-left:${arrowSize}px solid ${ARROW_COLOR};border-top:${arrowSize}px solid transparent;border-bottom:${arrowSize}px solid transparent"></div>`
-             : "";
            const label =
              segmentIndex === labelSegmentIndex
                ? `<span style="position:relative;z-index:1;display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 5px;font-size:12px;font-weight:600;color:#0f172a">${escapeHtml(p.name)}</span>`
                : "";
-           return `<div style="position:absolute;left:${left}px;top:${top}px;width:${width}px;height:${barHeight}px;background:${BAR_COLOR};border:1px solid ${BAR_BORDER};border-radius:3px;box-sizing:border-box;display:flex;align-items:center;overflow:visible">${label}${head}</div>`;
+            return `<div style="position:absolute;left:${left}px;top:${top}px;width:${width}px;height:${barHeight}px;background:${BAR_COLOR};border:1px solid ${BAR_BORDER};border-radius:3px;box-sizing:border-box;display:flex;align-items:center;overflow:hidden">${label}</div>`;
          })
          .join("");
     })
     .join("");
 
   const headerBar =
-    project.companyName || project.supervisorPhone
-      ? `<div style="width:${totalWidth}px;display:flex;justify-content:flex-end;align-items:baseline;gap:20px;padding:2px 4px 6px;font-size:13px">${project.companyName ? `<span style="font-weight:600">${escapeHtml(project.companyName)}</span>` : ""}${project.supervisorPhone ? `<span>TEL: ${escapeHtml(project.supervisorPhone)}</span>` : ""}</div>`
+    project.companyName || project.siteSupervisor || project.supervisorPhone
+      ? `<div style="width:${totalWidth}px;display:flex;justify-content:flex-end;align-items:baseline;gap:20px;padding:2px 4px 6px;font-size:13px">${project.companyName ? `<span style="font-weight:600">${escapeHtml(project.companyName)}</span>` : ""}${project.siteSupervisor ? `<span>担当者: ${escapeHtml(project.siteSupervisor)}</span>` : ""}${project.supervisorPhone ? `<span>担当者電話番号: ${escapeHtml(project.supervisorPhone)}</span>` : ""}</div>`
       : "";
 
   const breakStyle = isLast ? "" : "page-break-after:always;";

@@ -97,7 +97,9 @@ export function PrintGanttSheet({
       }}
     >
       {/* ─── 会社情報バー ─── */}
-      {(project.companyName || project.supervisorPhone) && (
+      {(project.companyName ||
+        project.siteSupervisor ||
+        project.supervisorPhone) && (
         <div
           style={{
             width: totalWidth,
@@ -112,8 +114,11 @@ export function PrintGanttSheet({
           {project.companyName && (
             <span style={{ fontWeight: 600 }}>{project.companyName}</span>
           )}
+          {project.siteSupervisor && (
+            <span>担当者: {project.siteSupervisor}</span>
+          )}
           {project.supervisorPhone && (
-            <span>TEL: {project.supervisorPhone}</span>
+            <span>担当者電話番号: {project.supervisorPhone}</span>
           )}
         </div>
       )}
