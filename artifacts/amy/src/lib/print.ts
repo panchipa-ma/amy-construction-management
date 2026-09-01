@@ -1,4 +1,6 @@
-type TokenGetter = () => Promise<string | null>;
+type TokenGetter = (options?: {
+  skipCache?: boolean;
+}) => Promise<string | null>;
 
 /**
  * Fetch an authenticated print document before navigating a new tab.
@@ -87,13 +89,22 @@ async function fetchAuthenticatedPrintHtml(
   getToken: TokenGetter,
 ): Promise<string> {
   const token = await getToken();
-  const headers = new Headers({ Accept: "text/html" });
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const request = (authToken: string | null) => {
+    const headers = new Headers({ Accept: "text/html" });
+    if (authToken) headers.set("Authorization", `Bearer ${authToken}`);
+    return fetch(url, {
+      credentials: "include",
+      headers,
+    });
+  };
 
-  const response = await fetch(url, {
-    credentials: "include",
-    headers,
-  });
+  let response = await request(token);
+  // A Clerk session can rotate while the page remains open. Retry once with
+  // a freshly issued token so PDF export does not fail with a false 401.
+  if (response.status === 401) {
+    const freshToken = await getToken({ skipCache: true });
+    if (freshToken) response = await request(freshToken);
+  }
   const html = await response.text();
 
   if (!response.ok) {
