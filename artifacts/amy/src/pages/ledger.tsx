@@ -52,8 +52,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { apiErrorMessage } from "@/lib/api-error";
-import { openAuthenticatedPrintWindow } from "@/lib/print";
-import { pdfFileName } from "@/lib/print";
+import { openAuthenticatedPrintWindow, pdfFileName } from "@/lib/print";
 import { CheckCircle2, ExternalLink, Printer, RotateCcw } from "lucide-react";
 
 export default function LedgerPage() {
