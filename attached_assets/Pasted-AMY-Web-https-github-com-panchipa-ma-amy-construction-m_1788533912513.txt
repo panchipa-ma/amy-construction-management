@@ -1,0 +1,67 @@
+AMY施工管理 Web版 コードレビュー報告
+
+対象リポジトリ: https://github.com/panchipa-ma/amy-construction-management 対象範囲: artifacts/amy(Webフロントエンド)、artifacts/api-server(バックエンド)、両者が依存する lib/*(共有ライブラリ) 対象外: artifacts/mobile(モバイル版)、artifacts/mockup-sandbox(モックアップ用サンドボックス) レビュー方式: 静的コードレビューのみ。実装・ファイル変更は行っていません。
+
+重大な問題
+1. アップロード済みファイルが認証なしで誰でも取得可能
+
+artifacts/api-server/src/routes/storage.ts の GET /storage/objects/* は認証・ACLチェックが一切ない状態で実装されています。「保護ルートの例」としてコメントアウトされたコードが残っているだけで、実際には有効化されていません。
+
+このエンドポイントは請求書・見積書・領収書・職人請求書・現場写真など、顧客名や金額を含む業務文書の実体を配信しています。routes/index.ts のコメントには「object pathにUUIDが入っているので推測されにくいから公開のままでよい」という設計判断が明記されていますが、これは「知っていればアクセスできる(security by obscurity)」に依存した設計です。URLはブラウザ履歴・Referrerヘッダー・サーバーログ・共有(コピー&ペースト)などを通じて漏洩し得るため、UUIDだけを保護策とするのは十分ではありません。
+
+lib/objectAcl.ts にはACLポリシー(owner/visibility/aclRules)を判定する canAccessObject() が実装済みで存在しますが、どこからも呼び出されておらず未使用のまま放置されています。
+
+影響: 顧客の氏名・住所・金額情報を含む文書が、URLさえ知っていれば第三者に閲覧され得る。
+
+2. CORS設定が実質的に「全オリジン許可 + 資格情報送信あり」
+
+artifacts/api-server/src/app.ts の cors({ credentials: true, origin: true }) は、リクエストのOriginヘッダーをそのまま許可オリジンとして反射し、かつCookieなどの資格情報(credentials)付きリクエストも許可する設定です。
+
+これは一般的に危険なアンチパターンとされる組み合わせです。ClerkはBearerトークンだけでなくセッションCookieによる認証もサポートしており(@clerk/express の clerkMiddleware() はデフォルトでCookieセッションも読み取ります)、もしCookieセッションが有効な状態であれば、悪意あるサイトが被害者のブラウザ経由でこのAPIに資格情報付きリクエストを送り、レスポンスを読み取れてしまう可能性があります(実際にCookieセッションが使われているかはreplit.mdの記述からは断定できませんが、ClerkBearerTokenBridgeをわざわざ実装している経緯から、Cookie経由の認証も併存している可能性が高いです)。
+
+影響: 最悪の場合、他ユーザーになりすまして案件・請求書などの社内データを読み取られるクロスサイト攻撃(CSRF的な情報漏洩)が成立し得る。
+
+セキュリティ上の問題
+3. /ocr/extract にオブジェクト単位の権限チェックがない
+
+artifacts/api-server/src/routes/ocr.ts の POST /ocr/extract は、リクエストボディで渡された objectPath のファイルをそのまま読み込みAnthropic APIでOCRした結果を返しますが、そのファイルが呼び出しユーザー自身がアップロードしたものかどうかのチェックが一切ありません。
+
+このルートは routes/index.ts で「社外(職人)も利用可」のグループに置かれており、requireInternal も所有者チェックも通りません。replit.md に明記されている「社外ユーザーのデータ分離」の原則(vendor_invoices/vendor_quotes等はcreated_byで本人分のみに絞る)が、このエンドポイントだけ守られていません。
+
+影響: 社外(職人)ユーザーが他人がアップロードした請求書・領収書のobjectPathを何らかの経路で知った場合、その内容(取引先名・金額・日付など)をOCR結果として読み取れてしまう。
+
+4. 審査用デモログインのレート制限が実質機能していない可能性
+
+artifacts/api-server/src/routes/review-login.ts はIPアドレス単位で15分10回のレート制限を実装していますが、req.ip を使用しています。一方、Expressの trust proxy 設定はどこにも(app.ts/index.ts)行われていません。
+
+本番環境(Replitのデプロイ環境)は通常リバースプロキシ経由でアクセスされるため、trust proxy が未設定だと req.ip は常にプロキシ側の内部アドレスになり、実際のクライアントIPを区別できません。この場合、レート制限は「全利用者共有で15分10回」という形になり、実質的に無意味(あるいは一人の攻撃者が全ユーザーを巻き込んでロックしてしまうDoSの種)になっている可能性があります。
+
+このエンドポイントはパスワード一致でClerkのサインイントークンを発行する機能なので、ブルートフォース対策が効いていないのは軽視できません。
+
+バグの可能性
+5. POST /schedule に案件アクセス権限のチェックがない
+
+artifacts/api-server/src/routes/schedule.ts の POST /schedule は、vendor-invoices.ts/vendor-quotes.ts で行われている externalUserCanAccessProject() のような検証を行わず、リクエストボディの projectId/staffId をそのままDBに保存します。
+
+社外(職人)ユーザーがログイン中に、自分が担当していない案件の projectId や他の職人の staffId を指定してスケジュールを作成できてしまいます。GET側は createdBy で本人分のみに絞られるため本人からは他人のデータは見えませんが、社内ユーザー(内部管理者)や、staffIdを偽装された当の職人の画面には、身に覚えのない予定が表示されることになります。データ整合性・信頼性に関わるバグとして扱うのが妥当です。
+
+6. target="_blank" の一部でreverse tabnabbing対策が漏れている
+
+vendor-quotes.tsx、receipts.tsx、vendor-invoices.tsx 内の複数箇所で target="_blank" のリンクに rel="noopener noreferrer" が付いていません(project-detail.tsx では付いています)。リンク先は自社の署名付きストレージURLなので実害は限定的ですが、開いた別タブから window.opener 経由で元ページを操作される典型的な脆弱パターンです。
+
+改善案
+lib/objectAcl.ts のACL機構を実際に GET /storage/objects/* に組み込むか、使わないのであればコメントアウトされた「保護ルートの例」を削除して誤解を防ぐ。少なくとも、財務書類を扱うルートである以上、UUIDだけに頼らない認証・所有者チェックの追加を推奨します。
+CORSは origin: true をやめ、本番ドメイン(および必要であればdev用ドメイン)を明示的に許可リストとして指定する。
+/ocr/extract に、渡された objectPath が呼び出しユーザー自身がアップロードした/アクセス権のあるファイルであることを確認する処理を追加する。
+app.set("trust proxy", ...) を環境に合わせて適切に設定し、review-login.ts のレート制限を実クライアントIP単位で機能させる。可能であればインメモリではなく永続化されたストア(Redis等)への移行も検討する(複数インスタンス運用時にインメモリの制限は共有されないため)。
+POST /schedule(および必要であれば PATCH /schedule/:id のprojectId変更時)にも、外部ユーザーが自分の担当案件のみを指定できるよう externalUserCanAccessProject() 相当のチェックを追加する。
+全ての target="_blank" に rel="noopener noreferrer" を統一的に付与する(lintルールでの強制も検討可)。
+優先順位
+最優先: GET /storage/objects/* の無認証公開(重大な問題 #1)— 顧客情報を含む文書の漏洩に直結
+最優先: CORSの origin: true + credentials: true(重大な問題 #2)— 悪用条件次第で被害範囲が広い
+高: /ocr/extract の所有者チェック欠如(セキュリティ #3)— 社外ユーザーからの情報漏洩経路
+中: review-login のレート制限が機能していない可能性(セキュリティ #4)— デモアカウント経由の突破リスク
+中: POST /schedule の権限チェック欠如(バグ #5)— データ整合性・信頼性の問題
+低: target="_blank" のnoopener漏れ(バグ #6・改善案)— 実害は限定的だが対応コストも低い
+
+以上、実装・ファイル変更は行わず、コードの静的レビューのみに基づく報告です。実際の修正着手前には、CORS/Cookie周りの実挙動(Clerkがブラウザにどんな認証Cookieを発行しているか)を本番環境で確認することを推奨します。
