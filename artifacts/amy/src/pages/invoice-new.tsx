@@ -520,7 +520,7 @@ export default function InvoiceNewPage() {
                   <SelectTrigger className="border-0 border-r border-foreground/30 rounded-none shadow-none h-auto py-1.5 px-1 text-center justify-center focus:ring-0 focus:bg-accent/10 [&>svg]:hidden self-start min-h-[34px] text-[12px]">
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent scrollMode="step">
                     {UNIT_OPTIONS.map((u) => (
                       <SelectItem key={u} value={u}>
                         {u}

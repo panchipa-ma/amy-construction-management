@@ -750,7 +750,7 @@ export default function QuoteNewPage() {
                     <SelectTrigger className="border-0 rounded-none shadow-none h-auto py-0.5 px-1 text-center justify-center focus:ring-0 focus:bg-accent/10 [&>svg]:hidden self-start min-h-[18px] text-[10px] w-full">
                       <SelectValue placeholder="—" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent scrollMode="step">
                       {UNIT_OPTIONS.map((u) => (
                         <SelectItem key={u} value={u}>
                           {u}

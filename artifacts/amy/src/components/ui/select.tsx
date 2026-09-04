@@ -12,6 +12,29 @@ const SelectGroup = SelectPrimitive.Group
 
 const SelectValue = SelectPrimitive.Value
 
+type SelectScrollButtonProps = React.ComponentPropsWithoutRef<
+  typeof SelectPrimitive.ScrollUpButton
+> & {
+  step?: boolean
+}
+
+function scrollSelectViewport(
+  element: HTMLElement,
+  direction: "up" | "down",
+) {
+  const viewport = element.parentElement?.querySelector<HTMLElement>(
+    "[data-radix-select-viewport]",
+  )
+  if (!viewport) return
+
+  const firstOption = viewport.querySelector<HTMLElement>('[role="option"]')
+  const step = firstOption?.getBoundingClientRect().height ?? 32
+  viewport.scrollBy({
+    top: direction === "up" ? -step : step,
+    behavior: "auto",
+  })
+}
+
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
@@ -34,14 +57,35 @@ SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
 
 const SelectScrollUpButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollUpButton>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton>
->(({ className, ...props }, ref) => (
+  SelectScrollButtonProps
+>(({ className, step = false, ...props }, ref) => (
   <SelectPrimitive.ScrollUpButton
     ref={ref}
     className={cn(
-      "flex cursor-default items-center justify-center py-1",
+      "flex items-center justify-center py-1",
+      step ? "cursor-pointer" : "cursor-default",
       className
     )}
+    {...(step
+      ? {
+          role: "button",
+          tabIndex: 0,
+          "aria-label": "前の候補へ移動",
+          onPointerMove: (event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          },
+          onClick: (event) => {
+            scrollSelectViewport(event.currentTarget, "up")
+          },
+          onKeyDown: (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault()
+              scrollSelectViewport(event.currentTarget, "up")
+            }
+          },
+        }
+      : {})}
     {...props}
   >
     <ChevronUp className="h-4 w-4" />
@@ -51,14 +95,35 @@ SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName
 
 const SelectScrollDownButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollDownButton>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollDownButton>
->(({ className, ...props }, ref) => (
+  SelectScrollButtonProps
+>(({ className, step = false, ...props }, ref) => (
   <SelectPrimitive.ScrollDownButton
     ref={ref}
     className={cn(
-      "flex cursor-default items-center justify-center py-1",
+      "flex items-center justify-center py-1",
+      step ? "cursor-pointer" : "cursor-default",
       className
     )}
+    {...(step
+      ? {
+          role: "button",
+          tabIndex: 0,
+          "aria-label": "次の候補へ移動",
+          onPointerMove: (event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          },
+          onClick: (event) => {
+            scrollSelectViewport(event.currentTarget, "down")
+          },
+          onKeyDown: (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault()
+              scrollSelectViewport(event.currentTarget, "down")
+            }
+          },
+        }
+      : {})}
     {...props}
   >
     <ChevronDown className="h-4 w-4" />
@@ -67,10 +132,16 @@ const SelectScrollDownButton = React.forwardRef<
 SelectScrollDownButton.displayName =
   SelectPrimitive.ScrollDownButton.displayName
 
+type SelectContentProps = React.ComponentPropsWithoutRef<
+  typeof SelectPrimitive.Content
+> & {
+  scrollMode?: "auto" | "step"
+}
+
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
+  SelectContentProps
+>(({ className, children, position = "popper", scrollMode = "auto", ...props }, ref) => (
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       ref={ref}
@@ -83,7 +154,7 @@ const SelectContent = React.forwardRef<
       position={position}
       {...props}
     >
-      <SelectScrollUpButton />
+      <SelectScrollUpButton step={scrollMode === "step"} />
       <SelectPrimitive.Viewport
         className={cn(
           "p-1",
@@ -93,7 +164,7 @@ const SelectContent = React.forwardRef<
       >
         {children}
       </SelectPrimitive.Viewport>
-      <SelectScrollDownButton />
+      <SelectScrollDownButton step={scrollMode === "step"} />
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
 ))
