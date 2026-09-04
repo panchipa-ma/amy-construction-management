@@ -75,7 +75,9 @@ const SelectScrollUpButton = React.forwardRef<
             event.preventDefault()
             event.stopPropagation()
           },
-          onClick: (event) => {
+          onPointerDown: (event) => {
+            event.preventDefault()
+            event.stopPropagation()
             scrollSelectViewport(event.currentTarget, "up")
           },
           onKeyDown: (event) => {
@@ -113,7 +115,9 @@ const SelectScrollDownButton = React.forwardRef<
             event.preventDefault()
             event.stopPropagation()
           },
-          onClick: (event) => {
+          onPointerDown: (event) => {
+            event.preventDefault()
+            event.stopPropagation()
             scrollSelectViewport(event.currentTarget, "down")
           },
           onKeyDown: (event) => {
