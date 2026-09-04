@@ -1,0 +1,43 @@
+対応が完了しました。修正は artifacts/api-server 配下のみで、Web版のルート・APIスキーマ・DB定義・Clerk認証方式・モバイル版(artifacts/mobile)には一切手を入れていません。変更一式はパッチファイルとしてお送りした通りです(このセッションからは書き込み権限がないため、GitHubへの直接pushはできません。git apply で取り込むか、内容を見て手動で反映してください)。
+
+最優先の3件
+
+1. /storage/objects/* の認証・所有者チェック
+原因: このルートは元々コメントアウトされた「保護ルートの例」があるだけで、認証もACLも一切なく、objectPathを知っていれば誰でもファイルを取得できました。影響は前回の報告の通り、請求書・領収書・現場写真等の漏洩です。
+対応: GET /storage/objects/* にログイン+承認済みユーザーであることの確認を追加し、さらに「そのobjectPathに実際にアクセスしてよいか」を判定する lib/objectAccess.ts を新規作成しました。社内ユーザーは従来通り全件アクセス可、社外(職人)ユーザーは自分が作成した vendor_invoices/vendor_quotes のfileUrl/quoteFileUrlに一致するものだけ許可します。ただし、フォーム送信前(アップロード直後のプレビュー)はDBにまだ行がないため、アップロードURL発行時(POST /storage/uploads/request-url)にアップロード者を24時間だけメモリ上に記録し、その本人だけは未保存ファイルもプレビューできるようにしています(既存のレート制限と同じくインメモリなので再起動で消えますが、失敗しても「本人が再アップロードし直す」程度で済み、他人のファイルが漏れる方向には倒れません)。receipts/project-photos等の社内限定データは、社外ユーザーからは該当テーブルを一切参照しないため自動的にアクセス不可のままです。
+テスト結果: pnpm --filter @workspace/api-server run typecheck / build とも成功。ただしこのサンドボックスには実際のPostgres/Clerk/GCS接続がないため、DBに問い合わせる所有者判定部分は実機での動作確認はできていません。デプロイ後、社外アカウントで①自分がアップロードした職人請求書PDFが開けること、②他人のファイルURLを直接叩くと403になることの2点は実環境で確認をお願いします。
+
+2. CORSの許可先限定
+原因: cors({ origin: true, credentials: true }) が任意のOriginを反射し、資格情報付きリクエストも許可していました。
+対応: lib/corsOrigins.ts を新規作成し、許可オリジンを REPLIT_DOMAINS(Replitのデプロイ基盤が実際のドメイン・カスタムドメインを自動的に設定する環境変数)、REPLIT_DEV_DOMAIN(開発プレビュー用)、および任意の追加ドメイン用の CORS_EXTRA_ORIGINS から組み立てるようにしました。本番の実際のドメイン名をこちらで把握していないため、決め打ちではなくReplitが自動設定する値を正とする方式にしています。ローカル開発用のlocalhostは NODE_ENV !== "production" のときのみ許可されます。
+テスト結果: 単体テストで、①本番相当env: 許可ドメインからは許可・攻撃者ドメインは拒否・本番ではlocalhostも拒否、②開発env: localhostと開発ドメインは許可・攻撃者ドメインは拒否、を確認済みです(結果は上記ツール呼び出しログの通り全て期待通り)。要確認: デプロイ環境で REPLIT_DOMAINS に実際のドメイン(カスタムドメイン含む)が入っているか、デプロイ後に一度フロントエンドからログインできることを確認してください。もし別途固定ドメインがある場合は CORS_EXTRA_ORIGINS に追加できます。
+
+3. /ocr/extract の所有者確認
+原因: 認証済みであれば誰でも任意のobjectPathをOCRさせられ、他人の書類内容を読み取れる状態でした。
+対応: 同じ canUserAccessObjectPath を呼び出し、アクセス権がなければ403を返すようにしました。内部(社内)ユーザーは従来通り全件OCR可能、社外ユーザーは自分の職人請求書/見積書アップロード(保存前のプレビュー含む)のみ。
+テスト結果: typecheck/build成功。フロントエンドの呼び出しコード(vendor-invoices.tsx, receipts.tsx)を確認し、渡している objectPath の形式が新しいチェック関数の想定と一致していることをコードレベルで検証済みです。実際のOCR呼び出し(Anthropic API)自体は環境変数・DBがないため実行できていません。
+
+追加で確認した3件
+
+4. review-loginのレート制限
+確認結果: ご指摘の通り、app.set("trust proxy", ...) が未設定で、req.ip が常にプロキシのIPになりレート制限が実質機能しない状態でした。ReplitのAutoscaleは1段のリバースプロキシ経由のため、app.set("trust proxy", 1) を追加しました。これで実クライアントIP単位の制限が有効になり、かつクライアントが自分でX-Forwarded-Forを偽装してもその1段より内側の値は信用しないため悪用もできません。
+テスト結果: typecheck/build成功。実際のレート制限発火(15分10回)は、本番相当のプロキシ経由アクセスでの確認が必要です。
+
+5. POST /schedule の案件権限
+確認結果: ご指摘の通り、外部ユーザーが任意のprojectId/staffIdを指定してスケジュールを作成できました。vendor-invoices.ts/vendor-quotes.ts と同じ externalUserCanAccessProject チェックをPOST/PATCHの両方に追加しました。staffId自体は他ルートと同様に本人限定にはしていません(代理の職人の予定を登録する既存の使い方を壊さないため)。
+テスト結果: typecheck/build成功。
+
+6. target="_blank" の安全対策
+確認結果: 前回の報告を訂正します。実際には該当箇所は全て rel="noreferrer" が既に付与されており、これは noopener と同等の効果(window.openerを無効化)を持つため、reverse tabnabbingのリスクは元々ありませんでした。「noopenerという文字列が無い」ことだけで判定してしまった、前回レビューの誤りです。対応不要、コード変更はしていません。
+
+6件のうち、5件(1・2・3・4・5)はコードを修正し、typecheck・build共に成功しています。DBを伴う認可ロジックの実挙動確認と、CORSの本番ドメイン反映確認は、実際のデプロイ環境でお願いします。
+
+4個のコマンドを実行しました · 1 ノート
+
+ローカルではコミットしました(abbcedf Fix Web API security issues from code review)が、GitHubへのpushは権限エラーで失敗しました。
+
+remote: access denied by the git proxy: panchipa-ma/amy-construction-management is not in this session's authorized repository set
+
+このセッションにはこのリポジトリへの書き込み権限が付与されていないため、直接pushできません。先ほどお送りしたパッチファイル(amy-web-security-fixes.patch)を使って、お手元の環境から git apply するか、変更内容を見て手動で反映してください。
+
+もしこのセッションから直接pushできるようにしたい場合は、GitHub連携の設定でこのリポジトリへの書き込みアクセスを許可していただく必要があります(現状は読み取りのみの状態です)。
