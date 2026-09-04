@@ -160,6 +160,7 @@ router.get("/print/ledger/:projectId", async (req, res): Promise<void> => {
   const plannedCost = computePlannedCost(
     project.contractAmount,
     standardProfitRate,
+    project.salesCommissionRate,
   );
   const data: LedgerForPrint = {
     project: {

@@ -11,11 +11,22 @@ export function n(value: unknown): number {
 export function computePlannedCost(
   contractAmount: unknown,
   standardProfitRatePercent: unknown,
+  salesCommissionRatePercent: unknown,
 ): number {
   const contract = Math.max(0, n(contractAmount));
-  const rate = Math.min(100, Math.max(0, n(standardProfitRatePercent)));
-  const standardProfit = Math.round(contract * (rate / 100));
-  return Math.max(0, contract - standardProfit);
+  const standardProfitRate = Math.min(
+    100,
+    Math.max(0, n(standardProfitRatePercent)),
+  );
+  const salesCommissionRate = Math.min(
+    100,
+    Math.max(0, n(salesCommissionRatePercent)),
+  );
+  const standardProfit = Math.round(contract * (standardProfitRate / 100));
+  const salesCommission = Math.round(
+    contract * (salesCommissionRate / 100),
+  );
+  return Math.max(0, contract - standardProfit - salesCommission);
 }
 
 export function isoDate(v: unknown): string | null {

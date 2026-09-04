@@ -144,13 +144,13 @@ export function LedgerSpreadsheet({
 
   const orderAmount = ledger.contractAmount;
   const orderCost = ledger.plannedCost;
-  const orderProfit = orderAmount - orderCost;
 
   const actualCost = ledger.actualCost;
   const grossProfit = orderAmount - actualCost;
 
   const salesCommissionRate = (project.salesCommissionRate ?? 5) / 100;
   const salesCommission = Math.round(orderAmount * salesCommissionRate);
+  const orderProfit = orderAmount - orderCost - salesCommission;
 
   const standardProfitRate =
     project.standardProfitRate != null
@@ -169,9 +169,9 @@ export function LedgerSpreadsheet({
 
   const finalProfit = grossProfit - salesCommission - supervisorCommission;
 
-  // 受注計画原価と予算組み原価は、規定粗利率を確保する同一の上限額。
+  // 営業歩合控除後にも規定粗利率を確保できる原価上限。
   const budgetCost = orderCost;
-  const budgetProfit = orderAmount - budgetCost;
+  const budgetProfit = orderAmount - budgetCost - salesCommission;
 
   const totalsByCat: Record<Cat, number> = {
     material: 0,
@@ -498,7 +498,7 @@ export function LedgerSpreadsheet({
                 </th>
                 <th
                   className="border border-border bg-primary text-primary-foreground px-2 py-1.5 text-center font-semibold"
-                  title="売上 − 規定粗利額 = 原価の上限"
+                  title="売上 − 営業歩合 − 規定粗利額 = 原価の上限"
                 >
                   予算組み
                 </th>

@@ -72,6 +72,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
         project.standardProfitRate != null
           ? project.standardProfitRate
           : (customerProfitRates.get(project.customerId) ?? 20),
+        project.salesCommissionRate,
       ),
     0,
   );
@@ -427,6 +428,7 @@ router.get("/dashboard/cost-pipeline", async (_req, res): Promise<void> => {
           p.standardProfitRate != null
             ? p.standardProfitRate
             : (customerProfitRates.get(p.customerId) ?? 20),
+          p.salesCommissionRate,
         ),
         actualCost: projectCosts.reduce((s, c) => s + n(c.actualAmount), 0),
       };
