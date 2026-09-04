@@ -76,6 +76,10 @@ function emptyItem(): LineItem {
   return { description: "", unit: "", quantity: 0, unitPrice: 0, notes: "" };
 }
 
+function isDiscountItem(item: LineItem): boolean {
+  return /値引|割引|減額/.test(item.description);
+}
+
 export default function InvoiceNewPage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -231,8 +235,8 @@ export default function InvoiceNewPage() {
     const items = rows.filter(
       (it) =>
         it.description.trim() !== "" ||
-        it.quantity > 0 ||
-        it.unitPrice > 0 ||
+        it.quantity !== 0 ||
+        it.unitPrice !== 0 ||
         (it.notes ?? "").trim() !== "",
     );
     if (items.length === 0) {
@@ -543,7 +547,7 @@ export default function InvoiceNewPage() {
                 />
                 <input
                   type="number"
-                  min="0"
+                  min={isDiscountItem(row) ? undefined : 0}
                   step="any"
                   value={row.unitPrice || ""}
                   onChange={(e) => {
@@ -555,7 +559,7 @@ export default function InvoiceNewPage() {
                   data-cell={`r${i}-cprice`}
                 />
                 <div className="px-2 py-1.5 text-right tabular-nums border-r border-foreground/30 self-start min-h-[34px] font-medium">
-                  {amount > 0 ? formatCurrency(amount) : ""}
+                  {amount !== 0 ? formatCurrency(amount) : ""}
                 </div>
                 <AutoGrowTextarea
                   value={row.notes ?? ""}

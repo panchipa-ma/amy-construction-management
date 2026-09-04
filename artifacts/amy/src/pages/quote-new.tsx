@@ -91,6 +91,10 @@ function emptyItem(): LineItem {
   return { description: "", unit: "", quantity: 0, unitPrice: 0, notes: "" };
 }
 
+function isDiscountItem(item: LineItem): boolean {
+  return /値引|割引|減額/.test(item.description);
+}
+
 function isItemEmpty(it: LineItem | undefined): boolean {
   if (!it) return true;
   return (
@@ -420,8 +424,8 @@ export default function QuoteNewPage() {
     const items = rows.filter(
       (it) =>
         it.description.trim() !== "" ||
-        it.quantity > 0 ||
-        it.unitPrice > 0 ||
+        it.quantity !== 0 ||
+        it.unitPrice !== 0 ||
         (it.notes ?? "").trim() !== "",
     );
     if (items.length === 0) {
@@ -780,7 +784,7 @@ export default function QuoteNewPage() {
                 <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("unitPrice") ? "bg-primary/10" : ""}`}>
                   <input
                     type="number"
-                    min="0"
+                    min={isDiscountItem(row) ? undefined : 0}
                     step="any"
                     value={row.unitPrice || ""}
                     onChange={(e) => {
@@ -795,7 +799,7 @@ export default function QuoteNewPage() {
                   {renderFillHandle("unitPrice")}
                 </div>
                 <div className="px-1.5 py-0.5 text-right tabular-nums border-r border-foreground/30 self-start min-h-[18px] font-medium">
-                  {amount > 0 ? formatCurrency(amount) : ""}
+                  {amount !== 0 ? formatCurrency(amount) : ""}
                 </div>
                 <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("notes") ? "bg-primary/10" : ""}`}>
                   <AutoGrowTextarea
