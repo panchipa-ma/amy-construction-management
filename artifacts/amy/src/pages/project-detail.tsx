@@ -355,7 +355,7 @@ export default function ProjectDetailPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-[1400px]">
+    <div className="w-full min-w-0 max-w-[1400px] space-y-6">
       <Link
         href="/projects"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -385,17 +385,17 @@ export default function ProjectDetailPage() {
       </div>
 
       <Tabs defaultValue="ledger" className="w-full">
-        <TabsList>
-          <TabsTrigger value="overview">概要</TabsTrigger>
-          <TabsTrigger value="ledger" className="font-semibold">
+        <TabsList className="flex w-full max-w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsTrigger value="overview" className="shrink-0">概要</TabsTrigger>
+          <TabsTrigger value="ledger" className="shrink-0 font-semibold">
             施工台帳
           </TabsTrigger>
-          <TabsTrigger value="quotes">見積</TabsTrigger>
-          <TabsTrigger value="invoices">請求</TabsTrigger>
-          <TabsTrigger value="schedule">スケジュール</TabsTrigger>
-          <TabsTrigger value="phases">工程表</TabsTrigger>
-          <TabsTrigger value="progress">進捗記録</TabsTrigger>
-          <TabsTrigger value="photos">現場写真</TabsTrigger>
+          <TabsTrigger value="quotes" className="shrink-0">見積</TabsTrigger>
+          <TabsTrigger value="invoices" className="shrink-0">請求</TabsTrigger>
+          <TabsTrigger value="schedule" className="shrink-0">スケジュール</TabsTrigger>
+          <TabsTrigger value="phases" className="shrink-0">工程表</TabsTrigger>
+          <TabsTrigger value="progress" className="shrink-0">進捗記録</TabsTrigger>
+          <TabsTrigger value="photos" className="shrink-0">現場写真</TabsTrigger>
         </TabsList>
 
         <TabsContent value="phases" className="mt-4">
@@ -509,13 +509,13 @@ export default function ProjectDetailPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="ledger" className="space-y-6 mt-4">
+        <TabsContent value="ledger" className="w-full min-w-0 space-y-6 mt-4">
           {ledgerQ.isLoading || !ledger ? (
             <Skeleton className="h-96 w-full" />
           ) : (
             <>
-              <Tabs defaultValue="sheet" className="w-full">
-                <TabsList>
+              <Tabs defaultValue="sheet" className="w-full min-w-0">
+                <TabsList className="w-full justify-start sm:w-auto">
                   <TabsTrigger value="sheet">台帳形式</TabsTrigger>
                   <TabsTrigger value="summary">サマリー</TabsTrigger>
                 </TabsList>

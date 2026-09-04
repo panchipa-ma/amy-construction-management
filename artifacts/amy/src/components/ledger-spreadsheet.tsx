@@ -189,7 +189,7 @@ export function LedgerSpreadsheet({
   const grandTotal = Object.values(totalsByCat).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="space-y-4 text-sm">
+    <div className="w-full min-w-0 space-y-4 text-sm">
       {/* TOP ROW: 基本情報 (left) + 受注/予算/締め (right) */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {/* 基本情報 */}

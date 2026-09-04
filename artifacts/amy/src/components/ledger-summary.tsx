@@ -43,7 +43,7 @@ export function LedgerSummary({ ledger }: { ledger: Ledger }) {
   const profitable = ledger.grossProfit >= 0;
 
   return (
-    <div className="space-y-4">
+    <div className="w-full min-w-0 space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card
           className={`border-l-4 ${profitable ? "border-l-emerald-600" : "border-l-destructive"}`}
