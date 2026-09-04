@@ -53,6 +53,7 @@ import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
 import { apiErrorMessage } from "@/lib/api-error";
 import { openAuthenticatedPrintWindow } from "@/lib/print";
+import { pdfFileName } from "@/lib/print";
 import { CheckCircle2, ExternalLink, Printer, RotateCcw } from "lucide-react";
 
 export default function LedgerPage() {
@@ -154,6 +155,7 @@ export default function LedgerPage() {
                 try {
                   await openAuthenticatedPrintWindow({
                     url: `/api/print/ledger/${selectedProject.id}?autoprint=1`,
+                    fileName: pdfFileName("施工台帳", selectedProject.name),
                   });
                 } catch (err) {
                   toast({ title: apiErrorMessage(err), variant: "destructive" });

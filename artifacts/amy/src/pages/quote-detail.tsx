@@ -53,6 +53,7 @@ import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, endOfNextMonthISO } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { COMPANY_INFO, QUOTE_TERMS } from "@/lib/company-info";
+import { pdfFileName } from "@/lib/print";
 
 const MIN_ROWS = 32;
 
@@ -264,7 +265,9 @@ export default function QuoteDetailPage() {
           y -= pageH;
         }
       }
-      pdf.save(`見積書_${quote.quoteNumber}.pdf`);
+      pdf.save(
+        pdfFileName("見積書", quote.projectName ?? project?.name, quote.quoteNumber),
+      );
     } catch (err) {
       toast({ title: apiErrorMessage(err), variant: "destructive" });
     } finally {

@@ -7,23 +7,26 @@
  */
 export async function openAuthenticatedPrintWindow({
   url,
+  fileName,
 }: {
   url: string;
+  fileName?: string;
 }): Promise<void> {
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
     throw new Error("印刷用ウィンドウを開けませんでした。ポップアップを許可してください。");
   }
 
-  printWindow.document.title = "PDFを準備中";
+  printWindow.document.title = fileName ?? "PDFを準備中";
   printWindow.document.body.innerHTML =
     '<p style="font-family:sans-serif;padding:24px">PDFを準備しています…</p>';
 
   try {
     const html = await fetchAuthenticatedPrintHtml(url);
+    const titledHtml = fileName ? withPrintTitle(html, fileName) : html;
 
     const blobUrl = URL.createObjectURL(
-      new Blob([html], { type: "text/html;charset=utf-8" }),
+      new Blob([titledHtml], { type: "text/html;charset=utf-8" }),
     );
     printWindow.addEventListener(
       "load",
@@ -37,6 +40,19 @@ export async function openAuthenticatedPrintWindow({
     printWindow.close();
     throw error;
   }
+}
+
+export function pdfFileName(
+  documentType: string,
+  projectName: string | null | undefined,
+  fallback = "案件",
+): string {
+  const baseName = (projectName?.trim() || fallback)
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .replace(/\s+/g, " ")
+    .replace(/[. ]+$/g, "")
+    .slice(0, 120);
+  return `${documentType}_${baseName || fallback}.pdf`;
 }
 
 export async function shareAuthenticatedPrintPdf({
@@ -73,6 +89,22 @@ export async function shareAuthenticatedPrintPdf({
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 60_000);
+}
+
+function withPrintTitle(html: string, fileName: string): string {
+  const safeTitle = fileName
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+  if (/<title\b[^>]*>[\s\S]*?<\/title>/i.test(html)) {
+    return html.replace(
+      /<title\b[^>]*>[\s\S]*?<\/title>/i,
+      `<title>${safeTitle}</title>`,
+    );
+  }
+  return html.replace(/<head\b[^>]*>/i, (head) => `${head}<title>${safeTitle}</title>`);
 }
 
 async function fetchAuthenticatedPrintHtml(

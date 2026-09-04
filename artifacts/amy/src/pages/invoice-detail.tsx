@@ -27,6 +27,7 @@ import { invalidateDashboard } from "@/lib/invalidate";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api-error";
 import { COMPANY_INFO, BANK_INFO } from "@/lib/company-info";
+import { pdfFileName } from "@/lib/print";
 
 const ITEM_ROWS = 8;
 
@@ -139,7 +140,9 @@ export default function InvoiceDetailPage() {
           y -= pageH;
         }
       }
-      pdf.save(`請求書_${inv.invoiceNumber}.pdf`);
+      pdf.save(
+        pdfFileName("請求書", inv.projectName, inv.invoiceNumber),
+      );
     } catch (err) {
       toast({ title: apiErrorMessage(err), variant: "destructive" });
     } finally {

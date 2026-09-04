@@ -384,6 +384,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
         // Desktop keeps the browser print dialog workflow.
         await openAuthenticatedPrintWindow({
           url: `${printUrl}?autoprint=1`,
+          fileName,
         });
       }
     } catch (err) {
