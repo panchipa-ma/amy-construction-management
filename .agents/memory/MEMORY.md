@@ -5,3 +5,4 @@
 - [Clerk signals stale status](clerk-signals-stale-status.md) — never gate finalize() on signIn.status right after ticket()/verifyCode(); snapshot is stale. Hermes bundle strings are UTF-16LE.
 - [Express requireInternal leak](express-requireinternal-leak.md) — internal-only routers must gate by PATH (`use("/x", requireInternal)`), not `use(requireInternal, router)` which 403s ALL external users on every screen.
 - [Artifact Preview readiness](artifact-preview-readiness.md) — a stale Mobile frame can mask a stopped Web service; verify Web workflow, expected port, and Preview readiness as separate states.
+- [Planned cost calculation](planned-cost-calculation.md) — planned cost and remaining budget must preserve the project’s standard gross-profit rate, not use raw planned-entry totals.

@@ -23,7 +23,12 @@ import {
   type LedgerForPrint,
   type QuoteForPrint,
 } from "@workspace/print-html";
-import { computeTotals, isoDate, n } from "../lib/serializers";
+import {
+  computePlannedCost,
+  computeTotals,
+  isoDate,
+  n,
+} from "../lib/serializers";
 
 const router: IRouter = Router();
 
@@ -133,7 +138,10 @@ router.get("/print/ledger/:projectId", async (req, res): Promise<void> => {
   }
   const [customer] = project.customerId
     ? await db
-        .select({ name: customersTable.name })
+        .select({
+          name: customersTable.name,
+          defaultProfitRate: customersTable.defaultProfitRate,
+        })
         .from(customersTable)
         .where(eq(customersTable.id, project.customerId))
     : [];
@@ -143,7 +151,16 @@ router.get("/print/ledger/:projectId", async (req, res): Promise<void> => {
     .where(eq(costEntriesTable.projectId, projectId))
     .orderBy(asc(costEntriesTable.entryDate), asc(costEntriesTable.createdAt));
   const actualCost = entries.reduce((s, e) => s + n(e.actualAmount), 0);
-  const plannedCost = entries.reduce((s, e) => s + n(e.plannedAmount), 0);
+  const standardProfitRate =
+    project.standardProfitRate != null
+      ? n(project.standardProfitRate)
+      : customer
+        ? n(customer.defaultProfitRate)
+        : 20;
+  const plannedCost = computePlannedCost(
+    project.contractAmount,
+    standardProfitRate,
+  );
   const data: LedgerForPrint = {
     project: {
       code: project.code ?? null,
@@ -157,7 +174,7 @@ router.get("/print/ledger/:projectId", async (req, res): Promise<void> => {
       salesCommissionRate:
         project.salesCommissionRate != null ? n(project.salesCommissionRate) : null,
       standardProfitRate:
-        project.standardProfitRate != null ? n(project.standardProfitRate) : null,
+        standardProfitRate,
       supervisorCommissionRate:
         project.supervisorCommissionRate != null
           ? n(project.supervisorCommissionRate)

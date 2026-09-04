@@ -33,10 +33,10 @@ type Ledger = {
 };
 
 export function LedgerSummary({ ledger }: { ledger: Ledger }) {
-  const remaining = ledger.contractAmount - ledger.actualCost;
+  const remaining = ledger.plannedCost - ledger.actualCost;
   const consumeRate =
-    ledger.contractAmount > 0
-      ? (ledger.actualCost / ledger.contractAmount) * 100
+    ledger.plannedCost > 0
+      ? (ledger.actualCost / ledger.plannedCost) * 100
       : 0;
   const overrun = ledger.actualCost > ledger.plannedCost;
   const overrunAmount = ledger.actualCost - ledger.plannedCost;

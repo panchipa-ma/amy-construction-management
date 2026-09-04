@@ -8,6 +8,16 @@ export function n(value: unknown): number {
   return 0;
 }
 
+export function computePlannedCost(
+  contractAmount: unknown,
+  standardProfitRatePercent: unknown,
+): number {
+  const contract = Math.max(0, n(contractAmount));
+  const rate = Math.min(100, Math.max(0, n(standardProfitRatePercent)));
+  const standardProfit = Math.round(contract * (rate / 100));
+  return Math.max(0, contract - standardProfit);
+}
+
 export function isoDate(v: unknown): string | null {
   if (v == null) return null;
   if (v instanceof Date) return v.toISOString().slice(0, 10);

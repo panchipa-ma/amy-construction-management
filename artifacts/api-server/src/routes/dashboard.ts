@@ -11,6 +11,7 @@ import {
   vendorInvoicesTable,
   vendorQuotesTable,
   appUsersTable,
+  customersTable,
 } from "@workspace/db";
 import { inArray } from "drizzle-orm";
 import type { LineItemJson } from "@workspace/db";
@@ -19,7 +20,12 @@ import {
   GetRecentActivityResponse,
   GetCostPipelineResponse,
 } from "@workspace/api-zod";
-import { isoDateTime, n, computeTotals } from "../lib/serializers";
+import {
+  computePlannedCost,
+  isoDateTime,
+  n,
+  computeTotals,
+} from "../lib/serializers";
 
 const router: IRouter = Router();
 
@@ -29,6 +35,13 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   const projects = await db.select().from(projectsTable);
   const costs = await db.select().from(costEntriesTable);
   const invoices = await db.select().from(invoicesTable);
+  const customers = await db.select().from(customersTable);
+  const customerProfitRates = new Map(
+    customers.map((customer) => [
+      customer.id,
+      n(customer.defaultProfitRate),
+    ]),
+  );
 
   const activeProjects = projects.filter((p) =>
     ACTIVE_STATUSES.includes(p.status),
@@ -51,11 +64,18 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
     0,
   );
 
-  const activeCosts = costs.filter((c) => activeIds.has(c.projectId));
-  const plannedCostActive = activeCosts.reduce(
-    (s, c) => s + n(c.plannedAmount),
+  const plannedCostActive = activeProjects.reduce(
+    (sum, project) =>
+      sum +
+      computePlannedCost(
+        project.contractAmount,
+        project.standardProfitRate != null
+          ? project.standardProfitRate
+          : (customerProfitRates.get(project.customerId) ?? 20),
+      ),
     0,
   );
+  const activeCosts = costs.filter((c) => activeIds.has(c.projectId));
   const actualCostActive = activeCosts.reduce(
     (s, c) => s + n(c.actualAmount),
     0,
@@ -385,6 +405,13 @@ router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
 router.get("/dashboard/cost-pipeline", async (_req, res): Promise<void> => {
   const projects = await db.select().from(projectsTable);
   const costs = await db.select().from(costEntriesTable);
+  const customers = await db.select().from(customersTable);
+  const customerProfitRates = new Map(
+    customers.map((customer) => [
+      customer.id,
+      n(customer.defaultProfitRate),
+    ]),
+  );
 
   const items = projects
     .filter((p) => ACTIVE_STATUSES.includes(p.status))
@@ -395,7 +422,12 @@ router.get("/dashboard/cost-pipeline", async (_req, res): Promise<void> => {
         projectName: p.name,
         status: p.status as never,
         contractAmount: n(p.contractAmount),
-        plannedCost: projectCosts.reduce((s, c) => s + n(c.plannedAmount), 0),
+        plannedCost: computePlannedCost(
+          p.contractAmount,
+          p.standardProfitRate != null
+            ? p.standardProfitRate
+            : (customerProfitRates.get(p.customerId) ?? 20),
+        ),
         actualCost: projectCosts.reduce((s, c) => s + n(c.actualAmount), 0),
       };
     });

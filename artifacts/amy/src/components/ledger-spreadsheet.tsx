@@ -169,8 +169,8 @@ export function LedgerSpreadsheet({
 
   const finalProfit = grossProfit - salesCommission - supervisorCommission;
 
-  // 予算組み目安: 売上 − 営業歩合 − 規定粗利額 を協力会社・経費の上限とする
-  const budgetCost = Math.max(0, orderAmount - salesCommission - standardProfit);
+  // 受注計画原価と予算組み原価は、規定粗利率を確保する同一の上限額。
+  const budgetCost = orderCost;
   const budgetProfit = orderAmount - budgetCost;
 
   const totalsByCat: Record<Cat, number> = {
@@ -498,7 +498,7 @@ export function LedgerSpreadsheet({
                 </th>
                 <th
                   className="border border-border bg-primary text-primary-foreground px-2 py-1.5 text-center font-semibold"
-                  title="売上 − 営業歩合 − 規定粗利額 = 協力会社・経費の上限"
+                  title="売上 − 規定粗利額 = 原価の上限"
                 >
                   予算組み
                 </th>

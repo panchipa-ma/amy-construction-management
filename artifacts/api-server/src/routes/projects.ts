@@ -23,7 +23,12 @@ import {
   UpdateProjectResponse,
   GetProjectLedgerResponse,
 } from "@workspace/api-zod";
-import { isoDateTime, isoDate, n } from "../lib/serializers";
+import {
+  computePlannedCost,
+  isoDateTime,
+  isoDate,
+  n,
+} from "../lib/serializers";
 import { getOrCreateAppUser, requireInternal } from "../lib/auth";
 
 const router: IRouter = Router();
@@ -36,9 +41,8 @@ async function aggregateCosts(projectId: string) {
     .from(costEntriesTable)
     .where(eq(costEntriesTable.projectId, projectId))
     .orderBy(sql`${costEntriesTable.createdAt} asc, ${costEntriesTable.id} asc`);
-  const planned = entries.reduce((s, e) => s + n(e.plannedAmount), 0);
   const actual = entries.reduce((s, e) => s + n(e.actualAmount), 0);
-  return { entries, planned, actual };
+  return { entries, actual };
 }
 
 async function serializeProject(p: ProjectRow) {
@@ -49,7 +53,13 @@ async function serializeProject(p: ProjectRow) {
     })
     .from(customersTable)
     .where(eq(customersTable.id, p.customerId));
-  const { planned, actual } = await aggregateCosts(p.id);
+  const { actual } = await aggregateCosts(p.id);
+  const standardProfitRate =
+    p.standardProfitRate != null
+      ? n(p.standardProfitRate)
+      : customer
+        ? n(customer.defaultProfitRate)
+        : 20;
   return {
     id: p.id,
     name: p.name,
@@ -63,15 +73,10 @@ async function serializeProject(p: ProjectRow) {
     endDate: isoDate(p.endDate),
     saturdayWork: p.saturdayWork,
     contractAmount: n(p.contractAmount),
-    plannedCost: planned,
+    plannedCost: computePlannedCost(p.contractAmount, standardProfitRate),
     actualCost: actual,
     salesCommissionRate: n(p.salesCommissionRate),
-    standardProfitRate:
-      p.standardProfitRate != null
-        ? n(p.standardProfitRate)
-        : customer
-          ? n(customer.defaultProfitRate)
-          : 20,
+    standardProfitRate,
     supervisorCommissionRate: n(p.supervisorCommissionRate),
     otherSalesBonusRecipient: p.otherSalesBonusRecipient,
     otherSalesBonusRate:
@@ -262,8 +267,18 @@ router.get("/projects/:id/ledger", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Project not found" });
     return;
   }
-  const { entries, planned, actual } = await aggregateCosts(project.id);
+  const { entries, actual } = await aggregateCosts(project.id);
   const contract = n(project.contractAmount);
+  const [customer] = await db
+    .select({ defaultProfitRate: customersTable.defaultProfitRate })
+    .from(customersTable)
+    .where(eq(customersTable.id, project.customerId));
+  const standardProfitRate =
+    project.standardProfitRate != null
+      ? n(project.standardProfitRate)
+      : customer
+        ? n(customer.defaultProfitRate)
+        : 20;
   const grossProfit = contract - actual;
   const grossProfitRate = contract > 0 ? (grossProfit / contract) * 100 : 0;
 
@@ -296,7 +311,7 @@ router.get("/projects/:id/ledger", async (req, res): Promise<void> => {
       projectId: project.id,
       projectName: project.name,
       contractAmount: contract,
-      plannedCost: planned,
+      plannedCost: computePlannedCost(contract, standardProfitRate),
       actualCost: actual,
       grossProfit,
       grossProfitRate: Math.round(grossProfitRate * 10) / 10,
