@@ -1,0 +1,1031 @@
+diff --git a/artifacts/amy/src/components/project-gantt.tsx b/artifacts/amy/src/components/project-gantt.tsx
+index 69ce0ba..1563741 100644
+--- a/artifacts/amy/src/components/project-gantt.tsx
++++ b/artifacts/amy/src/components/project-gantt.tsx
+@@ -484,8 +484,10 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
+             </p>
+           </div>
+         ) : (
+-          <div className="flex border rounded-md overflow-hidden">
+-            {/* fixed left column */}
++          <div className="hidden sm:flex border rounded-md overflow-hidden">
++            {/* fixed left column (desktop / wide screens only — see the
++                sm:hidden block below for the narrow-screen layout, where a
++                fixed-width name column would squeeze the Gantt chart) */}
+             <div className="w-72 flex-shrink-0 border-r bg-card">
+               <div className="h-12 border-b bg-muted/30 flex items-end px-3 pb-1.5 text-xs font-semibold text-muted-foreground">
+                 工程
+@@ -668,6 +670,172 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
+             </div>
+           </div>
+         )}
++        {/* Narrow screens (phone portrait): the fixed name column above ate
++            too much of the viewport width and squeezed the Gantt chart down
++            to almost nothing. Here the chart gets the full width; each
++            phase's name is shown as a small pinned label directly above its
++            bar instead of in a side column, so it stays readable without
++            shrinking the timeline. */}
++        {phases.length > 0 && (
++          <div className="sm:hidden border rounded-md overflow-hidden">
++            <div className="overflow-x-auto">
++              <div
++                className="relative"
++                style={{ width: (range.totalDays + 1) * DAY_PX }}
++              >
++                {/* day header */}
++                <div className={`${ROW_H} border-b bg-muted/30 relative`}>
++                  {dayMarkers.map((m, i) => {
++                    const left = i * DAY_PX;
++                    const isHoliday = isProjectHoliday(
++                      m.date,
++                      project?.saturdayWork ?? true,
++                    );
++                    return (
++                      <div
++                        key={i}
++                        className={`absolute top-0 bottom-0 border-l ${m.isMonthStart ? "border-foreground/30" : "border-border/40"} ${isHoliday ? "bg-rose-100/80" : ""}`}
++                        style={{ left, width: DAY_PX }}
++                      >
++                        {m.isMonthStart && (
++                          <div className="absolute top-1 left-1 text-[10px] font-semibold text-foreground/70 whitespace-nowrap">
++                            {m.date.getMonth() + 1}月
++                          </div>
++                        )}
++                        <div
++                          className={`absolute bottom-1 left-0 right-0 text-center text-[10px] tabular-nums ${isHoliday ? "text-rose-700 font-semibold" : "text-muted-foreground"}`}
++                          title={japaneseHolidayName(m.date) ?? undefined}
++                        >
++                          {m.date.getDate()}
++                        </div>
++                      </div>
++                    );
++                  })}
++                </div>
++
++                {/* phases: name label row + bar row, stacked */}
++                {phases.map((p) => {
++                  const ov = override[p.id];
++                  const sIso = ov?.s ?? p.startDate;
++                  const eIso = ov?.e ?? p.endDate;
++                  const s = dateOnly(sIso);
++                  const e = dateOnly(eIso);
++                  const left = diffDays(range.min, s) * DAY_PX;
++                  const width = (diffDays(s, e) + 1) * DAY_PX;
++                  const dragging = drag?.id === p.id;
++                  return (
++                    <div key={p.id}>
++                      {/* name row — draggable for reordering, like the
++                          desktop side column. The label itself is sticky
++                          so it stays visible while the row scrolls
++                          horizontally with the timeline. */}
++                      <div
++                        draggable
++                        onDragStart={(event) => {
++                          event.dataTransfer.effectAllowed = "move";
++                          event.dataTransfer.setData("text/plain", p.id);
++                          setOrderDragId(p.id);
++                        }}
++                        onDragOver={(event) => {
++                          event.preventDefault();
++                          event.dataTransfer.dropEffect = "move";
++                        }}
++                        onDrop={(event) => {
++                          event.preventDefault();
++                          const sourceId =
++                            event.dataTransfer.getData("text/plain") || orderDragId;
++                          if (sourceId) void reorderPhases(sourceId, p.id);
++                        }}
++                        onDragEnd={() => setOrderDragId(null)}
++                        className={`h-9 border-b bg-muted/20 flex items-center ${orderDragId === p.id ? "opacity-50" : ""}`}
++                      >
++                        <div className="sticky left-0 z-10 flex items-center gap-1 max-w-[80vw] bg-card/95 backdrop-blur-sm pl-1 pr-1 py-0.5 rounded-r border-r border-border/60 cursor-grab active:cursor-grabbing">
++                          <GripVertical
++                            className="w-3.5 h-3.5 text-muted-foreground/70 shrink-0"
++                            aria-label="工程の順番を変更"
++                          />
++                          <span className="text-xs font-medium leading-tight truncate min-w-0">
++                            {p.name}
++                            {p.staffName && (
++                              <span className="ml-1 text-[10px] text-muted-foreground font-normal">
++                                ({p.staffName})
++                              </span>
++                            )}
++                          </span>
++                          <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">
++                            {STATUS_LABEL[p.status]}
++                          </Badge>
++                          <Button
++                            variant="ghost"
++                            size="icon"
++                            className="h-5 w-5 shrink-0"
++                            onClick={() => openEdit(p)}
++                            aria-label="工程を編集"
++                          >
++                            <Pencil className="w-3 h-3" />
++                          </Button>
++                          <Button
++                            variant="ghost"
++                            size="icon"
++                            className="h-5 w-5 shrink-0 text-destructive hover:text-destructive"
++                            onClick={() => handleDelete(p.id)}
++                            aria-label="工程を削除"
++                          >
++                            <Trash2 className="w-3 h-3" />
++                          </Button>
++                        </div>
++                      </div>
++
++                      {/* bar row */}
++                      <div className={`${ROW_H} border-b relative`}>
++                        {dayMarkers.map((m, i) => {
++                          const isHoliday = isProjectHoliday(
++                            m.date,
++                            project?.saturdayWork ?? true,
++                          );
++                          return (
++                            <div
++                              key={i}
++                              className={`absolute top-0 bottom-0 border-l ${m.isMonthStart ? "border-foreground/20" : "border-border/30"} ${isHoliday ? "bg-rose-100/70" : ""}`}
++                              style={{ left: i * DAY_PX, width: DAY_PX }}
++                            />
++                          );
++                        })}
++                        {todayOffset != null && (
++                          <div
++                            className="absolute top-0 bottom-0 w-px bg-destructive/70 z-10 pointer-events-none"
++                            style={{ left: todayOffset }}
++                          />
++                        )}
++                        <div
++                          className={`absolute top-1/2 -translate-y-1/2 h-8 rounded ${STATUS_CLR[p.status]} text-white text-xs flex items-center shadow-sm select-none border border-black/20 ${dragging ? "ring-2 ring-primary opacity-90" : ""}`}
++                          style={{ left, width: Math.max(width, 12) }}
++                          title={`${p.name}: ${formatDate(sIso)} 〜 ${formatDate(eIso)}`}
++                        >
++                          <div
++                            className="w-2 h-full cursor-ew-resize rounded-l hover:bg-white/30 flex-shrink-0"
++                            onPointerDown={(ev) => startDrag(ev, "resize-l", p)}
++                          />
++                          <div
++                            className="flex-1 px-1 truncate cursor-grab active:cursor-grabbing"
++                            onPointerDown={(ev) => startDrag(ev, "move", p)}
++                            onDoubleClick={() => openEdit(p)}
++                          >
++                            {p.name}
++                          </div>
++                          <div
++                            className="w-2 h-full cursor-ew-resize rounded-r hover:bg-white/30 flex-shrink-0"
++                            onPointerDown={(ev) => startDrag(ev, "resize-r", p)}
++                          />
++                        </div>
++                      </div>
++                    </div>
++                  );
++                })}
++              </div>
++            </div>
++          </div>
++        )}
+         <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
+           <div className="flex items-center gap-1.5">
+             <div className="w-3 h-3 rounded bg-slate-400" />予定
+diff --git a/artifacts/amy/src/pages/quote-detail.tsx b/artifacts/amy/src/pages/quote-detail.tsx
+index 04383eb..b07cf21 100644
+--- a/artifacts/amy/src/pages/quote-detail.tsx
++++ b/artifacts/amy/src/pages/quote-detail.tsx
+@@ -46,6 +46,7 @@ import {
+   X,
+   Plus,
+   Copy,
++  GripVertical,
+ } from "lucide-react";
+ import { useRef, useState } from "react";
+ import { useToast } from "@/hooks/use-toast";
+@@ -152,6 +153,23 @@ export default function QuoteDetailPage() {
+     setEditItems(editItems.filter((_, i) => i !== idx));
+   };
+ 
++  // 明細行の並び替え (ドラッグ&ドロップ)。編集中の state 配列の並び順を
++  // 入れ替えるだけで、DB項目 (items は保存時にJSON配列としてそのまま
++  // 保存される) の変更は不要。
++  const [itemDragIdx, setItemDragIdx] = useState<number | null>(null);
++  const reorderItems = (sourceIdx: number, targetIdx: number) => {
++    if (sourceIdx === targetIdx) return;
++    setEditItems((prev) => {
++      if (sourceIdx < 0 || sourceIdx >= prev.length || targetIdx < 0 || targetIdx >= prev.length) {
++        return prev;
++      }
++      const next = [...prev];
++      const [moved] = next.splice(sourceIdx, 1);
++      next.splice(targetIdx, 0, moved);
++      return next;
++    });
++  };
++
+   const updateItem = (idx: number, patch: Partial<EditItem>) => {
+     setEditItems(editItems.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+   };
+@@ -563,11 +581,11 @@ export default function QuoteDetailPage() {
+ 
+         {editing ? (
+           <div className="border-2 border-foreground mb-1">
+-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)_24px] bg-primary text-primary-foreground text-[10px] font-semibold tracking-wider">
++            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)_24px] bg-primary text-primary-foreground text-[10px] font-semibold tracking-wider">
+               <div className="px-1 py-0.5 text-center border-r border-primary-foreground/20">No.</div>
+               <div className="px-2 py-0.5 border-r border-primary-foreground/20">工事項目・摘要</div>
+-              <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-center">単位</div>
+               <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-right">数量</div>
++              <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-center">単位</div>
+               <div className="px-1.5 py-0.5 border-r border-primary-foreground/20 text-right">単価</div>
+               <div className="px-1.5 py-0.5 text-right border-r border-primary-foreground/20">金額</div>
+               <div className="px-2 py-0.5 border-r border-primary-foreground/20">備考</div>
+@@ -576,10 +594,38 @@ export default function QuoteDetailPage() {
+             {editItems.map((item, i) => (
+               <div
+                 key={i}
+-                className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)_24px] border-t border-foreground/30 text-[11px] min-h-[18px]"
++                onDragOver={(event) => {
++                  if (itemDragIdx === null) return;
++                  event.preventDefault();
++                  event.dataTransfer.dropEffect = "move";
++                }}
++                onDrop={(event) => {
++                  if (itemDragIdx === null) return;
++                  event.preventDefault();
++                  const raw = event.dataTransfer.getData("text/plain");
++                  const sourceIdx = raw !== "" ? Number(raw) : itemDragIdx;
++                  if (sourceIdx !== null && !Number.isNaN(sourceIdx)) {
++                    reorderItems(sourceIdx, i);
++                  }
++                }}
++                className={`grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)_24px] border-t border-foreground/30 text-[11px] min-h-[18px] ${itemDragIdx === i ? "opacity-50" : ""}`}
+               >
+-                <div className="px-1 py-0 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px] flex items-center justify-center">
+-                  {i + 1}
++                {/* Drag handle: only this cell starts the drag, so the
++                    text inputs alongside it keep normal click/select
++                    behavior. */}
++                <div
++                  draggable
++                  onDragStart={(event) => {
++                    event.dataTransfer.effectAllowed = "move";
++                    event.dataTransfer.setData("text/plain", String(i));
++                    setItemDragIdx(i);
++                  }}
++                  onDragEnd={() => setItemDragIdx(null)}
++                  className="px-0.5 py-0 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px] flex items-center justify-center gap-0.5 cursor-grab active:cursor-grabbing"
++                  title="ドラッグして行を並び替え"
++                >
++                  <GripVertical className="w-2.5 h-2.5 shrink-0 text-muted-foreground/50" aria-hidden="true" />
++                  <span>{i + 1}</span>
+                 </div>
+                 <div className="px-0.5 py-0 border-r border-foreground/30">
+                   <Textarea
+@@ -589,13 +635,6 @@ export default function QuoteDetailPage() {
+                     placeholder="工事項目"
+                   />
+                 </div>
+-                <div className="px-0.5 py-0 border-r border-foreground/30">
+-                  <Input
+-                    value={item.unit}
+-                    onChange={(e) => updateItem(i, { unit: e.target.value })}
+-                    className="h-[18px] text-[10px] text-center border-0 shadow-none focus-visible:ring-1 px-0.5"
+-                  />
+-                </div>
+                 <div className="px-0.5 py-0 border-r border-foreground/30">
+                   <Input
+                     type="number"
+@@ -604,6 +643,13 @@ export default function QuoteDetailPage() {
+                     className="h-[18px] text-[11px] text-right border-0 shadow-none focus-visible:ring-1 px-0.5 tabular-nums"
+                   />
+                 </div>
++                <div className="px-0.5 py-0 border-r border-foreground/30">
++                  <Input
++                    value={item.unit}
++                    onChange={(e) => updateItem(i, { unit: e.target.value })}
++                    className="h-[18px] text-[10px] text-center border-0 shadow-none focus-visible:ring-1 px-0.5"
++                  />
++                </div>
+                 <div className="px-0.5 py-0 border-r border-foreground/30">
+                   <Input
+                     type="number"
+@@ -641,19 +687,19 @@ export default function QuoteDetailPage() {
+                 行を追加
+               </Button>
+             </div>
+-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)_24px] border-t-2 border-foreground text-[10px] bg-muted/30">
++            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)_24px] border-t-2 border-foreground text-[10px] bg-muted/30">
+               <div className="col-span-4"></div>
+               <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right font-semibold">小計</div>
+               <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right tabular-nums">{formatCurrency(editSubtotal)}</div>
+               <div className="col-span-2 border-l border-foreground/30"></div>
+             </div>
+-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)_24px] border-t border-foreground/30 text-[10px] bg-muted/30">
++            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)_24px] border-t border-foreground/30 text-[10px] bg-muted/30">
+               <div className="col-span-4"></div>
+               <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right font-semibold">消費税</div>
+               <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right tabular-nums">{formatCurrency(editTax)}</div>
+               <div className="col-span-2 border-l border-foreground/30"></div>
+             </div>
+-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)_24px] border-t border-foreground/30 text-[11px] bg-primary text-primary-foreground">
++            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)_24px] border-t border-foreground/30 text-[11px] bg-primary text-primary-foreground">
+               <div className="col-span-4"></div>
+               <div className="px-1.5 py-1 border-l border-primary-foreground/20 text-right font-bold">合計</div>
+               <div className="px-1.5 py-1 border-l border-primary-foreground/20 text-right tabular-nums font-bold">{formatCurrency(editTotal)}</div>
+@@ -662,19 +708,19 @@ export default function QuoteDetailPage() {
+           </div>
+         ) : (
+           <div className="border-2 border-foreground mb-1">
+-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] bg-primary text-primary-foreground text-[10px] font-semibold tracking-wider">
++            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)] bg-primary text-primary-foreground text-[10px] font-semibold tracking-wider">
+               <div className="px-1 py-0.5 text-center border-r border-primary-foreground/20">
+                 No.
+               </div>
+               <div className="px-2 py-0.5 border-r border-primary-foreground/20">
+                 工事項目・摘要
+               </div>
+-              <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-center">
+-                単位
+-              </div>
+               <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-right">
+                 数量
+               </div>
++              <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-center">
++                単位
++              </div>
+               <div className="px-1.5 py-0.5 border-r border-primary-foreground/20 text-right">
+                 単価
+               </div>
+@@ -689,7 +735,7 @@ export default function QuoteDetailPage() {
+               return (
+                 <div
+                   key={i}
+-                  className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[11px] min-h-[18px]"
++                  className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[11px] min-h-[18px]"
+                 >
+                   <div className="px-1 py-0.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px]">
+                     {item ? i + 1 : ""}
+@@ -697,12 +743,12 @@ export default function QuoteDetailPage() {
+                   <div className="px-2 py-0.5 border-r border-foreground/30 whitespace-pre-wrap leading-tight">
+                     {item?.description ?? ""}
+                   </div>
+-                  <div className="px-1 py-0.5 text-center border-r border-foreground/30 text-[10px]">
+-                    {item?.unit ?? ""}
+-                  </div>
+                   <div className="px-1 py-0.5 text-right tabular-nums border-r border-foreground/30">
+                     {item ? item.quantity : ""}
+                   </div>
++                  <div className="px-1 py-0.5 text-center border-r border-foreground/30 text-[10px]">
++                    {item?.unit ?? ""}
++                  </div>
+                   <div className="px-1.5 py-0.5 text-right tabular-nums border-r border-foreground/30">
+                     {item ? formatCurrency(item.unitPrice) : ""}
+                   </div>
+@@ -715,7 +761,7 @@ export default function QuoteDetailPage() {
+                 </div>
+               );
+             })}
+-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] border-t-2 border-foreground text-[10px] bg-muted/30">
++            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)] border-t-2 border-foreground text-[10px] bg-muted/30">
+               <div className="col-span-4"></div>
+               <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right font-semibold">
+                 小計
+@@ -725,7 +771,7 @@ export default function QuoteDetailPage() {
+               </div>
+               <div className="border-l border-foreground/30"></div>
+             </div>
+-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[10px] bg-muted/30">
++            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[10px] bg-muted/30">
+               <div className="col-span-4"></div>
+               <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right font-semibold">
+                 消費税
+@@ -735,7 +781,7 @@ export default function QuoteDetailPage() {
+               </div>
+               <div className="border-l border-foreground/30"></div>
+             </div>
+-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[11px] bg-primary text-primary-foreground">
++            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[11px] bg-primary text-primary-foreground">
+               <div className="col-span-4"></div>
+               <div className="px-1.5 py-1 border-l border-primary-foreground/20 text-right font-bold">
+                 合計
+diff --git a/artifacts/amy/src/pages/quote-new.tsx b/artifacts/amy/src/pages/quote-new.tsx
+index 0b6c60f..3ec8e4a 100644
+--- a/artifacts/amy/src/pages/quote-new.tsx
++++ b/artifacts/amy/src/pages/quote-new.tsx
+@@ -20,7 +20,7 @@ import {
+ } from "@/components/ui/select";
+ import { useToast } from "@/hooks/use-toast";
+ import { invalidateDashboard } from "@/lib/invalidate";
+-import { ArrowLeft, Save, Trash2, Plus } from "lucide-react";
++import { ArrowLeft, Save, Trash2, Plus, GripVertical } from "lucide-react";
+ import { apiErrorMessage } from "@/lib/api-error";
+ import { COMPANY_INFO, QUOTE_TERMS } from "@/lib/company-info";
+ import { formatCurrency } from "@/lib/format";
+@@ -95,36 +95,6 @@ function isDiscountItem(item: LineItem): boolean {
+   return /値引|割引|減額/.test(item.description);
+ }
+ 
+-function isItemEmpty(it: LineItem | undefined): boolean {
+-  if (!it) return true;
+-  return (
+-    !it.description &&
+-    !it.unit &&
+-    !it.quantity &&
+-    !it.unitPrice &&
+-    !it.notes
+-  );
+-}
+-
+-function findLastNonEmpty(rows: LineItem[]): LineItem | undefined {
+-  for (let i = rows.length - 1; i >= 0; i--) {
+-    if (!isItemEmpty(rows[i])) return rows[i];
+-  }
+-  return undefined;
+-}
+-
+-function seedItemFromPrevious(prev: LineItem | undefined): LineItem {
+-  if (!prev) return emptyItem();
+-  // 工事項目・単位・数量・単価 を引き継ぐ。備考は per-item なので空に。
+-  return {
+-    description: prev.description ?? "",
+-    unit: prev.unit ?? "",
+-    quantity: prev.quantity || 0,
+-    unitPrice: prev.unitPrice || 0,
+-    notes: "",
+-  };
+-}
+-
+ export default function QuoteNewPage() {
+   const [, setLocation] = useLocation();
+   const queryClient = useQueryClient();
+@@ -264,8 +234,23 @@ export default function QuoteNewPage() {
+     });
+   };
+ 
+-  const addRow = () =>
+-    setRows((prev) => [...prev, seedItemFromPrevious(findLastNonEmpty(prev))]);
++  const addRow = () => setRows((prev) => [...prev, emptyItem()]);
++
++  // 明細行の並び替え (ドラッグ&ドロップ)。行データはこの画面内の state のみで
++  // 保持しており(保存前)、DB項目の変更は不要 — 配列の並び順を入れ替えるだけ。
++  const [rowDragIdx, setRowDragIdx] = useState<number | null>(null);
++  const reorderRows = (sourceIdx: number, targetIdx: number) => {
++    if (sourceIdx === targetIdx) return;
++    setRows((prev) => {
++      if (sourceIdx < 0 || sourceIdx >= prev.length || targetIdx < 0 || targetIdx >= prev.length) {
++        return prev;
++      }
++      const next = [...prev];
++      const [moved] = next.splice(sourceIdx, 1);
++      next.splice(targetIdx, 0, moved);
++      return next;
++    });
++  };
+ 
+   // Excel-like fill handle (列ごとにドラッグして下にコピー)
+   const [fillDrag, setFillDrag] = useState<{
+@@ -464,9 +449,10 @@ export default function QuoteNewPage() {
+       (p.status !== "completed" && p.status !== "archived" || p.id === projectId),
+   );
+ 
+-  // Column template — description gets the widest space
++  // Column template — description gets the widest space.
++  // Order: No / 工事項目 / 数量 / 単位 / 単価 / 金額 / 備考 / (削除)
+   const colTemplate =
+-    "grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)_20px]";
++    "grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)_20px]";
+ 
+   return (
+     <div className="quote-workbench -m-8 min-h-[calc(100vh-0px)] py-6 px-6 print:p-0 print:m-0 print:min-h-0">
+@@ -676,12 +662,12 @@ export default function QuoteNewPage() {
+             <div className="px-2 py-0.5 border-r border-primary-foreground/20">
+               工事項目・摘要
+             </div>
+-            <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-center">
+-              単位
+-            </div>
+             <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-right">
+               数量
+             </div>
++            <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-center">
++              単位
++            </div>
+             <div className="px-1.5 py-0.5 border-r border-primary-foreground/20 text-right">
+               単価
+             </div>
+@@ -724,10 +710,39 @@ export default function QuoteNewPage() {
+               <div
+                 key={i}
+                 data-row={i}
+-                className={`grid ${colTemplate} border-t border-foreground/30 text-[11px] hover:bg-accent/5 items-stretch`}
++                onDragOver={(event) => {
++                  if (rowDragIdx === null) return;
++                  event.preventDefault();
++                  event.dataTransfer.dropEffect = "move";
++                }}
++                onDrop={(event) => {
++                  if (rowDragIdx === null) return;
++                  event.preventDefault();
++                  const raw = event.dataTransfer.getData("text/plain");
++                  const sourceIdx = raw !== "" ? Number(raw) : rowDragIdx;
++                  if (sourceIdx !== null && !Number.isNaN(sourceIdx)) {
++                    reorderRows(sourceIdx, i);
++                  }
++                }}
++                className={`grid ${colTemplate} border-t border-foreground/30 text-[11px] hover:bg-accent/5 items-stretch ${rowDragIdx === i ? "opacity-50" : ""}`}
+               >
+-                <div className="px-1 py-0.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px] flex items-start justify-center min-h-[18px]">
+-                  {i + 1}
++                {/* Drag handle: only this small cell initiates row
++                    reordering, so dragging text inside the description/
++                    notes textareas (and the Excel-like fill handle) still
++                    works normally. */}
++                <div
++                  draggable
++                  onDragStart={(event) => {
++                    event.dataTransfer.effectAllowed = "move";
++                    event.dataTransfer.setData("text/plain", String(i));
++                    setRowDragIdx(i);
++                  }}
++                  onDragEnd={() => setRowDragIdx(null)}
++                  className="px-0.5 py-0.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px] flex items-start justify-center gap-0.5 min-h-[18px] cursor-grab active:cursor-grabbing"
++                  title="ドラッグして行を並び替え"
++                >
++                  <GripVertical className="w-2.5 h-2.5 shrink-0 text-muted-foreground/50 print:hidden" aria-hidden="true" />
++                  <span>{i + 1}</span>
+                 </div>
+                 <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("description") ? "bg-primary/10" : ""}`}>
+                   <AutoGrowTextarea
+@@ -746,6 +761,23 @@ export default function QuoteNewPage() {
+                   />
+                   {renderFillHandle("description")}
+                 </div>
++                <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("quantity") ? "bg-primary/10" : ""}`}>
++                  <input
++                    type="number"
++                    min="0"
++                    step="any"
++                    value={row.quantity || ""}
++                    onChange={(e) => {
++                      const n = e.target.valueAsNumber;
++                      updateRow(i, "quantity", Number.isFinite(n) ? n : 0);
++                    }}
++                    onKeyDown={(e) => handleEnterDown(e, i, "qty")}
++                    onPaste={(e) => handleMultiPaste(e, i, "quantity")}
++                    className="block w-full px-1 py-0.5 bg-transparent outline-none focus:bg-accent/10 text-right tabular-nums min-w-0 self-start min-h-[18px] text-[11px]"
++                    data-cell={`r${i}-cqty`}
++                  />
++                  {renderFillHandle("quantity")}
++                </div>
+                 <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("unit") ? "bg-primary/10" : ""}`}>
+                   <Select
+                     value={row.unit ?? ""}
+@@ -764,23 +796,6 @@ export default function QuoteNewPage() {
+                   </Select>
+                   {renderFillHandle("unit")}
+                 </div>
+-                <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("quantity") ? "bg-primary/10" : ""}`}>
+-                  <input
+-                    type="number"
+-                    min="0"
+-                    step="any"
+-                    value={row.quantity || ""}
+-                    onChange={(e) => {
+-                      const n = e.target.valueAsNumber;
+-                      updateRow(i, "quantity", Number.isFinite(n) ? n : 0);
+-                    }}
+-                    onKeyDown={(e) => handleEnterDown(e, i, "qty")}
+-                    onPaste={(e) => handleMultiPaste(e, i, "quantity")}
+-                    className="block w-full px-1 py-0.5 bg-transparent outline-none focus:bg-accent/10 text-right tabular-nums min-w-0 self-start min-h-[18px] text-[11px]"
+-                    data-cell={`r${i}-cqty`}
+-                  />
+-                  {renderFillHandle("quantity")}
+-                </div>
+                 <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("unitPrice") ? "bg-primary/10" : ""}`}>
+                   <input
+                     type="number"
+diff --git a/artifacts/api-server/src/app.ts b/artifacts/api-server/src/app.ts
+index 5d04545..fd6371e 100644
+--- a/artifacts/api-server/src/app.ts
++++ b/artifacts/api-server/src/app.ts
+@@ -10,9 +10,20 @@ import {
+ } from "./middlewares/clerkProxyMiddleware";
+ import router from "./routes";
+ import { logger } from "./lib/logger";
++import { createCorsOriginHandler } from "./lib/corsOrigins";
+ 
+ const app: Express = express();
+ 
++// Replit Autoscale deployments sit behind exactly one reverse proxy hop.
++// Without this, Express ignores X-Forwarded-For entirely and req.ip is
++// always the proxy's own address for every request — so the per-IP rate
++// limiter in routes/review-login.ts ends up sharing a single bucket across
++// all callers instead of limiting each client individually. Trusting 1 hop
++// makes req.ip resolve to the real client IP while still only trusting the
++// proxy Replit itself controls (a client can't spoof past that boundary by
++// sending its own X-Forwarded-For).
++app.set("trust proxy", 1);
++
+ app.use(
+   pinoHttp({
+     logger,
+@@ -35,7 +46,12 @@ app.use(
+ 
+ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
+ 
+-app.use(cors({ credentials: true, origin: true }));
++// Was `origin: true` (reflects any Origin) + `credentials: true` — allowed
++// any website to make credentialed cross-site requests. Now restricted to
++// AMY's actual domain(s) (REPLIT_DOMAINS, set by the deployment platform),
++// the workspace dev domain, and localhost in non-production. See
++// lib/corsOrigins.ts.
++app.use(cors({ credentials: true, origin: createCorsOriginHandler() }));
+ app.use(express.json());
+ app.use(express.urlencoded({ extended: true }));
+ 
+diff --git a/artifacts/api-server/src/lib/corsOrigins.ts b/artifacts/api-server/src/lib/corsOrigins.ts
+new file mode 100644
+index 0000000..9bd19c5
+--- /dev/null
++++ b/artifacts/api-server/src/lib/corsOrigins.ts
+@@ -0,0 +1,77 @@
++/**
++ * CORS allow-list for the API.
++ *
++ * Previously app.ts used `cors({ credentials: true, origin: true })`, which
++ * reflects whatever Origin header the caller sends and also allows
++ * credentials (cookies) — i.e. it trusts every website on the internet
++ * with a credentialed request. Since Clerk's session can be carried by a
++ * cookie (not only the Authorization: Bearer header — see
++ * ClerkBearerTokenBridge in replit.md), that combination lets a malicious
++ * page make authenticated cross-site requests against this API using the
++ * signed-in user's browser session.
++ *
++ * This module builds an explicit allow-list instead, derived from:
++ *  - REPLIT_DOMAINS — set automatically by the Replit deployment platform
++ *    to whatever domain(s) this deployment is actually reachable at,
++ *    custom domain included once one is linked. This is the authoritative
++ *    source for "AMY's real domain" without hardcoding a guess here.
++ *  - REPLIT_DEV_DOMAIN — the workspace's own dev preview domain.
++ *  - CORS_EXTRA_ORIGINS — an optional escape hatch (comma-separated full
++ *    origins, e.g. "https://staging.example.com") for any domain not
++ *    reflected by the two above.
++ *  - localhost — only outside production (NODE_ENV !== "production"), for
++ *    `pnpm dev`.
++ */
++
++function addDomain(origins: Set<string>, domain: string | undefined): void {
++  const d = domain?.trim();
++  if (!d) return;
++  origins.add(`https://${d}`);
++}
++
++function addOrigin(origins: Set<string>, origin: string | undefined): void {
++  const o = origin?.trim();
++  if (!o) return;
++  origins.add(o.replace(/\/$/, ""));
++}
++
++export function buildAllowedOrigins(env: NodeJS.ProcessEnv = process.env): Set<string> {
++  const origins = new Set<string>();
++
++  for (const domain of (env.REPLIT_DOMAINS ?? "").split(",")) {
++    addDomain(origins, domain);
++  }
++  addDomain(origins, env.REPLIT_DEV_DOMAIN);
++
++  for (const origin of (env.CORS_EXTRA_ORIGINS ?? "").split(",")) {
++    addOrigin(origins, origin);
++  }
++
++  if (env.NODE_ENV !== "production") {
++    origins.add("http://localhost:5173");
++    origins.add("http://127.0.0.1:5173");
++  }
++
++  return origins;
++}
++
++/**
++ * cors() origin callback: allow no-Origin requests (server-to-server,
++ * curl, same-origin navigations don't send Origin either) and requests
++ * from an allowed origin; reject everything else.
++ */
++export function createCorsOriginHandler(
++  env: NodeJS.ProcessEnv = process.env,
++): (
++  origin: string | undefined,
++  callback: (err: Error | null, allow?: boolean) => void,
++) => void {
++  const allowed = buildAllowedOrigins(env);
++  return (origin, callback) => {
++    if (!origin || allowed.has(origin)) {
++      callback(null, true);
++      return;
++    }
++    callback(new Error(`Origin not allowed by CORS: ${origin}`));
++  };
++}
+diff --git a/artifacts/api-server/src/lib/objectAccess.ts b/artifacts/api-server/src/lib/objectAccess.ts
+new file mode 100644
+index 0000000..c6fd676
+--- /dev/null
++++ b/artifacts/api-server/src/lib/objectAccess.ts
+@@ -0,0 +1,104 @@
++import { eq, or } from "drizzle-orm";
++import { db, vendorInvoicesTable, vendorQuotesTable } from "@workspace/db";
++import type { AppUserRow } from "./auth";
++
++/**
++ * Authorization for GET /storage/objects/* and /ocr/extract.
++ *
++ * These two routes both take a caller-supplied objectPath (e.g.
++ * "/objects/uploads/<uuid>") and need to answer: "may this signed-in user
++ * read this particular file?" There is no per-object ACL row in the
++ * database (see lib/objectAcl.ts — that scaffolding is unused), so instead
++ * we derive access from the same tables/rules the rest of the API already
++ * uses to decide external-user visibility:
++ *
++ *  - internal (approved) users can see all business data, so they can read
++ *    any object.
++ *  - external (approved) users may only read objects attached to a
++ *    vendor_invoices / vendor_quotes row they themselves created
++ *    (createdBy === their Clerk user id) — mirroring the createdBy filter
++ *    already applied in routes/vendor-invoices.ts and
++ *    routes/vendor-quotes.ts.
++ *  - external users may also read a file they *just* uploaded via
++ *    POST /storage/uploads/request-url but haven't attached to a saved
++ *    vendor invoice/quote yet (the upload-then-preview-then-save flow in
++ *    vendor-invoice-new.tsx / vendor-quote-new.tsx). That short-lived
++ *    ownership is tracked in-memory by recordPendingUpload() below.
++ *
++ * Anything else (receipts, project photos, progress-log photos — all
++ * internal-only data) is denied to external users by default (fail
++ * closed), since there is no legitimate external-facing route that
++ * references those objects.
++ */
++
++const PENDING_UPLOAD_TTL_MS = 24 * 60 * 60 * 1000; // 24h — generous enough to cover an abandoned draft form.
++const PENDING_UPLOAD_MAX_ENTRIES = 5000;
++
++type PendingUpload = { uploaderId: string; createdAt: number };
++
++// In-memory only (per process). Same trade-off as the existing rate limiter
++// in routes/review-login.ts: it doesn't survive a restart or share state
++// across multiple server instances. Worst case here is a brief false
++// negative (a pre-save preview 403s and the user retries), never a false
++// positive, so it is safe to keep simple.
++const pendingUploads = new Map<string, PendingUpload>();
++
++function evictExpired(now: number): void {
++  for (const [key, value] of pendingUploads) {
++    if (now - value.createdAt > PENDING_UPLOAD_TTL_MS) {
++      pendingUploads.delete(key);
++    }
++  }
++}
++
++/** Call this right after issuing a presigned upload URL, so the uploader can preview their own file before it's attached to a saved record. */
++export function recordPendingUpload(objectPath: string, uploaderId: string): void {
++  const now = Date.now();
++  pendingUploads.set(objectPath, { uploaderId, createdAt: now });
++  if (pendingUploads.size > PENDING_UPLOAD_MAX_ENTRIES) {
++    evictExpired(now);
++  }
++}
++
++function isPendingUploadOwnedBy(objectPath: string, uploaderId: string): boolean {
++  const entry = pendingUploads.get(objectPath);
++  if (!entry) return false;
++  if (Date.now() - entry.createdAt > PENDING_UPLOAD_TTL_MS) {
++    pendingUploads.delete(objectPath);
++    return false;
++  }
++  return entry.uploaderId === uploaderId;
++}
++
++/**
++ * @param objectPath the "/objects/..." path (as built in routes/storage.ts
++ *   and routes/ocr.ts) — NOT the "/api/storage/objects/..." href stored on
++ *   the frontend.
++ */
++export async function canUserAccessObjectPath(
++  me: AppUserRow,
++  objectPath: string,
++): Promise<boolean> {
++  if (me.role !== "external") return true;
++
++  const storedFileUrl = `/api/storage${objectPath}`;
++
++  const [vendorInvoice] = await db
++    .select({ createdBy: vendorInvoicesTable.createdBy })
++    .from(vendorInvoicesTable)
++    .where(
++      or(
++        eq(vendorInvoicesTable.fileUrl, storedFileUrl),
++        eq(vendorInvoicesTable.quoteFileUrl, storedFileUrl),
++      ),
++    );
++  if (vendorInvoice) return vendorInvoice.createdBy === me.clerkUserId;
++
++  const [vendorQuote] = await db
++    .select({ createdBy: vendorQuotesTable.createdBy })
++    .from(vendorQuotesTable)
++    .where(eq(vendorQuotesTable.fileUrl, storedFileUrl));
++  if (vendorQuote) return vendorQuote.createdBy === me.clerkUserId;
++
++  return isPendingUploadOwnedBy(objectPath, me.clerkUserId);
++}
+diff --git a/artifacts/api-server/src/routes/index.ts b/artifacts/api-server/src/routes/index.ts
+index 37d2074..e175ce2 100644
+--- a/artifacts/api-server/src/routes/index.ts
++++ b/artifacts/api-server/src/routes/index.ts
+@@ -37,10 +37,14 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
+ }
+ 
+ router.use(healthRouter);
+-// Storage: GET /storage/objects/* and /storage/public-objects/* are public
+-// so saved PDFs can be opened directly in a new browser tab (object paths
+-// contain unguessable UUIDs). The POST upload endpoint inside storageRouter
+-// performs its own auth check.
++// Storage: mounted before the global requireAuth below so links keep
++// working when opened directly in a new browser tab (no Bearer header on a
++// plain navigation — Clerk's session cookie carries auth instead). Every
++// route inside storageRouter performs its own auth check regardless:
++// GET /storage/public-objects/* is intentionally public (static assets),
++// while GET /storage/objects/* and the POST upload endpoint each require
++// an approved signed-in user, and GET additionally checks that the caller
++// is allowed to read that specific object (see lib/objectAccess.ts).
+ router.use(storageRouter);
+ // App Store 審査用デモログイン (public)。env 未設定なら常に 401/false を返すだけ。
+ router.use(reviewLoginRouter);
+diff --git a/artifacts/api-server/src/routes/ocr.ts b/artifacts/api-server/src/routes/ocr.ts
+index b158c48..72478e3 100644
+--- a/artifacts/api-server/src/routes/ocr.ts
++++ b/artifacts/api-server/src/routes/ocr.ts
+@@ -2,6 +2,8 @@ import { Router, type IRouter, type Request, type Response } from "express";
+ import Anthropic from "@anthropic-ai/sdk";
+ import { ExtractOcrBody, ExtractOcrResponse } from "@workspace/api-zod";
+ import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
++import { getOrCreateAppUser } from "../lib/auth";
++import { canUserAccessObjectPath } from "../lib/objectAccess";
+ 
+ const router: IRouter = Router();
+ const objectStorageService = new ObjectStorageService();
+@@ -61,6 +63,21 @@ router.post("/ocr/extract", async (req: Request, res: Response) => {
+     return;
+   }
+ 
++  // This router runs after the global requireAuth + requireApproved (see
++  // routes/index.ts), so the caller is already an approved signed-in user
++  // here. What's still missing is per-object authorization: without this,
++  // any approved user — external (職人) included — could pass an arbitrary
++  // objectPath and have the server OCR someone else's uploaded document.
++  // canUserAccessObjectPath applies the same ownership rule used for
++  // GET /storage/objects/* (internal: any object; external: only their own
++  // vendor invoice/quote attachments, or a file they just uploaded).
++  const me = await getOrCreateAppUser(req);
++  const allowed = await canUserAccessObjectPath(me, parsed.data.objectPath);
++  if (!allowed) {
++    res.status(403).json({ error: "Forbidden" });
++    return;
++  }
++
+   const baseURL = process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL;
+   const apiKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
+   if (!baseURL || !apiKey) {
+diff --git a/artifacts/api-server/src/routes/schedule.ts b/artifacts/api-server/src/routes/schedule.ts
+index 5afc9fd..97f4e1c 100644
+--- a/artifacts/api-server/src/routes/schedule.ts
++++ b/artifacts/api-server/src/routes/schedule.ts
+@@ -19,6 +19,7 @@ import {
+ } from "@workspace/api-zod";
+ import { isoDate, isoDateTime } from "../lib/serializers";
+ import { getOrCreateAppUser } from "../lib/auth";
++import { externalUserCanAccessProject } from "../lib/externalProjectAccess";
+ 
+ const router: IRouter = Router();
+ 
+@@ -186,6 +187,17 @@ router.post("/schedule", async (req, res): Promise<void> => {
+     return;
+   }
+   const me = await getOrCreateAppUser(req);
++  // 社外(職人)ユーザーは自分がアサインされている案件にのみ予定を作成できる。
++  // vendor-invoices.ts / vendor-quotes.ts と同じ externalUserCanAccessProject
++  // チェック(staffIdは他ルートと同様に本人限定にはしない — 本人以外の職人の
++  // 予定を代理登録する既存ユースケースを壊さないため)。
++  if (
++    me.role === "external" &&
++    !(await externalUserCanAccessProject(me, parsed.data.projectId))
++  ) {
++    res.status(403).json({ error: "この案件へのアクセス権がありません" });
++    return;
++  }
+   const [row] = await db
+     .insert(scheduleEntriesTable)
+     .values({
+@@ -223,6 +235,10 @@ router.patch("/schedule/:id", async (req, res): Promise<void> => {
+       res.status(403).json({ error: "他のアカウントの予定は編集できません" });
+       return;
+     }
++    if (!(await externalUserCanAccessProject(me, parsed.data.projectId))) {
++      res.status(403).json({ error: "この案件へのアクセス権がありません" });
++      return;
++    }
+   }
+   const [row] = await db
+     .update(scheduleEntriesTable)
+diff --git a/artifacts/api-server/src/routes/storage.ts b/artifacts/api-server/src/routes/storage.ts
+index 98e4181..934508f 100644
+--- a/artifacts/api-server/src/routes/storage.ts
++++ b/artifacts/api-server/src/routes/storage.ts
+@@ -6,7 +6,8 @@ import {
+   RequestUploadUrlResponse,
+ } from "@workspace/api-zod";
+ import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+-import { ObjectPermission } from "../lib/objectAcl";
++import { getOrCreateAppUser } from "../lib/auth";
++import { canUserAccessObjectPath, recordPendingUpload } from "../lib/objectAccess";
+ 
+ const router: IRouter = Router();
+ const objectStorageService = new ObjectStorageService();
+@@ -19,9 +20,10 @@ const objectStorageService = new ObjectStorageService();
+  * Then uploads the file directly to the returned presigned URL.
+  */
+ router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
+-  // This route is mounted before the global requireAuth middleware (so the
+-  // public GET /storage/objects/* can serve PDFs to a new tab without
+-  // cookie-handling quirks). Re-check auth inline here for the upload.
++  // This whole router is mounted before the global requireAuth middleware
++  // (so GET /storage/objects/* can serve PDFs to a new tab via the
++  // Clerk session cookie without a Bearer header — see that handler below
++  // for its own auth + ownership check). Re-check auth inline here too.
+   const auth = getAuth(req);
+   if (!auth?.userId) {
+     res.status(401).json({ error: "Unauthorized" });
+@@ -38,6 +40,10 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response)
+ 
+     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
++    // So GET /storage/objects/* can let this same user preview the file
++    // before it's attached to a saved vendor invoice/quote (see
++    // lib/objectAccess.ts for why this is needed).
++    recordPendingUpload(objectPath, auth.userId);
+ 
+     res.json(
+       RequestUploadUrlResponse.parse({
+@@ -90,31 +96,38 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
+  * GET /storage/objects/*
+  *
+  * Serve object entities from PRIVATE_OBJECT_DIR.
+- * These are served from a separate path from /public-objects and can optionally
+- * be protected with authentication or ACL checks based on the use case.
++ *
++ * This route is mounted before the global requireAuth/requireApproved
++ * middlewares (see routes/index.ts — kept that way so links open cleanly
++ * in a new browser tab), so it re-checks auth + approval inline here, then
++ * authorizes the specific object via canUserAccessObjectPath (internal
++ * users may read any object; external users only their own vendor
++ * invoice/quote attachments — see lib/objectAccess.ts for the full rule).
+  */
+ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
+   try {
++    const auth = getAuth(req);
++    if (!auth?.userId) {
++      res.status(401).json({ error: "Unauthorized" });
++      return;
++    }
++    const me = await getOrCreateAppUser(req);
++    if (me.status !== "approved") {
++      res.status(403).json({ error: "Forbidden: 承認待ちのアカウントです" });
++      return;
++    }
++
+     const raw = req.params.path;
+     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
+     const objectPath = `/objects/${wildcardPath}`;
+-    const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+ 
+-    // --- Protected route example (uncomment when using replit-auth) ---
+-    // if (!req.isAuthenticated()) {
+-    //   res.status(401).json({ error: "Unauthorized" });
+-    //   return;
+-    // }
+-    // const canAccess = await objectStorageService.canAccessObjectEntity({
+-    //   userId: req.user.id,
+-    //   objectFile,
+-    //   requestedPermission: ObjectPermission.READ,
+-    // });
+-    // if (!canAccess) {
+-    //   res.status(403).json({ error: "Forbidden" });
+-    //   return;
+-    // }
++    const allowed = await canUserAccessObjectPath(me, objectPath);
++    if (!allowed) {
++      res.status(403).json({ error: "Forbidden" });
++      return;
++    }
+ 
++    const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+     const response = await objectStorageService.downloadObject(objectFile);
+ 
+     res.status(response.status);
