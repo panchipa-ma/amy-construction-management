@@ -1,0 +1,39 @@
+From 460226904821268a6773a260f9900554ad225215 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 5 Sep 2026 13:19:33 +0000
+Subject: [PATCH] fix(amy): show unit dropdown value immediately without
+ requiring it to be opened first
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Radix Select can't resolve a display label for a controlled value until
+its SelectItem has actually rendered once, so a unit copied in bulk
+(e.g. duplicating a quote) showed as blank ("—") even for values on
+the list. Pass the raw value as SelectValue's children so it always
+displays the current unit text directly.
+---
+ artifacts/amy/src/pages/quote-new.tsx | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/artifacts/amy/src/pages/quote-new.tsx b/artifacts/amy/src/pages/quote-new.tsx
+index 7939843..4989957 100644
+--- a/artifacts/amy/src/pages/quote-new.tsx
++++ b/artifacts/amy/src/pages/quote-new.tsx
+@@ -777,7 +777,12 @@ export default function QuoteNewPage() {
+                     onValueChange={(v) => updateRow(i, "unit", v)}
+                   >
+                     <SelectTrigger className="border-0 rounded-none shadow-none h-auto py-0.5 px-1 text-center justify-center focus:ring-0 focus:bg-accent/10 [&>svg]:hidden self-start min-h-[18px] text-[10px] w-full">
+-                      <SelectValue placeholder="—" />
++                      {/* Render the raw value as children so it shows immediately
++                          (e.g. right after duplicating a quote) without requiring
++                          the dropdown to have been opened first — Radix Select
++                          otherwise can't resolve a label for a value it hasn't
++                          rendered a matching SelectItem for yet. */}
++                      <SelectValue placeholder="—">{row.unit || undefined}</SelectValue>
+                     </SelectTrigger>
+                     <SelectContent scrollMode="step">
+                       {UNIT_OPTIONS.map((u) => (
+-- 
+2.43.0
+
