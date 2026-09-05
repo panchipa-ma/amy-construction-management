@@ -777,7 +777,12 @@ export default function QuoteNewPage() {
                     onValueChange={(v) => updateRow(i, "unit", v)}
                   >
                     <SelectTrigger className="border-0 rounded-none shadow-none h-auto py-0.5 px-1 text-center justify-center focus:ring-0 focus:bg-accent/10 [&>svg]:hidden self-start min-h-[18px] text-[10px] w-full">
-                      <SelectValue placeholder="—" />
+                      {/* Render the raw value as children so it shows immediately
+                          (e.g. right after duplicating a quote) without requiring
+                          the dropdown to have been opened first — Radix Select
+                          otherwise can't resolve a label for a value it hasn't
+                          rendered a matching SelectItem for yet. */}
+                      <SelectValue placeholder="—">{row.unit || undefined}</SelectValue>
                     </SelectTrigger>
                     <SelectContent scrollMode="step">
                       {UNIT_OPTIONS.map((u) => (
