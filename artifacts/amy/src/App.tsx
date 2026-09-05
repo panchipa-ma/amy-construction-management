@@ -329,6 +329,23 @@ function ClerkProviderWithRoutes() {
 }
 
 function App() {
+  // Some mobile browsers (in particular the in-app WebViews used by chat
+  // apps, and some Safari back/forward navigations) restore a page from the
+  // back/forward cache ("bfcache") instead of re-running our app's startup
+  // logic (Clerk session bootstrap, initial data fetches, etc.) on native
+  // back/close. That can leave the restored page stuck blank. Detecting a
+  // bfcache restore (`event.persisted`) and forcing a real reload guarantees
+  // the page comes back the same way a normal navigation would.
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
   return (
     <WouterRouter base={basePath}>
       <ClerkProviderWithRoutes />

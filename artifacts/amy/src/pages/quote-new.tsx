@@ -477,21 +477,26 @@ export default function QuoteNewPage() {
         </div>
       </div>
 
-      {/* The paper */}
+      {/* The paper — fixed at real A4 width (210mm) for print fidelity, so on
+          narrow screens it's wrapped in a horizontal-scroll container rather
+          than reflowed. The item table below additionally pins its No./工事
+          項目 columns (see `sticky left-...`) so scrolling right to see
+          単価・備考 doesn't lose track of which row you're on. */}
+      <div className="overflow-x-auto print:overflow-visible">
       <form
         id="quote-form"
         onSubmit={submit}
         className="quote-paper w-[210mm] min-h-[297mm] mx-auto px-[10mm] py-[6mm] text-[12px] text-foreground print:min-h-0 print:border-0 print:shadow-none"
       >
         {/* Title */}
-        <div className="text-center mb-2 -mt-1">
+        <div className="quote-title-row text-center mb-2 -mt-1">
           <h1 className="quote-title inline-block text-[24px] font-semibold text-foreground tracking-[0.5em] pl-[0.5em]">
             御&nbsp;&nbsp;見&nbsp;&nbsp;積&nbsp;&nbsp;書
           </h1>
         </div>
 
         {/* Customer + Meta */}
-        <div className="grid grid-cols-[1.5fr_1fr] gap-6 mb-2">
+        <div className="quote-meta-row grid grid-cols-[1.5fr_1fr] gap-6 mb-2">
           {/* LEFT: Customer */}
           <div className="space-y-1 min-w-0">
             <div className="flex items-end gap-2 border-b-2 border-foreground pb-0.5">
@@ -561,7 +566,7 @@ export default function QuoteNewPage() {
         </div>
 
         {/* 件名 + 自社情報 */}
-        <div className="grid grid-cols-[1.5fr_1fr] gap-6 mb-2">
+        <div className="quote-subject-row grid grid-cols-[1.5fr_1fr] gap-6 mb-2">
           <div className="space-y-1 min-w-0">
             <div>
               <div className="text-[9px] tracking-[0.3em] text-muted-foreground">
@@ -629,7 +634,7 @@ export default function QuoteNewPage() {
         </div>
 
         {/* 合計金額 — hero */}
-        <div className="flex items-stretch border-2 border-primary mb-1.5 bg-primary/[0.02]">
+        <div className="quote-total-hero flex items-stretch border-2 border-primary mb-1.5 bg-primary/[0.02]">
           <div className="w-28 px-3 py-1 bg-primary text-primary-foreground font-semibold border-r-2 border-primary flex items-center justify-center text-[11px] tracking-[0.2em]">
             合 計 金 額
           </div>
@@ -649,10 +654,10 @@ export default function QuoteNewPage() {
           <div
             className={`grid ${colTemplate} bg-primary text-primary-foreground text-[10px] font-semibold tracking-wider`}
           >
-            <div className="px-1 py-0.5 text-center border-r border-primary-foreground/20">
+            <div className="sticky left-0 z-20 bg-primary px-1 py-0.5 text-center border-r border-primary-foreground/20">
               No.
             </div>
-            <div className="px-2 py-0.5 border-r border-primary-foreground/20">
+            <div className="sticky left-[26px] z-20 bg-primary px-2 py-0.5 border-r border-primary-foreground/20">
               工事項目・摘要
             </div>
             <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-right">
@@ -731,13 +736,13 @@ export default function QuoteNewPage() {
                     setRowDragIdx(i);
                   }}
                   onDragEnd={() => setRowDragIdx(null)}
-                  className="px-0.5 py-0.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px] flex items-start justify-center gap-0.5 min-h-[18px] cursor-grab active:cursor-grabbing"
+                  className="sticky left-0 z-10 bg-background px-0.5 py-0.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px] flex items-start justify-center gap-0.5 min-h-[18px] cursor-grab active:cursor-grabbing"
                   title="ドラッグして行を並び替え"
                 >
                   <GripVertical className="w-2.5 h-2.5 shrink-0 text-muted-foreground/50 print:hidden" aria-hidden="true" />
                   <span>{i + 1}</span>
                 </div>
-                <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("description") ? "bg-primary/10" : ""}`}>
+                <div className={`${cellWrap} sticky left-[26px] z-10 border-r border-foreground/30 ${isCellInFillRange("description") ? "bg-primary/10" : "bg-background"}`}>
                   <AutoGrowTextarea
                     value={row.description}
                     onChange={(v) => updateRow(i, "description", v)}
@@ -934,6 +939,7 @@ export default function QuoteNewPage() {
           {COMPANY_INFO.name}　|　{COMPANY_INFO.tel}
         </div>
       </form>
+      </div>
 
       {/* Bottom action bar */}
       <div className="max-w-[1040px] mx-auto flex justify-end gap-2 mt-4 pb-4 print:hidden">

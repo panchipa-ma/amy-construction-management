@@ -359,6 +359,34 @@
     max-width: 100%;
   }
 
+  /* Quote paper (見積書) — the paper itself stays at real A4 width and
+     scrolls horizontally (see the overflow-x-auto wrapper in quote-new.tsx),
+     but the letterhead area above the item table is compacted so the table
+     comes into view after less vertical scrolling. */
+  .quote-title-row {
+    margin-bottom: 0.25rem !important;
+  }
+  .quote-title-row .quote-title {
+    font-size: 18px !important;
+    letter-spacing: 0.3em !important;
+  }
+  .quote-meta-row,
+  .quote-subject-row {
+    gap: 0.75rem !important;
+    margin-bottom: 0.375rem !important;
+  }
+  .quote-subject-row .bg-muted\/30 {
+    padding-top: 0.125rem !important;
+    padding-bottom: 0.125rem !important;
+  }
+  .quote-total-hero {
+    margin-bottom: 0.375rem !important;
+  }
+  .quote-total-hero > div {
+    padding-top: 0.125rem !important;
+    padding-bottom: 0.125rem !important;
+  }
+
   .mobile-drawer-root {
     display: block;
     position: fixed;

@@ -489,7 +489,7 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                 sm:hidden block below for the narrow-screen layout, where a
                 fixed-width name column would squeeze the Gantt chart) */}
             <div className="w-72 flex-shrink-0 border-r bg-card">
-              <div className="h-12 border-b bg-muted/30 flex items-end px-3 pb-1.5 text-xs font-semibold text-muted-foreground">
+              <div className="sticky top-0 z-20 h-12 border-b bg-muted/30 flex items-end px-3 pb-1.5 text-xs font-semibold text-muted-foreground">
                 工程
               </div>
               {phases.map((p) => {
@@ -551,8 +551,9 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                 className="relative"
                 style={{ width: (range.totalDays + 1) * DAY_PX }}
               >
-                {/* day header */}
-                <div className={`${ROW_H} border-b bg-muted/30 relative`}>
+                {/* day header — sticky so the month/day scale stays visible
+                    while scrolling down through many phases */}
+                <div className={`${ROW_H} sticky top-0 z-20 border-b bg-muted/30 relative`}>
                   {dayMarkers.map((m, i) => {
                     const left = i * DAY_PX;
                     const isHoliday = isProjectHoliday(
@@ -683,8 +684,9 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                 className="relative"
                 style={{ width: (range.totalDays + 1) * DAY_PX }}
               >
-                {/* day header */}
-                <div className={`${ROW_H} border-b bg-muted/30 relative`}>
+                {/* day header — sticky so the month/day scale stays visible
+                    while scrolling down through many phases */}
+                <div className={`${ROW_H} sticky top-0 z-20 border-b bg-muted/30 relative`}>
                   {dayMarkers.map((m, i) => {
                     const left = i * DAY_PX;
                     const isHoliday = isProjectHoliday(
