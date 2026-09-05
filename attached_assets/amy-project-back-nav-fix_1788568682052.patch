@@ -1,0 +1,50 @@
+diff --git a/artifacts/amy/src/pages/project-detail.tsx b/artifacts/amy/src/pages/project-detail.tsx
+index b59b9d4..3beb204 100644
+--- a/artifacts/amy/src/pages/project-detail.tsx
++++ b/artifacts/amy/src/pages/project-detail.tsx
+@@ -200,6 +200,23 @@ export default function ProjectDetailPage() {
+     }
+   }, [ledgerQ.data]);
+ 
++  // Guard against a syntactically-valid but no-longer-existing /projects/:id
++  // (typically: this project was just deleted and the browser's back
++  // button navigated here from history — see handleDeleteProject below).
++  // Without this, the fetch settles into an error state (isLoading: false,
++  // data: undefined) and the render below fell through to the loading
++  // skeleton forever, since it only checked isLoading/data, never isError.
++  useEffect(() => {
++    if (projectQ.isError) {
++      toast({
++        title: "案件が見つかりません",
++        description: "削除された可能性があります。",
++        variant: "destructive",
++      });
++      setLocation("/", { replace: true });
++    }
++  }, [projectQ.isError, setLocation, toast]);
++
+   if (projectQ.isLoading || !projectQ.data) {
+     return <Skeleton className="h-96 w-full max-w-5xl" />;
+   }
+@@ -320,12 +337,20 @@ export default function ProjectDetailPage() {
+   const handleDeleteProject = async () => {
+     try {
+       await deleteProjectMut.mutateAsync({ id });
++      // Drop this project's own cached queries so a stray refetch (or a
++      // stale browser-back navigation into this URL) never briefly shows
++      // the deleted project's old data before erroring out.
++      queryClient.removeQueries({ queryKey: getGetProjectQueryKey(id) });
++      queryClient.removeQueries({ queryKey: getGetProjectLedgerQueryKey(id) });
+       await queryClient.invalidateQueries({
+         queryKey: getListProjectsQueryKey(),
+       });
+       await invalidateDashboard(queryClient);
+       toast({ title: "案件を削除しました" });
+-      setLocation("/projects");
++      // replace (not push): without this, the just-deleted project's detail
++      // page stays in browser history immediately before this navigation,
++      // so pressing the phone/browser back button lands right back on it.
++      setLocation("/", { replace: true });
+     } catch (err) {
+       toast({ title: apiErrorMessage(err), variant: "destructive" });
+     }
