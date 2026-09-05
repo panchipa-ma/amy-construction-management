@@ -1,0 +1,61 @@
+From 255b0826764f92c6263a4a20f579fda01d55ff02 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 5 Sep 2026 12:09:33 +0000
+Subject: [PATCH] fix(amy): quote duplication copies line items only, not
+ subject/contact/notes
+
+Copying an existing quote via ?fromQuoteId= previously carried over the
+subject, contact name, and overall notes field along with the line items.
+Per user request, only the line-item details (description, unit, quantity,
+unit price, per-row notes) are copied now; subject, contact, and the
+overall notes field must be re-entered.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016PPmcp7PYGhjN5HNf4PtmX
+---
+ artifacts/amy/src/pages/quote-new.tsx | 15 ++++-----------
+ 1 file changed, 4 insertions(+), 11 deletions(-)
+
+diff --git a/artifacts/amy/src/pages/quote-new.tsx b/artifacts/amy/src/pages/quote-new.tsx
+index 3ec8e4a..7939843 100644
+--- a/artifacts/amy/src/pages/quote-new.tsx
++++ b/artifacts/amy/src/pages/quote-new.tsx
+@@ -138,8 +138,8 @@ export default function QuoteNewPage() {
+ 
+   const subjectTouched = useRef(false);
+ 
+-  // 既存見積書から複製：?fromQuoteId=<id> をフェッチして本文・明細を流用。
+-  // 案件・顧客・見積No・見積日は引き継がない（新規案件用のため）。
++  // 既存見積書から複製：?fromQuoteId=<id> をフェッチして明細行のみ流用。
++  // 案件・顧客・見積No・見積日・件名・ご担当・備考は引き継がない（新規案件用のため）。
+   const [fromQuoteId] = useState(searchParamFromQuoteId);
+   const fromQuoteQ = useGetQuote(fromQuoteId, {
+     query: {
+@@ -153,13 +153,6 @@ export default function QuoteNewPage() {
+     const src = fromQuoteQ.data;
+     if (!src) return;
+     prefilledRef.current = true;
+-    if (src.subject) {
+-      setSubject(src.subject);
+-      // Mark as user-edited so the project picker doesn't overwrite it.
+-      subjectTouched.current = true;
+-    }
+-    if (src.contactName) setContactName(src.contactName);
+-    if (src.notes) setNotes(src.notes);
+     if (Array.isArray(src.items) && src.items.length > 0) {
+       const copied: LineItem[] = src.items.map((it) => ({
+         description: it.description ?? "",
+@@ -175,8 +168,8 @@ export default function QuoteNewPage() {
+       setRows(copied);
+     }
+     toast({
+-      title: "見積書を複製しました",
+-      description: "案件・見積No・見積日を選び直してください。",
++      title: "見積項目を複製しました",
++      description: "案件・見積No・見積日・件名・ご担当・備考を入力し直してください。",
+     });
+   }, [fromQuoteId, fromQuoteQ.data, toast]);
+ 
+-- 
+2.43.0
+
