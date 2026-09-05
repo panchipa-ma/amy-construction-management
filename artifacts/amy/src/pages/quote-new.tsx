@@ -138,8 +138,8 @@ export default function QuoteNewPage() {
 
   const subjectTouched = useRef(false);
 
-  // 既存見積書から複製：?fromQuoteId=<id> をフェッチして本文・明細を流用。
-  // 案件・顧客・見積No・見積日は引き継がない（新規案件用のため）。
+  // 既存見積書から複製：?fromQuoteId=<id> をフェッチして明細行のみ流用。
+  // 案件・顧客・見積No・見積日・件名・ご担当・備考は引き継がない（新規案件用のため）。
   const [fromQuoteId] = useState(searchParamFromQuoteId);
   const fromQuoteQ = useGetQuote(fromQuoteId, {
     query: {
@@ -153,13 +153,6 @@ export default function QuoteNewPage() {
     const src = fromQuoteQ.data;
     if (!src) return;
     prefilledRef.current = true;
-    if (src.subject) {
-      setSubject(src.subject);
-      // Mark as user-edited so the project picker doesn't overwrite it.
-      subjectTouched.current = true;
-    }
-    if (src.contactName) setContactName(src.contactName);
-    if (src.notes) setNotes(src.notes);
     if (Array.isArray(src.items) && src.items.length > 0) {
       const copied: LineItem[] = src.items.map((it) => ({
         description: it.description ?? "",
@@ -175,8 +168,8 @@ export default function QuoteNewPage() {
       setRows(copied);
     }
     toast({
-      title: "見積書を複製しました",
-      description: "案件・見積No・見積日を選び直してください。",
+      title: "見積項目を複製しました",
+      description: "案件・見積No・見積日・件名・ご担当・備考を入力し直してください。",
     });
   }, [fromQuoteId, fromQuoteQ.data, toast]);
 
