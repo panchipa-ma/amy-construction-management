@@ -484,8 +484,10 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
             </p>
           </div>
         ) : (
-          <div className="flex border rounded-md overflow-hidden">
-            {/* fixed left column */}
+          <div className="hidden sm:flex border rounded-md overflow-hidden">
+            {/* fixed left column (desktop / wide screens only — see the
+                sm:hidden block below for the narrow-screen layout, where a
+                fixed-width name column would squeeze the Gantt chart) */}
             <div className="w-72 flex-shrink-0 border-r bg-card">
               <div className="h-12 border-b bg-muted/30 flex items-end px-3 pb-1.5 text-xs font-semibold text-muted-foreground">
                 工程
@@ -660,6 +662,172 @@ export function ProjectGantt({ projectId }: { projectId: string }) {
                         >
                           <Trash2 className="w-3 h-3" />
                         </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Narrow screens (phone portrait): the fixed name column above ate
+            too much of the viewport width and squeezed the Gantt chart down
+            to almost nothing. Here the chart gets the full width; each
+            phase's name is shown as a small pinned label directly above its
+            bar instead of in a side column, so it stays readable without
+            shrinking the timeline. */}
+        {phases.length > 0 && (
+          <div className="sm:hidden border rounded-md overflow-hidden">
+            <div className="overflow-x-auto">
+              <div
+                className="relative"
+                style={{ width: (range.totalDays + 1) * DAY_PX }}
+              >
+                {/* day header */}
+                <div className={`${ROW_H} border-b bg-muted/30 relative`}>
+                  {dayMarkers.map((m, i) => {
+                    const left = i * DAY_PX;
+                    const isHoliday = isProjectHoliday(
+                      m.date,
+                      project?.saturdayWork ?? true,
+                    );
+                    return (
+                      <div
+                        key={i}
+                        className={`absolute top-0 bottom-0 border-l ${m.isMonthStart ? "border-foreground/30" : "border-border/40"} ${isHoliday ? "bg-rose-100/80" : ""}`}
+                        style={{ left, width: DAY_PX }}
+                      >
+                        {m.isMonthStart && (
+                          <div className="absolute top-1 left-1 text-[10px] font-semibold text-foreground/70 whitespace-nowrap">
+                            {m.date.getMonth() + 1}月
+                          </div>
+                        )}
+                        <div
+                          className={`absolute bottom-1 left-0 right-0 text-center text-[10px] tabular-nums ${isHoliday ? "text-rose-700 font-semibold" : "text-muted-foreground"}`}
+                          title={japaneseHolidayName(m.date) ?? undefined}
+                        >
+                          {m.date.getDate()}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* phases: name label row + bar row, stacked */}
+                {phases.map((p) => {
+                  const ov = override[p.id];
+                  const sIso = ov?.s ?? p.startDate;
+                  const eIso = ov?.e ?? p.endDate;
+                  const s = dateOnly(sIso);
+                  const e = dateOnly(eIso);
+                  const left = diffDays(range.min, s) * DAY_PX;
+                  const width = (diffDays(s, e) + 1) * DAY_PX;
+                  const dragging = drag?.id === p.id;
+                  return (
+                    <div key={p.id}>
+                      {/* name row — draggable for reordering, like the
+                          desktop side column. The label itself is sticky
+                          so it stays visible while the row scrolls
+                          horizontally with the timeline. */}
+                      <div
+                        draggable
+                        onDragStart={(event) => {
+                          event.dataTransfer.effectAllowed = "move";
+                          event.dataTransfer.setData("text/plain", p.id);
+                          setOrderDragId(p.id);
+                        }}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "move";
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const sourceId =
+                            event.dataTransfer.getData("text/plain") || orderDragId;
+                          if (sourceId) void reorderPhases(sourceId, p.id);
+                        }}
+                        onDragEnd={() => setOrderDragId(null)}
+                        className={`h-9 border-b bg-muted/20 flex items-center ${orderDragId === p.id ? "opacity-50" : ""}`}
+                      >
+                        <div className="sticky left-0 z-10 flex items-center gap-1 max-w-[80vw] bg-card/95 backdrop-blur-sm pl-1 pr-1 py-0.5 rounded-r border-r border-border/60 cursor-grab active:cursor-grabbing">
+                          <GripVertical
+                            className="w-3.5 h-3.5 text-muted-foreground/70 shrink-0"
+                            aria-label="工程の順番を変更"
+                          />
+                          <span className="text-xs font-medium leading-tight truncate min-w-0">
+                            {p.name}
+                            {p.staffName && (
+                              <span className="ml-1 text-[10px] text-muted-foreground font-normal">
+                                ({p.staffName})
+                              </span>
+                            )}
+                          </span>
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">
+                            {STATUS_LABEL[p.status]}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 shrink-0"
+                            onClick={() => openEdit(p)}
+                            aria-label="工程を編集"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 shrink-0 text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(p.id)}
+                            aria-label="工程を削除"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* bar row */}
+                      <div className={`${ROW_H} border-b relative`}>
+                        {dayMarkers.map((m, i) => {
+                          const isHoliday = isProjectHoliday(
+                            m.date,
+                            project?.saturdayWork ?? true,
+                          );
+                          return (
+                            <div
+                              key={i}
+                              className={`absolute top-0 bottom-0 border-l ${m.isMonthStart ? "border-foreground/20" : "border-border/30"} ${isHoliday ? "bg-rose-100/70" : ""}`}
+                              style={{ left: i * DAY_PX, width: DAY_PX }}
+                            />
+                          );
+                        })}
+                        {todayOffset != null && (
+                          <div
+                            className="absolute top-0 bottom-0 w-px bg-destructive/70 z-10 pointer-events-none"
+                            style={{ left: todayOffset }}
+                          />
+                        )}
+                        <div
+                          className={`absolute top-1/2 -translate-y-1/2 h-8 rounded ${STATUS_CLR[p.status]} text-white text-xs flex items-center shadow-sm select-none border border-black/20 ${dragging ? "ring-2 ring-primary opacity-90" : ""}`}
+                          style={{ left, width: Math.max(width, 12) }}
+                          title={`${p.name}: ${formatDate(sIso)} 〜 ${formatDate(eIso)}`}
+                        >
+                          <div
+                            className="w-2 h-full cursor-ew-resize rounded-l hover:bg-white/30 flex-shrink-0"
+                            onPointerDown={(ev) => startDrag(ev, "resize-l", p)}
+                          />
+                          <div
+                            className="flex-1 px-1 truncate cursor-grab active:cursor-grabbing"
+                            onPointerDown={(ev) => startDrag(ev, "move", p)}
+                            onDoubleClick={() => openEdit(p)}
+                          >
+                            {p.name}
+                          </div>
+                          <div
+                            className="w-2 h-full cursor-ew-resize rounded-r hover:bg-white/30 flex-shrink-0"
+                            onPointerDown={(ev) => startDrag(ev, "resize-r", p)}
+                          />
+                        </div>
                       </div>
                     </div>
                   );

@@ -46,6 +46,7 @@ import {
   X,
   Plus,
   Copy,
+  GripVertical,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -150,6 +151,23 @@ export default function QuoteDetailPage() {
 
   const removeItem = (idx: number) => {
     setEditItems(editItems.filter((_, i) => i !== idx));
+  };
+
+  // 明細行の並び替え (ドラッグ&ドロップ)。編集中の state 配列の並び順を
+  // 入れ替えるだけで、DB項目 (items は保存時にJSON配列としてそのまま
+  // 保存される) の変更は不要。
+  const [itemDragIdx, setItemDragIdx] = useState<number | null>(null);
+  const reorderItems = (sourceIdx: number, targetIdx: number) => {
+    if (sourceIdx === targetIdx) return;
+    setEditItems((prev) => {
+      if (sourceIdx < 0 || sourceIdx >= prev.length || targetIdx < 0 || targetIdx >= prev.length) {
+        return prev;
+      }
+      const next = [...prev];
+      const [moved] = next.splice(sourceIdx, 1);
+      next.splice(targetIdx, 0, moved);
+      return next;
+    });
   };
 
   const updateItem = (idx: number, patch: Partial<EditItem>) => {
@@ -563,11 +581,11 @@ export default function QuoteDetailPage() {
 
         {editing ? (
           <div className="border-2 border-foreground mb-1">
-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)_24px] bg-primary text-primary-foreground text-[10px] font-semibold tracking-wider">
+            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)_24px] bg-primary text-primary-foreground text-[10px] font-semibold tracking-wider">
               <div className="px-1 py-0.5 text-center border-r border-primary-foreground/20">No.</div>
               <div className="px-2 py-0.5 border-r border-primary-foreground/20">工事項目・摘要</div>
-              <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-center">単位</div>
               <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-right">数量</div>
+              <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-center">単位</div>
               <div className="px-1.5 py-0.5 border-r border-primary-foreground/20 text-right">単価</div>
               <div className="px-1.5 py-0.5 text-right border-r border-primary-foreground/20">金額</div>
               <div className="px-2 py-0.5 border-r border-primary-foreground/20">備考</div>
@@ -576,10 +594,38 @@ export default function QuoteDetailPage() {
             {editItems.map((item, i) => (
               <div
                 key={i}
-                className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)_24px] border-t border-foreground/30 text-[11px] min-h-[18px]"
+                onDragOver={(event) => {
+                  if (itemDragIdx === null) return;
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                }}
+                onDrop={(event) => {
+                  if (itemDragIdx === null) return;
+                  event.preventDefault();
+                  const raw = event.dataTransfer.getData("text/plain");
+                  const sourceIdx = raw !== "" ? Number(raw) : itemDragIdx;
+                  if (sourceIdx !== null && !Number.isNaN(sourceIdx)) {
+                    reorderItems(sourceIdx, i);
+                  }
+                }}
+                className={`grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)_24px] border-t border-foreground/30 text-[11px] min-h-[18px] ${itemDragIdx === i ? "opacity-50" : ""}`}
               >
-                <div className="px-1 py-0 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px] flex items-center justify-center">
-                  {i + 1}
+                {/* Drag handle: only this cell starts the drag, so the
+                    text inputs alongside it keep normal click/select
+                    behavior. */}
+                <div
+                  draggable
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", String(i));
+                    setItemDragIdx(i);
+                  }}
+                  onDragEnd={() => setItemDragIdx(null)}
+                  className="px-0.5 py-0 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px] flex items-center justify-center gap-0.5 cursor-grab active:cursor-grabbing"
+                  title="ドラッグして行を並び替え"
+                >
+                  <GripVertical className="w-2.5 h-2.5 shrink-0 text-muted-foreground/50" aria-hidden="true" />
+                  <span>{i + 1}</span>
                 </div>
                 <div className="px-0.5 py-0 border-r border-foreground/30">
                   <Textarea
@@ -591,17 +637,17 @@ export default function QuoteDetailPage() {
                 </div>
                 <div className="px-0.5 py-0 border-r border-foreground/30">
                   <Input
-                    value={item.unit}
-                    onChange={(e) => updateItem(i, { unit: e.target.value })}
-                    className="h-[18px] text-[10px] text-center border-0 shadow-none focus-visible:ring-1 px-0.5"
-                  />
-                </div>
-                <div className="px-0.5 py-0 border-r border-foreground/30">
-                  <Input
                     type="number"
                     value={item.quantity || ""}
                     onChange={(e) => updateItem(i, { quantity: Number(e.target.value) || 0 })}
                     className="h-[18px] text-[11px] text-right border-0 shadow-none focus-visible:ring-1 px-0.5 tabular-nums"
+                  />
+                </div>
+                <div className="px-0.5 py-0 border-r border-foreground/30">
+                  <Input
+                    value={item.unit}
+                    onChange={(e) => updateItem(i, { unit: e.target.value })}
+                    className="h-[18px] text-[10px] text-center border-0 shadow-none focus-visible:ring-1 px-0.5"
                   />
                 </div>
                 <div className="px-0.5 py-0 border-r border-foreground/30">
@@ -641,19 +687,19 @@ export default function QuoteDetailPage() {
                 行を追加
               </Button>
             </div>
-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)_24px] border-t-2 border-foreground text-[10px] bg-muted/30">
+            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)_24px] border-t-2 border-foreground text-[10px] bg-muted/30">
               <div className="col-span-4"></div>
               <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right font-semibold">小計</div>
               <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right tabular-nums">{formatCurrency(editSubtotal)}</div>
               <div className="col-span-2 border-l border-foreground/30"></div>
             </div>
-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)_24px] border-t border-foreground/30 text-[10px] bg-muted/30">
+            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)_24px] border-t border-foreground/30 text-[10px] bg-muted/30">
               <div className="col-span-4"></div>
               <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right font-semibold">消費税</div>
               <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right tabular-nums">{formatCurrency(editTax)}</div>
               <div className="col-span-2 border-l border-foreground/30"></div>
             </div>
-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)_24px] border-t border-foreground/30 text-[11px] bg-primary text-primary-foreground">
+            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)_24px] border-t border-foreground/30 text-[11px] bg-primary text-primary-foreground">
               <div className="col-span-4"></div>
               <div className="px-1.5 py-1 border-l border-primary-foreground/20 text-right font-bold">合計</div>
               <div className="px-1.5 py-1 border-l border-primary-foreground/20 text-right tabular-nums font-bold">{formatCurrency(editTotal)}</div>
@@ -662,18 +708,18 @@ export default function QuoteDetailPage() {
           </div>
         ) : (
           <div className="border-2 border-foreground mb-1">
-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] bg-primary text-primary-foreground text-[10px] font-semibold tracking-wider">
+            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)] bg-primary text-primary-foreground text-[10px] font-semibold tracking-wider">
               <div className="px-1 py-0.5 text-center border-r border-primary-foreground/20">
                 No.
               </div>
               <div className="px-2 py-0.5 border-r border-primary-foreground/20">
                 工事項目・摘要
               </div>
-              <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-center">
-                単位
-              </div>
               <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-right">
                 数量
+              </div>
+              <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-center">
+                単位
               </div>
               <div className="px-1.5 py-0.5 border-r border-primary-foreground/20 text-right">
                 単価
@@ -689,7 +735,7 @@ export default function QuoteDetailPage() {
               return (
                 <div
                   key={i}
-                  className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[11px] min-h-[18px]"
+                  className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[11px] min-h-[18px]"
                 >
                   <div className="px-1 py-0.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px]">
                     {item ? i + 1 : ""}
@@ -697,11 +743,11 @@ export default function QuoteDetailPage() {
                   <div className="px-2 py-0.5 border-r border-foreground/30 whitespace-pre-wrap leading-tight">
                     {item?.description ?? ""}
                   </div>
-                  <div className="px-1 py-0.5 text-center border-r border-foreground/30 text-[10px]">
-                    {item?.unit ?? ""}
-                  </div>
                   <div className="px-1 py-0.5 text-right tabular-nums border-r border-foreground/30">
                     {item ? item.quantity : ""}
+                  </div>
+                  <div className="px-1 py-0.5 text-center border-r border-foreground/30 text-[10px]">
+                    {item?.unit ?? ""}
                   </div>
                   <div className="px-1.5 py-0.5 text-right tabular-nums border-r border-foreground/30">
                     {item ? formatCurrency(item.unitPrice) : ""}
@@ -715,7 +761,7 @@ export default function QuoteDetailPage() {
                 </div>
               );
             })}
-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] border-t-2 border-foreground text-[10px] bg-muted/30">
+            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)] border-t-2 border-foreground text-[10px] bg-muted/30">
               <div className="col-span-4"></div>
               <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right font-semibold">
                 小計
@@ -725,7 +771,7 @@ export default function QuoteDetailPage() {
               </div>
               <div className="border-l border-foreground/30"></div>
             </div>
-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[10px] bg-muted/30">
+            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[10px] bg-muted/30">
               <div className="col-span-4"></div>
               <div className="px-1.5 py-0.5 border-l border-foreground/30 text-right font-semibold">
                 消費税
@@ -735,7 +781,7 @@ export default function QuoteDetailPage() {
               </div>
               <div className="border-l border-foreground/30"></div>
             </div>
-            <div className="grid grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[11px] bg-primary text-primary-foreground">
+            <div className="grid grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)] border-t border-foreground/30 text-[11px] bg-primary text-primary-foreground">
               <div className="col-span-4"></div>
               <div className="px-1.5 py-1 border-l border-primary-foreground/20 text-right font-bold">
                 合計

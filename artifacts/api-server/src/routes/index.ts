@@ -37,10 +37,14 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
 }
 
 router.use(healthRouter);
-// Storage: GET /storage/objects/* and /storage/public-objects/* are public
-// so saved PDFs can be opened directly in a new browser tab (object paths
-// contain unguessable UUIDs). The POST upload endpoint inside storageRouter
-// performs its own auth check.
+// Storage: mounted before the global requireAuth below so links keep
+// working when opened directly in a new browser tab (no Bearer header on a
+// plain navigation — Clerk's session cookie carries auth instead). Every
+// route inside storageRouter performs its own auth check regardless:
+// GET /storage/public-objects/* is intentionally public (static assets),
+// while GET /storage/objects/* and the POST upload endpoint each require
+// an approved signed-in user, and GET additionally checks that the caller
+// is allowed to read that specific object (see lib/objectAccess.ts).
 router.use(storageRouter);
 // App Store 審査用デモログイン (public)。env 未設定なら常に 401/false を返すだけ。
 router.use(reviewLoginRouter);

@@ -2,6 +2,8 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import { ExtractOcrBody, ExtractOcrResponse } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { getOrCreateAppUser } from "../lib/auth";
+import { canUserAccessObjectPath } from "../lib/objectAccess";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -58,6 +60,21 @@ router.post("/ocr/extract", async (req: Request, res: Response) => {
   const parsed = ExtractOcrBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });
+    return;
+  }
+
+  // This router runs after the global requireAuth + requireApproved (see
+  // routes/index.ts), so the caller is already an approved signed-in user
+  // here. What's still missing is per-object authorization: without this,
+  // any approved user — external (職人) included — could pass an arbitrary
+  // objectPath and have the server OCR someone else's uploaded document.
+  // canUserAccessObjectPath applies the same ownership rule used for
+  // GET /storage/objects/* (internal: any object; external: only their own
+  // vendor invoice/quote attachments, or a file they just uploaded).
+  const me = await getOrCreateAppUser(req);
+  const allowed = await canUserAccessObjectPath(me, parsed.data.objectPath);
+  if (!allowed) {
+    res.status(403).json({ error: "Forbidden" });
     return;
   }
 

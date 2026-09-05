@@ -19,6 +19,7 @@ import {
 } from "@workspace/api-zod";
 import { isoDate, isoDateTime } from "../lib/serializers";
 import { getOrCreateAppUser } from "../lib/auth";
+import { externalUserCanAccessProject } from "../lib/externalProjectAccess";
 
 const router: IRouter = Router();
 
@@ -186,6 +187,17 @@ router.post("/schedule", async (req, res): Promise<void> => {
     return;
   }
   const me = await getOrCreateAppUser(req);
+  // 社外(職人)ユーザーは自分がアサインされている案件にのみ予定を作成できる。
+  // vendor-invoices.ts / vendor-quotes.ts と同じ externalUserCanAccessProject
+  // チェック(staffIdは他ルートと同様に本人限定にはしない — 本人以外の職人の
+  // 予定を代理登録する既存ユースケースを壊さないため)。
+  if (
+    me.role === "external" &&
+    !(await externalUserCanAccessProject(me, parsed.data.projectId))
+  ) {
+    res.status(403).json({ error: "この案件へのアクセス権がありません" });
+    return;
+  }
   const [row] = await db
     .insert(scheduleEntriesTable)
     .values({
@@ -221,6 +233,10 @@ router.patch("/schedule/:id", async (req, res): Promise<void> => {
       .where(eq(scheduleEntriesTable.id, params.data.id));
     if (existing && existing.createdBy !== me.clerkUserId) {
       res.status(403).json({ error: "他のアカウントの予定は編集できません" });
+      return;
+    }
+    if (!(await externalUserCanAccessProject(me, parsed.data.projectId))) {
+      res.status(403).json({ error: "この案件へのアクセス権がありません" });
       return;
     }
   }

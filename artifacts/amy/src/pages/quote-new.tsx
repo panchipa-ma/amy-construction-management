@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { invalidateDashboard } from "@/lib/invalidate";
-import { ArrowLeft, Save, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Plus, GripVertical } from "lucide-react";
 import { apiErrorMessage } from "@/lib/api-error";
 import { COMPANY_INFO, QUOTE_TERMS } from "@/lib/company-info";
 import { formatCurrency } from "@/lib/format";
@@ -93,36 +93,6 @@ function emptyItem(): LineItem {
 
 function isDiscountItem(item: LineItem): boolean {
   return /値引|割引|減額/.test(item.description);
-}
-
-function isItemEmpty(it: LineItem | undefined): boolean {
-  if (!it) return true;
-  return (
-    !it.description &&
-    !it.unit &&
-    !it.quantity &&
-    !it.unitPrice &&
-    !it.notes
-  );
-}
-
-function findLastNonEmpty(rows: LineItem[]): LineItem | undefined {
-  for (let i = rows.length - 1; i >= 0; i--) {
-    if (!isItemEmpty(rows[i])) return rows[i];
-  }
-  return undefined;
-}
-
-function seedItemFromPrevious(prev: LineItem | undefined): LineItem {
-  if (!prev) return emptyItem();
-  // 工事項目・単位・数量・単価 を引き継ぐ。備考は per-item なので空に。
-  return {
-    description: prev.description ?? "",
-    unit: prev.unit ?? "",
-    quantity: prev.quantity || 0,
-    unitPrice: prev.unitPrice || 0,
-    notes: "",
-  };
 }
 
 export default function QuoteNewPage() {
@@ -264,8 +234,23 @@ export default function QuoteNewPage() {
     });
   };
 
-  const addRow = () =>
-    setRows((prev) => [...prev, seedItemFromPrevious(findLastNonEmpty(prev))]);
+  const addRow = () => setRows((prev) => [...prev, emptyItem()]);
+
+  // 明細行の並び替え (ドラッグ&ドロップ)。行データはこの画面内の state のみで
+  // 保持しており(保存前)、DB項目の変更は不要 — 配列の並び順を入れ替えるだけ。
+  const [rowDragIdx, setRowDragIdx] = useState<number | null>(null);
+  const reorderRows = (sourceIdx: number, targetIdx: number) => {
+    if (sourceIdx === targetIdx) return;
+    setRows((prev) => {
+      if (sourceIdx < 0 || sourceIdx >= prev.length || targetIdx < 0 || targetIdx >= prev.length) {
+        return prev;
+      }
+      const next = [...prev];
+      const [moved] = next.splice(sourceIdx, 1);
+      next.splice(targetIdx, 0, moved);
+      return next;
+    });
+  };
 
   // Excel-like fill handle (列ごとにドラッグして下にコピー)
   const [fillDrag, setFillDrag] = useState<{
@@ -464,9 +449,10 @@ export default function QuoteNewPage() {
       (p.status !== "completed" && p.status !== "archived" || p.id === projectId),
   );
 
-  // Column template — description gets the widest space
+  // Column template — description gets the widest space.
+  // Order: No / 工事項目 / 数量 / 単位 / 単価 / 金額 / 備考 / (削除)
   const colTemplate =
-    "grid-cols-[26px_minmax(0,1fr)_44px_52px_80px_96px_minmax(0,1fr)_20px]";
+    "grid-cols-[26px_minmax(0,1fr)_52px_44px_80px_96px_minmax(0,1fr)_20px]";
 
   return (
     <div className="quote-workbench -m-8 min-h-[calc(100vh-0px)] py-6 px-6 print:p-0 print:m-0 print:min-h-0">
@@ -676,11 +662,11 @@ export default function QuoteNewPage() {
             <div className="px-2 py-0.5 border-r border-primary-foreground/20">
               工事項目・摘要
             </div>
-            <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-center">
-              単位
-            </div>
             <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-right">
               数量
+            </div>
+            <div className="px-1 py-0.5 border-r border-primary-foreground/20 text-center">
+              単位
             </div>
             <div className="px-1.5 py-0.5 border-r border-primary-foreground/20 text-right">
               単価
@@ -724,10 +710,39 @@ export default function QuoteNewPage() {
               <div
                 key={i}
                 data-row={i}
-                className={`grid ${colTemplate} border-t border-foreground/30 text-[11px] hover:bg-accent/5 items-stretch`}
+                onDragOver={(event) => {
+                  if (rowDragIdx === null) return;
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                }}
+                onDrop={(event) => {
+                  if (rowDragIdx === null) return;
+                  event.preventDefault();
+                  const raw = event.dataTransfer.getData("text/plain");
+                  const sourceIdx = raw !== "" ? Number(raw) : rowDragIdx;
+                  if (sourceIdx !== null && !Number.isNaN(sourceIdx)) {
+                    reorderRows(sourceIdx, i);
+                  }
+                }}
+                className={`grid ${colTemplate} border-t border-foreground/30 text-[11px] hover:bg-accent/5 items-stretch ${rowDragIdx === i ? "opacity-50" : ""}`}
               >
-                <div className="px-1 py-0.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px] flex items-start justify-center min-h-[18px]">
-                  {i + 1}
+                {/* Drag handle: only this small cell initiates row
+                    reordering, so dragging text inside the description/
+                    notes textareas (and the Excel-like fill handle) still
+                    works normally. */}
+                <div
+                  draggable
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", String(i));
+                    setRowDragIdx(i);
+                  }}
+                  onDragEnd={() => setRowDragIdx(null)}
+                  className="px-0.5 py-0.5 text-center text-muted-foreground tabular-nums border-r border-foreground/30 text-[10px] flex items-start justify-center gap-0.5 min-h-[18px] cursor-grab active:cursor-grabbing"
+                  title="ドラッグして行を並び替え"
+                >
+                  <GripVertical className="w-2.5 h-2.5 shrink-0 text-muted-foreground/50 print:hidden" aria-hidden="true" />
+                  <span>{i + 1}</span>
                 </div>
                 <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("description") ? "bg-primary/10" : ""}`}>
                   <AutoGrowTextarea
@@ -746,6 +761,23 @@ export default function QuoteNewPage() {
                   />
                   {renderFillHandle("description")}
                 </div>
+                <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("quantity") ? "bg-primary/10" : ""}`}>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={row.quantity || ""}
+                    onChange={(e) => {
+                      const n = e.target.valueAsNumber;
+                      updateRow(i, "quantity", Number.isFinite(n) ? n : 0);
+                    }}
+                    onKeyDown={(e) => handleEnterDown(e, i, "qty")}
+                    onPaste={(e) => handleMultiPaste(e, i, "quantity")}
+                    className="block w-full px-1 py-0.5 bg-transparent outline-none focus:bg-accent/10 text-right tabular-nums min-w-0 self-start min-h-[18px] text-[11px]"
+                    data-cell={`r${i}-cqty`}
+                  />
+                  {renderFillHandle("quantity")}
+                </div>
                 <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("unit") ? "bg-primary/10" : ""}`}>
                   <Select
                     value={row.unit ?? ""}
@@ -763,23 +795,6 @@ export default function QuoteNewPage() {
                     </SelectContent>
                   </Select>
                   {renderFillHandle("unit")}
-                </div>
-                <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("quantity") ? "bg-primary/10" : ""}`}>
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={row.quantity || ""}
-                    onChange={(e) => {
-                      const n = e.target.valueAsNumber;
-                      updateRow(i, "quantity", Number.isFinite(n) ? n : 0);
-                    }}
-                    onKeyDown={(e) => handleEnterDown(e, i, "qty")}
-                    onPaste={(e) => handleMultiPaste(e, i, "quantity")}
-                    className="block w-full px-1 py-0.5 bg-transparent outline-none focus:bg-accent/10 text-right tabular-nums min-w-0 self-start min-h-[18px] text-[11px]"
-                    data-cell={`r${i}-cqty`}
-                  />
-                  {renderFillHandle("quantity")}
                 </div>
                 <div className={`${cellWrap} border-r border-foreground/30 ${isCellInFillRange("unitPrice") ? "bg-primary/10" : ""}`}>
                   <input

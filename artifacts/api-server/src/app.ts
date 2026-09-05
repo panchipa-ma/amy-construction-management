@@ -10,8 +10,19 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { createCorsOriginHandler } from "./lib/corsOrigins";
 
 const app: Express = express();
+
+// Replit Autoscale deployments sit behind exactly one reverse proxy hop.
+// Without this, Express ignores X-Forwarded-For entirely and req.ip is
+// always the proxy's own address for every request — so the per-IP rate
+// limiter in routes/review-login.ts ends up sharing a single bucket across
+// all callers instead of limiting each client individually. Trusting 1 hop
+// makes req.ip resolve to the real client IP while still only trusting the
+// proxy Replit itself controls (a client can't spoof past that boundary by
+// sending its own X-Forwarded-For).
+app.set("trust proxy", 1);
 
 app.use(
   pinoHttp({
@@ -35,7 +46,12 @@ app.use(
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-app.use(cors({ credentials: true, origin: true }));
+// Was `origin: true` (reflects any Origin) + `credentials: true` — allowed
+// any website to make credentialed cross-site requests. Now restricted to
+// AMY's actual domain(s) (REPLIT_DOMAINS, set by the deployment platform),
+// the workspace dev domain, and localhost in non-production. See
+// lib/corsOrigins.ts.
+app.use(cors({ credentials: true, origin: createCorsOriginHandler() }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

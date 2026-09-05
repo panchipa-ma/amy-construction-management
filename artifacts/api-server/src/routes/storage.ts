@@ -6,7 +6,8 @@ import {
   RequestUploadUrlResponse,
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
-import { ObjectPermission } from "../lib/objectAcl";
+import { getOrCreateAppUser } from "../lib/auth";
+import { canUserAccessObjectPath, recordPendingUpload } from "../lib/objectAccess";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -19,9 +20,10 @@ const objectStorageService = new ObjectStorageService();
  * Then uploads the file directly to the returned presigned URL.
  */
 router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
-  // This route is mounted before the global requireAuth middleware (so the
-  // public GET /storage/objects/* can serve PDFs to a new tab without
-  // cookie-handling quirks). Re-check auth inline here for the upload.
+  // This whole router is mounted before the global requireAuth middleware
+  // (so GET /storage/objects/* can serve PDFs to a new tab via the
+  // Clerk session cookie without a Bearer header — see that handler below
+  // for its own auth + ownership check). Re-check auth inline here too.
   const auth = getAuth(req);
   if (!auth?.userId) {
     res.status(401).json({ error: "Unauthorized" });
@@ -38,6 +40,10 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
 
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+    // So GET /storage/objects/* can let this same user preview the file
+    // before it's attached to a saved vendor invoice/quote (see
+    // lib/objectAccess.ts for why this is needed).
+    recordPendingUpload(objectPath, auth.userId);
 
     res.json(
       RequestUploadUrlResponse.parse({
@@ -90,31 +96,38 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
  * GET /storage/objects/*
  *
  * Serve object entities from PRIVATE_OBJECT_DIR.
- * These are served from a separate path from /public-objects and can optionally
- * be protected with authentication or ACL checks based on the use case.
+ *
+ * This route is mounted before the global requireAuth/requireApproved
+ * middlewares (see routes/index.ts — kept that way so links open cleanly
+ * in a new browser tab), so it re-checks auth + approval inline here, then
+ * authorizes the specific object via canUserAccessObjectPath (internal
+ * users may read any object; external users only their own vendor
+ * invoice/quote attachments — see lib/objectAccess.ts for the full rule).
  */
 router.get("/storage/objects/*path", async (req: Request, res: Response) => {
   try {
+    const auth = getAuth(req);
+    if (!auth?.userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    const me = await getOrCreateAppUser(req);
+    if (me.status !== "approved") {
+      res.status(403).json({ error: "Forbidden: 承認待ちのアカウントです" });
+      return;
+    }
+
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const objectPath = `/objects/${wildcardPath}`;
+
+    const allowed = await canUserAccessObjectPath(me, objectPath);
+    if (!allowed) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
-
-    // --- Protected route example (uncomment when using replit-auth) ---
-    // if (!req.isAuthenticated()) {
-    //   res.status(401).json({ error: "Unauthorized" });
-    //   return;
-    // }
-    // const canAccess = await objectStorageService.canAccessObjectEntity({
-    //   userId: req.user.id,
-    //   objectFile,
-    //   requestedPermission: ObjectPermission.READ,
-    // });
-    // if (!canAccess) {
-    //   res.status(403).json({ error: "Forbidden" });
-    //   return;
-    // }
-
     const response = await objectStorageService.downloadObject(objectFile);
 
     res.status(response.status);
